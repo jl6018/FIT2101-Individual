@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symph — Sprint Planning</title>
+    <link rel="stylesheet" href="style-sprint-planning-page.css">
+</head>
+
+<body>
+
+<div class="app-shell">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="logo"><span class="s1">SYM</span><span class="s2">PH</span></div>
+
+        <nav class="nav">
+            <!-- Placeholder link — point this at your teammate's actual Sprint Board file/route -->
+            <a href="index-sprint-board-page.html" class="nav-item">
+                <span class="dot"></span> Sprint Board
+            </a>
+            <a href="index-sprint-planning-page.html" class="nav-item active">
+                <span class="dot dot-active"></span> Sprint Planning
+            </a>
+            <!-- Placeholder link — point this at your Team Management file once built -->
+            <a href="index-team-management-page.html" class="nav-item">
+                <span class="dot"></span> Team Management
+            </a>
+            <!-- Placeholder link — point this at your Reports file once built -->
+            <a href="index-reports-page.html" class="nav-item">
+                <span class="dot"></span> Reports
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="signed-in">Signed in as <strong>Admin</strong></div>
+            <button id="switchAccountBtn" class="switch-account-btn">Switch Account</button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+        <h1>Sprint Planning</h1>
+
+        <section class="panel">
+            <h2>Start Sprint Planning</h2>
+            <p class="muted">Choose who's involved in the next sprint and add the tasks they'll work on. Sprints
+                can run up to 3 weeks.</p>
+            <button id="startSprintPlanningBtn" class="btn-primary">Start Sprint Planning</button>
+        </section>
+
+        <section class="panel">
+            <h2>Invite Product Owner</h2>
+            <p class="muted">Product Owners are invited by email — there's no public sign up.</p>
+            <button id="inviteProductOwnerBtn" class="btn-primary">Invite Product Owner</button>
+        </section>
+
+        <section class="panel">
+            <h2>Past Sprints</h2>
+            <table class="sprints-table">
+                <thead>
+                <tr>
+                    <th>Sprint</th>
+                    <th>Dates</th>
+                    <th>Members</th>
+                    <th>Status</th>
+                </tr>
+                </thead>
+                <tbody id="pastSprintsBody">
+                <tr>
+                    <td>Sprint 2</td>
+                    <td>5 - 19 Sep 2026</td>
+                    <td>6</td>
+                    <td>In progress</td>
+                </tr>
+                <tr>
+                    <td>Sprint 1</td>
+                    <td>30 Aug - 5 Sep 2026</td>
+                    <td>5</td>
+                    <td>Completed</td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+</div>
+
+<!-- ===================== MODAL: Start Sprint Planning ===================== -->
+<div class="modal-overlay" id="sprintPlanningOverlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sprintPlanningTitle">
+        <button class="modal-close" id="closeSprintPlanningBtn" aria-label="Close">✕</button>
+        <h2 id="sprintPlanningTitle" class="modal-title">Sprint Planning</h2>
+        <p class="modal-subtitle">Sprints can run up to 3 weeks</p>
+
+        <form id="sprintPlanningForm">
+            <div class="form-row">
+                <div class="form-field">
+                    <label for="sprintName">Sprint name</label>
+                    <input type="text" id="sprintName" name="sprintName" value="Sprint 2" required>
+                </div>
+                <div class="form-field">
+                    <label for="sprintDuration">Duration</label>
+                    <select id="sprintDuration" name="sprintDuration">
+                        <option value="1">1 week</option>
+                        <option value="2" selected>2 weeks</option>
+                        <option value="3">3 weeks</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-field">
+                <label>Members involved</label>
+                <div class="members-list" id="membersList">
+                    <label class="member-row">
+                        <input type="checkbox" name="member" value="Priya Nair" checked>
+                        <span>Priya Nair — Team Alpha</span>
+                    </label>
+                    <label class="member-row">
+                        <input type="checkbox" name="member" value="Daniel Wu" checked>
+                        <span>Daniel Wu — Team Alpha</span>
+                    </label>
+                    <label class="member-row">
+                        <input type="checkbox" name="member" value="Farah Idris" checked>
+                        <span>Farah Idris — Team Beta</span>
+                    </label>
+                    <label class="member-row">
+                        <input type="checkbox" name="member" value="Aiden Cole" checked>
+                        <span>Aiden Cole — Team Beta</span>
+                    </label>
+                    <label class="member-row">
+                        <input type="checkbox" name="member" value="Mei Ling Tan" checked>
+                        <span>Mei Ling Tan — Team Gamma</span>
+                    </label>
+                    <label class="member-row">
+                        <input type="checkbox" name="member" value="Sam Okafor" checked>
+                        <span>Sam Okafor — Team Gamma</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-field">
+                <label for="taskDescription">Add a task</label>
+                <input type="text" id="taskDescription" name="taskDescription" placeholder="Task description">
+            </div>
+
+            <div class="form-field">
+                <label for="taskDate" class="sr-only">Date</label>
+                <input type="date" id="taskDate" name="taskDate">
+            </div>
+
+            <button type="submit" class="btn-primary full-width">Create sprint</button>
+        </form>
+    </div>
+</div>
+
+<!-- ===================== MODAL: Invite Product Owner ===================== -->
+<div class="modal-overlay" id="inviteOverlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="inviteTitle">
+        <button class="modal-close" id="closeInviteBtn" aria-label="Close">✕</button>
+        <h2 id="inviteTitle" class="modal-title">Invite Product Owner</h2>
+        <p class="modal-subtitle">They'll receive a sign-in link by email — there's no public sign-up form.</p>
+
+        <form id="inviteForm">
+            <div class="form-field">
+                <label for="ownerEmail">Email address</label>
+                <input type="email" id="ownerEmail" name="ownerEmail" placeholder="owner@company.com" required>
+            </div>
+
+            <button type="submit" class="btn-primary full-width">Send invite</button>
+        </form>
+    </div>
+</div>
+
+<!-- ===================== MODAL: Switch Account ===================== -->
+<div class="modal-overlay" id="switchAccountOverlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="switchAccountTitle">
+        <button class="modal-close" id="closeSwitchAccountBtn" aria-label="Close">✕</button>
+        <h2 id="switchAccountTitle" class="modal-title">Switch Account</h2>
+        <p class="modal-subtitle">Choose an account to sign in as.</p>
+
+        <ul class="account-list" id="accountList">
+            <li class="account-row" data-name="Admin" data-role="Admin">
+                <span class="avatar">A</span>
+                <span class="account-info">
+                        <span class="account-name">Admin</span>
+                        <span class="account-role">Administrator</span>
+                    </span>
+            </li>
+            <li class="account-row" data-name="Priya Nair" data-role="Team Alpha">
+                <span class="avatar">P</span>
+                <span class="account-info">
+                        <span class="account-name">Priya Nair</span>
+                        <span class="account-role">Team Alpha</span>
+                    </span>
+            </li>
+            <li class="account-row" data-name="Daniel Wu" data-role="Team Alpha">
+                <span class="avatar">D</span>
+                <span class="account-info">
+                        <span class="account-name">Daniel Wu</span>
+                        <span class="account-role">Team Alpha</span>
+                    </span>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<!-- ===================== TOAST NOTIFICATION ===================== -->
+<div class="toast" id="toast"></div>
+
+<script src="main-sprint-planning-page.js" type="module" defer></script>
+</body>
+
+</html>
