@@ -485,3 +485,19 @@ body {
 .worklog-play-btn {
     font-size: 1rem;
 }
+
+.logout-btn {
+    background: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    margin-left: 8px;
+    font-family: inherit;
+}
+
+.logout-btn:hover {
+    background: #F3F4F6;
+}

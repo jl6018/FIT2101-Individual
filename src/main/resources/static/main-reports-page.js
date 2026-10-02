@@ -1,7 +1,18 @@
+// ===================== AUTH GUARD =====================
 if (sessionStorage.getItem('loggedIn') !== 'true') {
     window.location.href = 'index-login-page.html';
     throw new Error('Not logged in');
 }
+// ===================== END GUARD =====================
+
+// ===================== LOGOUT =====================
+document.getElementById('logoutBtn')?.addEventListener('click', () => {
+    if (confirm('Log out?')) {
+        sessionStorage.clear();
+        window.location.href = 'index-login-page.html';
+    }
+});
+// ===================== END LOGOUT =====================
 
 function requireElement(id) {
     const el = document.getElementById(id);
@@ -45,10 +56,7 @@ async function loadSessions() {
         SESSIONS = logs.map((log) => ({
             member: log.user?.name ?? 'Unknown',
             hours: log.hours,
-            daysAgo: Math.max(
-                0,
-                Math.floor((Date.now() - new Date(log.date).getTime()) / (1000 * 60 * 60 * 24))
-            ),
+            daysAgo: Math.max(0, Math.floor((Date.now() - new Date(log.date).getTime()) / (1000 * 60 * 60 * 24))),
         }));
     } catch (err) {
         console.error('Failed to load sessions:', err);
@@ -80,10 +88,6 @@ const memberModalTeam = requireElement('memberModalTeam');
 const memberChartWrap = requireElement('memberChartWrap');
 const memberEmptyState = requireElement('memberEmptyState');
 const memberModalTotal = requireElement('memberModalTotal');
-const switchAccountBtn = requireElement('switchAccountBtn');
-const switchAccountOverlay = requireElement('switchAccountOverlay');
-const closeSwitchAccountBtn = requireElement('closeSwitchAccountBtn');
-const accountList = requireElement('accountList');
 
 let selectedWeeks = 2;
 
@@ -93,22 +97,12 @@ function openModal(overlay) {
 function closeModal(overlay) {
     overlay.classList.remove('visible');
 }
+
 closeMemberModalBtn.addEventListener('click', () => closeModal(memberOverlay));
 memberOverlay.addEventListener('click', (e) => {
     if (e.target === memberOverlay) closeModal(memberOverlay);
 });
-switchAccountBtn.addEventListener('click', () => openModal(switchAccountOverlay));
-closeSwitchAccountBtn.addEventListener('click', () => closeModal(switchAccountOverlay));
-switchAccountOverlay.addEventListener('click', (e) => {
-    if (e.target === switchAccountOverlay) closeModal(switchAccountOverlay);
-});
-accountList.querySelectorAll('.account-row').forEach((row) => {
-    row.addEventListener('click', () => {
-        const name = row.dataset['name'] ?? 'Unknown';
-        closeModal(switchAccountOverlay);
-        alert(`Switched to ${name}`);
-    });
-});
+
 timeRangeRow.querySelectorAll('.range-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
         const weeks = Number(btn.dataset['weeks']);
@@ -159,6 +153,7 @@ function openMemberModal(member, maxDaysAgo) {
     const sessions = SESSIONS.filter((s) => s.member === member.name && s.daysAgo < maxDaysAgo)
         .sort((a, b) => b.daysAgo - a.daysAgo);
     memberChartWrap.innerHTML = '';
+
     if (sessions.length === 0) {
         memberChartWrap.style.display = 'none';
         memberEmptyState.style.display = 'block';
@@ -187,6 +182,7 @@ function openMemberModal(member, maxDaysAgo) {
 }
 
 const TASK_BAR_COLORS = ['#8B5FBF', '#8B5FBF', '#F5C518', '#F5C518', '#F06478', '#F06478', '#2ED4C6'];
+
 function renderTaskHoursChart() {
     const maxHours = Math.max(...TASK_HOURS.map((t) => t.hours), 1);
     taskHoursChart.innerHTML = '';
@@ -210,20 +206,21 @@ function renderBurndownChart() {
     const plotWidth = width - paddingLeft - 20;
     const plotHeight = height - paddingBottom - paddingTop;
     const maxValue = Math.max(...BURNDOWN_PROJECTED, ...BURNDOWN_ACTUAL);
+
     function toPoints(values) {
-        return values
-            .map((v, i) => {
-                const x = paddingLeft + (i / (values.length - 1)) * plotWidth;
-                const y = paddingTop + (1 - v / maxValue) * plotHeight;
-                return `${x},${y}`;
-            })
-            .join(' ');
+        return values.map((v, i) => {
+            const x = paddingLeft + (i / (values.length - 1)) * plotWidth;
+            const y = paddingTop + (1 - v / maxValue) * plotHeight;
+            return `${x},${y}`;
+        }).join(' ');
     }
+
     const projectedPoints = toPoints(BURNDOWN_PROJECTED);
     const actualPoints = toPoints(BURNDOWN_ACTUAL);
     const svgNS = 'http://www.w3.org/2000/svg';
     burndownChart.innerHTML = '';
     burndownChart.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
     const axisY = document.createElementNS(svgNS, 'line');
     axisY.setAttribute('x1', String(paddingLeft));
     axisY.setAttribute('y1', String(paddingTop));
@@ -231,6 +228,7 @@ function renderBurndownChart() {
     axisY.setAttribute('y2', String(height - paddingBottom));
     axisY.setAttribute('stroke', '#D1D5DB');
     burndownChart.appendChild(axisY);
+
     const axisX = document.createElementNS(svgNS, 'line');
     axisX.setAttribute('x1', String(paddingLeft));
     axisX.setAttribute('y1', String(height - paddingBottom));
@@ -238,20 +236,7 @@ function renderBurndownChart() {
     axisX.setAttribute('y2', String(height - paddingBottom));
     axisX.setAttribute('stroke', '#D1D5DB');
     burndownChart.appendChild(axisX);
-    const yLabel = document.createElementNS(svgNS, 'text');
-    yLabel.setAttribute('x', '4');
-    yLabel.setAttribute('y', '12');
-    yLabel.setAttribute('font-size', '11');
-    yLabel.setAttribute('fill', '#6B7280');
-    yLabel.textContent = 'Story pts';
-    burndownChart.appendChild(yLabel);
-    const xLabel = document.createElementNS(svgNS, 'text');
-    xLabel.setAttribute('x', String(width - 45));
-    xLabel.setAttribute('y', String(height - 8));
-    xLabel.setAttribute('font-size', '11');
-    xLabel.setAttribute('fill', '#6B7280');
-    xLabel.textContent = 'Days';
-    burndownChart.appendChild(xLabel);
+
     const projectedLine = document.createElementNS(svgNS, 'polyline');
     projectedLine.setAttribute('points', projectedPoints);
     projectedLine.setAttribute('fill', 'none');
@@ -259,6 +244,7 @@ function renderBurndownChart() {
     projectedLine.setAttribute('stroke-width', '2');
     projectedLine.setAttribute('stroke-dasharray', '6,4');
     burndownChart.appendChild(projectedLine);
+
     const actualLine = document.createElementNS(svgNS, 'polyline');
     actualLine.setAttribute('points', actualPoints);
     actualLine.setAttribute('fill', 'none');
@@ -274,4 +260,5 @@ async function init() {
     renderTaskHoursChart();
     renderBurndownChart();
 }
+
 init();
