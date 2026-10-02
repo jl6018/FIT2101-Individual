@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 
-import webapplication.Application;  // ⬅️ ADD THIS IMPORT
+import webapplication.Application;
 import webapplication.model.Project;
 import webapplication.model.Team;
 import webapplication.model.User;
@@ -17,9 +17,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest(classes = Application.class)  // ⬅️ ADD THIS
+@SpringBootTest(classes = Application.class)
 @TestPropertySource(properties = {
-        "spring.datasource.url=jdbc:h2:mem:testdb",
+        "spring.datasource.url=jdbc:h2:mem:projectdb",
         "spring.datasource.driverClassName=org.h2.Driver",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
@@ -53,7 +53,8 @@ class ProjectServiceTest {
         testUser = new User();
         testUser.setName("Project Owner");
         testUser.setEmail("owner@example.com");
-        testUser.setRole("PRODUCT_OWNER");
+        testUser.setPassword("password123");
+        testUser.setRole("ADMIN");
         testUser = userRepository.save(testUser);
 
         testTeam = new Team();

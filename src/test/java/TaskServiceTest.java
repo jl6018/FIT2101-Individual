@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 
-import webapplication.Application;  // ⬅️ ADD THIS IMPORT
+import webapplication.Application;
 import webapplication.model.*;
 import webapplication.repository.*;
 import webapplication.service.TaskService;
@@ -14,9 +14,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest(classes = Application.class)  // ⬅️ ADD THIS
+@SpringBootTest(classes = Application.class)
 @TestPropertySource(properties = {
-        "spring.datasource.url=jdbc:h2:mem:testdb",
+        "spring.datasource.url=jdbc:h2:mem:taskdb",
         "spring.datasource.driverClassName=org.h2.Driver",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
@@ -59,7 +59,8 @@ class TaskServiceTest {
         testUser = new User();
         testUser.setName("Task Assignee");
         testUser.setEmail("assignee@example.com");
-        testUser.setRole("DEVELOPER");
+        testUser.setPassword("password123");
+        testUser.setRole("EMPLOYEE");     // ✅ valid
         testUser = userRepository.save(testUser);
 
         Team testTeam = new Team();

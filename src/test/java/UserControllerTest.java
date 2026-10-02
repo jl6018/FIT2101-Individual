@@ -6,7 +6,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import webapplication.Application;  // ⬅️ IMPORT YOUR MAIN CLASS
+import webapplication.Application;
 import webapplication.controller.UserController;
 import webapplication.model.User;
 import webapplication.service.UserService;
@@ -19,7 +19,6 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-// ⬇️ ADD THESE ANNOTATIONS SO SPRING CAN FIND YOUR MAIN CONFIG
 @WebMvcTest(controllers = UserController.class)
 @ContextConfiguration(classes = Application.class)
 class UserControllerTest {
@@ -39,13 +38,14 @@ class UserControllerTest {
         user.setId(1L);
         user.setName("John");
         user.setEmail("john@example.com");
+        user.setPassword("password123");
+        user.setRole("ADMIN");
 
         when(userService.createUser(any(User.class))).thenReturn(user);
 
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(user)))
-                // ⚠️ CHANGED TO isOk() BECAUSE YOUR CONTROLLER RETURNS 200 OK
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("John"))
                 .andExpect(jsonPath("$.email").value("john@example.com"));

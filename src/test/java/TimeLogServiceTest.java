@@ -58,7 +58,8 @@ class TimeLogServiceTest {
         testUser = new User();
         testUser.setName("Developer");
         testUser.setEmail("dev@example.com");
-        testUser.setRole("DEVELOPER");
+        testUser.setPassword("password123");
+        testUser.setRole("EMPLOYEE");
         testUser = userRepository.save(testUser);
 
         Task task = new Task();
@@ -83,7 +84,8 @@ class TimeLogServiceTest {
         timeLogService.logHours(new TimeLog(LocalDate.now().minusDays(1), 4.0, "Work", testTask, testUser));
         timeLogService.logHours(new TimeLog(LocalDate.now(), 6.0, "Work", testTask, testUser));
 
-        double total = timeLogService.getTotalHoursForUserInRange(testUser.getId(), LocalDate.now().minusDays(2), LocalDate.now());
+        double total = timeLogService.getTotalHoursForUserInRange(
+                testUser.getId(), LocalDate.now().minusDays(2), LocalDate.now());
 
         assertEquals(10.0, total);
     }

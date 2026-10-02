@@ -9,17 +9,13 @@ import webapplication.model.User;
 import webapplication.repository.UserRepository;
 import webapplication.service.UserService;
 
-// Add these imports based on your actual project dependencies (e.g., Security, Mail):
-// import webapplication.security.JwtUtil;
-// import webapplication.security.CustomFilter;
-
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(classes = Application.class)
 @TestPropertySource(properties = {
-        "spring.datasource.url=jdbc:h2:mem:testdb",
+        "spring.datasource.url=jdbc:h2:mem:userdb",
         "spring.datasource.driverClassName=org.h2.Driver",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
@@ -34,20 +30,6 @@ class UserServiceTest {
     @Autowired
     private UserRepository userRepository;
 
-    // -------------------------------------------------------------------------
-    // CRITICAL FIX: MOCK EXTERNAL DEPENDENCIES
-    // If your main application loads filters or security beans, they need to be mocked
-    // so Spring doesn't try to instantiate them (and fail) during the test.
-    // -------------------------------------------------------------------------
-
-    // Example: If you have a JWT filter, mock it:
-    // @MockitoBean
-    // private JwtUtil jwtUtil;
-
-    // Example: If you have a security filter chain:
-    // @MockitoBean
-    // private CustomFilter customFilter;
-
     private User testUser;
 
     @BeforeEach
@@ -57,7 +39,8 @@ class UserServiceTest {
         testUser = new User();
         testUser.setName("Test User");
         testUser.setEmail("test@example.com");
-        testUser.setRole("DEVELOPER");
+        testUser.setPassword("password123");
+        testUser.setRole("EMPLOYEE");
     }
 
     @Test
@@ -67,7 +50,7 @@ class UserServiceTest {
         assertNotNull(created.getId());
         assertEquals("Test User", created.getName());
         assertEquals("test@example.com", created.getEmail());
-        assertEquals("DEVELOPER", created.getRole());
+        assertEquals("EMPLOYEE", created.getRole());
     }
 
     @Test
@@ -77,7 +60,8 @@ class UserServiceTest {
         User secondUser = new User();
         secondUser.setName("Second User");
         secondUser.setEmail("second@example.com");
-        secondUser.setRole("SCRUM_MASTER");
+        secondUser.setPassword("password123");
+        secondUser.setRole("ADMIN");
         userService.createUser(secondUser);
 
         List<User> users = userService.getAllUsers();
@@ -111,13 +95,14 @@ class UserServiceTest {
         User updatedUser = new User();
         updatedUser.setName("Updated Name");
         updatedUser.setEmail("updated@example.com");
-        updatedUser.setRole("PRODUCT_OWNER");
+        updatedUser.setPassword("password123");
+        updatedUser.setRole("ADMIN");
 
         User updated = userService.updateUser(saved.getId(), updatedUser);
 
         assertEquals("Updated Name", updated.getName());
         assertEquals("updated@example.com", updated.getEmail());
-        assertEquals("PRODUCT_OWNER", updated.getRole());
+        assertEquals("ADMIN", updated.getRole());
     }
 
     @Test
