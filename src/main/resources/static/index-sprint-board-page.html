@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Symph — Sprint Board</title>
+    <link rel="stylesheet" href="style-sprint-planning-page.css">
+</head>
+<body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="logo"><span class="s1">SYM</span><span class="s2">PH</span></div>
+        <nav class="nav">
+            <a href="index-sprint-board-page.html" class="nav-item active">
+                <span class="dot dot-active"></span> Sprint Board
+            </a>
+            <a href="index-sprint-planning-page.html" class="nav-item">
+                <span class="dot"></span> Sprint Planning
+            </a>
+            <a href="index-team-management-page.html" class="nav-item">
+                <span class="dot"></span> Team Management
+            </a>
+            <a href="index-reports-page.html" class="nav-item">
+                <span class="dot"></span> Reports
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="signed-in">Signed in as <strong>Admin</strong></div>
+            <button id="switchAccountBtn" class="switch-account-btn">Switch Account</button>
+        </div>
+    </aside>
+
+    <main class="main">
+        <h1>Sprint Board</h1>
+        <p class="page-subtitle">Kanban view of the current sprint</p>
+
+        <div class="panel">
+            <h2>Kanban Columns</h2>
+            <p class="muted">Use the Admin Board for full editing. This is a read-only view.</p>
+            <a href="index-admin-page.html" class="btn-primary" style="display:inline-block;margin-top:8px;text-decoration:none;">
+                Open Admin Board
+            </a>
+        </div>
+    </main>
+</div>
+</body>
+</html>
