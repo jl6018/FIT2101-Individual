@@ -8,11 +8,13 @@ type CardData = {
         progress: number;
         tags: string[];
         avatars: string[];
-        date?: string; // ISO date string, e.g. "2026-09-01"
+        date?: string;
         priority?: Priority;
     };
-    // Front-end only for now — lives in memory until the backend exists.
     description?: string;
+    status?: string;
+    dueDate?: string;
+    assignee?: string;
 };
 
 type ColumnData = {
@@ -68,8 +70,6 @@ const sprintBoards: Record<string, SprintData> = {
 
 let currentSprintId = "1";
 
-// Formats an ISO date ("2026-09-01") as a short display badge ("1 Sep"),
-// using a fixed locale so it doesn't depend on the visitor's browser settings.
 function formatDateBadge(isoDate: string): string {
     const date = new Date(`${isoDate}T00:00:00`);
     return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
@@ -77,7 +77,6 @@ function formatDateBadge(isoDate: string): string {
 
 function renderCard(card: CardData, colIndex: number, cardIndex: number): string {
     const cardId = `card-${colIndex}-${cardIndex}`;
-
     const editIconHtml = `<span class="edit-icon" title="Open task details">✎</span>`;
 
     if (card.detailed) {
@@ -154,8 +153,6 @@ function renderBoard(sprintId: string): void {
     attachEditIconListeners(data);
 }
 
-// Adds the new card straight into the data model (not just the DOM) so it can
-// later be found and reopened through the edit icon, same as any other card.
 function attachAddCardListeners(): void {
     document.querySelectorAll<HTMLButtonElement>(".add-card").forEach((btn) => {
         btn.addEventListener("click", () => {
@@ -175,12 +172,10 @@ function attachAddCardListeners(): void {
             column.cards.push(newCard);
             renderBoard(currentSprintId);
             // TODO: POST the new card once the backend endpoint exists.
-
         });
     });
 }
 
-// Wires the pencil icon on every card so any card can be opened for editing.
 function attachEditIconListeners(data: SprintData): void {
     data.columns.forEach((column, colIndex) => {
         column.cards.forEach((card, cardIndex) => {
@@ -212,11 +207,8 @@ function initSprintTabs(): void {
 }
 
 /* =========================================================
-   Edit Card Modal (Admin)
-   Simple view: just the title and description that "+ Add a
-   card" already asks for, now editable after the fact. In-memory
-   only for now — the input handlers below are where a save
-   request (PATCH /tasks/:id) would go once the backend exists.
+   Task Detail Modal (Admin) — with status, priority, due date,
+   assign-to, delete, and start sprint features (Sprint 2)
    ========================================================= */
 
 let activeCard: CardData | null = null;
@@ -242,7 +234,45 @@ function buildModal(): void {
           <textarea class="modal-description" id="modal-description" placeholder="Add a more detailed description..."></textarea>
         </div>
 
+        <div class="modal-section">
+          <h3>Status</h3>
+          <select id="modal-status">
+            <option value="Product Backlog">Product Backlog</option>
+            <option value="Sprint Backlog">Sprint Backlog</option>
+            <option value="In Progress">In Progress</option>
+            <option value="In Review">In Review</option>
+            <option value="Completed">Completed</option>
+          </select>
+        </div>
+
+        <div class="modal-section">
+          <h3>Priority</h3>
+          <select id="modal-priority">
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+            <option value="Urgent">Urgent</option>
+          </select>
+        </div>
+
+        <div class="modal-section">
+          <h3>Due date</h3>
+          <input type="date" id="modal-due-date" />
+        </div>
+
+        <div class="modal-section">
+          <h3>Assign to</h3>
+          <select id="modal-assignee">
+            <option value="">Unassigned</option>
+            <option value="team:Team Alpha">Team Alpha</option>
+            <option value="team:Team Beta">Team Beta</option>
+            <option value="user:Priya Nair">Priya Nair</option>
+            <option value="user:Daniel Wu">Daniel Wu</option>
+          </select>
+        </div>
+
         <div class="modal-footer">
+          <button class="modal-delete-btn" id="modal-delete-btn" type="button">Delete</button>
           <button class="modal-save-btn" id="modal-save-btn" type="button">Save</button>
         </div>
       </div>
@@ -254,6 +284,7 @@ function buildModal(): void {
     const overlay = document.getElementById("task-modal-overlay") as HTMLElement;
     const closeBtn = document.getElementById("modal-close-btn") as HTMLElement;
     const saveBtn = document.getElementById("modal-save-btn") as HTMLButtonElement;
+    const deleteBtn = document.getElementById("modal-delete-btn") as HTMLButtonElement;
 
     closeBtn.addEventListener("click", closeModal);
     overlay.addEventListener("click", (event) => {
@@ -264,6 +295,7 @@ function buildModal(): void {
     });
 
     saveBtn.addEventListener("click", saveModal);
+    deleteBtn.addEventListener("click", deleteActiveCard);
 }
 
 function openModal(card: CardData): void {
@@ -272,9 +304,17 @@ function openModal(card: CardData): void {
     const overlay = document.getElementById("task-modal-overlay");
     const titleInput = document.getElementById("modal-task-title") as HTMLInputElement;
     const descriptionBox = document.getElementById("modal-description") as HTMLTextAreaElement;
+    const statusSelect = document.getElementById("modal-status") as HTMLSelectElement;
+    const prioritySelect = document.getElementById("modal-priority") as HTMLSelectElement;
+    const dueDateInput = document.getElementById("modal-due-date") as HTMLInputElement;
+    const assigneeSelect = document.getElementById("modal-assignee") as HTMLSelectElement;
 
     if (titleInput) titleInput.value = card.title;
     if (descriptionBox) descriptionBox.value = card.description ?? "";
+    if (statusSelect && card.status) statusSelect.value = card.status;
+    if (prioritySelect && card.detailed?.priority) prioritySelect.value = card.detailed.priority;
+    if (dueDateInput && card.dueDate) dueDateInput.value = card.dueDate;
+    if (assigneeSelect && card.assignee) assigneeSelect.value = card.assignee;
 
     overlay?.classList.add("visible");
 }
@@ -284,6 +324,10 @@ function saveModal(): void {
 
     const titleInput = document.getElementById("modal-task-title") as HTMLInputElement;
     const descriptionBox = document.getElementById("modal-description") as HTMLTextAreaElement;
+    const statusSelect = document.getElementById("modal-status") as HTMLSelectElement;
+    const prioritySelect = document.getElementById("modal-priority") as HTMLSelectElement;
+    const dueDateInput = document.getElementById("modal-due-date") as HTMLInputElement;
+    const assigneeSelect = document.getElementById("modal-assignee") as HTMLSelectElement;
 
     const title = titleInput.value.trim();
     if (!title) {
@@ -293,15 +337,31 @@ function saveModal(): void {
 
     activeCard.title = title;
     activeCard.description = descriptionBox.value;
-    // TODO: PATCH the card once the backend endpoint exists.
+    activeCard.status = statusSelect.value;
+    activeCard.dueDate = dueDateInput.value;
+    activeCard.assignee = assigneeSelect.value;
+    if (activeCard.detailed) {
+        activeCard.detailed.priority = prioritySelect.value as Priority;
+    }
+
+    // TODO: PATCH /api/tasks/:id once backend exists
 
     activeCard = null;
     document.getElementById("task-modal-overlay")?.classList.remove("visible");
     renderBoard(currentSprintId);
 }
 
-// X, overlay click, and Escape all land here — no changes are written back,
-// so anything typed since the card was opened is simply thrown away.
+function deleteActiveCard(): void {
+    if (!activeCard) return;
+    if (!confirm("Delete this task?")) return;
+
+    // TODO: DELETE /api/tasks/:id once backend exists
+
+    activeCard = null;
+    document.getElementById("task-modal-overlay")?.classList.remove("visible");
+    renderBoard(currentSprintId);
+}
+
 function closeModal(): void {
     const overlay = document.getElementById("task-modal-overlay");
     overlay?.classList.remove("visible");
@@ -309,6 +369,52 @@ function closeModal(): void {
     activeCard = null;
 }
 
+// Add team switcher for admin (US09)
+function addTeamSwitcher(): void {
+    const headerRight = document.querySelector(".project-header-right");
+    if (!headerRight) return;
+
+    const switcher = document.createElement("select");
+    switcher.id = "adminTeamSwitcher";
+    switcher.className = "admin-team-switcher";
+    switcher.innerHTML = `
+        <option value="all">All Teams</option>
+        <option value="Team Alpha">Team Alpha</option>
+        <option value="Team Beta">Team Beta</option>
+        <option value="Team Gamma">Team Gamma</option>
+    `;
+
+    switcher.addEventListener("change", () => {
+        // TODO: fetch /api/tasks/board?team=...
+        renderBoard(currentSprintId);
+    });
+
+    headerRight.insertBefore(switcher, headerRight.firstChild);
+}
+
+// Add start sprint button (US23)
+function addStartSprintButton(): void {
+    const headerRight = document.querySelector(".project-header-right");
+    if (!headerRight) return;
+
+    const btn = document.createElement("button");
+    btn.id = "startSprintBtn";
+    btn.className = "start-sprint-btn";
+    btn.textContent = "▶ Start Sprint";
+
+    btn.addEventListener("click", () => {
+        if (!confirm("Start the sprint now? Time tracking will begin.")) return;
+        // TODO: POST /api/sprints/:id/start
+        alert("Sprint started");
+    });
+
+    headerRight.insertBefore(btn, headerRight.firstChild);
+}
+
+// ===================== INIT =====================
+
 buildModal();
 initSprintTabs();
 renderBoard(currentSprintId);
+addTeamSwitcher();
+addStartSprintButton();

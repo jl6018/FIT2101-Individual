@@ -340,6 +340,7 @@ body {
     cursor: pointer;
     padding: 8px 0;
 }
+
 /* ===== Task Detail Modal ===== */
 .edit-icon {
     cursor: pointer;
@@ -471,7 +472,8 @@ body {
 
 .modal-footer {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    gap: 12px;
 }
 
 .modal-save-btn {
@@ -487,4 +489,74 @@ body {
 
 .modal-save-btn:hover {
     background-color: #4456B0;
+}
+
+/* ===== Sprint 2 Additions ===== */
+
+.modal-section select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #E5E7EB;
+    font-size: 14px;
+    background: #fff;
+    font-family: inherit;
+}
+
+.modal-section input[type="date"] {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #E5E7EB;
+    font-size: 14px;
+    background: #fff;
+    font-family: inherit;
+}
+
+.modal-section select:focus,
+.modal-section input[type="date"]:focus {
+    outline: 2px solid #8f93e8;
+}
+
+.modal-delete-btn {
+    background-color: #DC2626;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 10px 24px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.modal-delete-btn:hover {
+    background-color: #B91C1C;
+}
+
+.start-sprint-btn {
+    background: #22C55E;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-family: inherit;
+}
+
+.start-sprint-btn:hover {
+    background: #16A34A;
+}
+
+.admin-team-switcher {
+    padding: 8px 14px;
+    border-radius: 20px;
+    border: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: white;
+    font-family: inherit;
 }

@@ -1,8 +1,6 @@
 // main-reports-page.ts
 // Compile with:
 //   tsc main-reports-page.ts --module esnext --target esnext --strict --ignoreConfig
-// (matches the same override used on other pages, since the browser loads
-// this as an ES module via <script type="module">)
 
 function requireElement<T extends Element>(id: string): T {
     const el = document.getElementById(id);
@@ -12,10 +10,7 @@ function requireElement<T extends Element>(id: string): T {
     return el as unknown as T;
 }
 
-// ===================== SAMPLE DATA =====================
-// Placeholder data standing in for real logged-session data from the
-// backend. Replace with a real fetch() once that endpoint exists — see
-// loadSessions() below.
+// ===================== DATA TYPES =====================
 
 interface TeamMember {
     name: string;
@@ -26,28 +21,83 @@ interface TeamMember {
 interface LoggedSession {
     member: string;
     hours: number;
-    daysAgo: number; // 0 = today, 1 = yesterday, etc.
+    daysAgo: number;
 }
 
-const TEAM_MEMBERS: TeamMember[] = [
-    { name: 'Priya Nair', team: 'Team Alpha', initials: 'PN' },
-    { name: 'Daniel Wu', team: 'Team Alpha', initials: 'DW' },
-    { name: 'Farah Idris', team: 'Team Beta', initials: 'FI' },
-    { name: 'Aiden Cole', team: 'Team Beta', initials: 'AC' },
-    { name: 'Mei Ling Tan', team: 'Team Gamma', initials: 'ML' },
-    { name: 'Sam Okafor', team: 'Team Gamma', initials: 'SO' },
-];
+interface ApiTimeLog {
+    id: number;
+    hours: number;
+    date: string;
+    description?: string;
+    user?: { name?: string };
+    task?: { name?: string };
+}
 
-// Placeholder session log. In real life this would come from the backend
-// (e.g. GET /api/sessions?since=...).
-const SESSIONS: LoggedSession[] = [
-    { member: 'Daniel Wu', hours: 3, daysAgo: 2 },
-    { member: 'Daniel Wu', hours: 2.5, daysAgo: 6 },
-    { member: 'Aiden Cole', hours: 5, daysAgo: 1 },
-    { member: 'Aiden Cole', hours: 4, daysAgo: 8 },
-    { member: 'Sam Okafor', hours: 1.5, daysAgo: 4 },
-    { member: 'Farah Idris', hours: 2, daysAgo: 13 },
-];
+interface ApiUser {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    team?: { name: string };
+}
+
+// ===================== STATE =====================
+
+let TEAM_MEMBERS: TeamMember[] = [];
+let SESSIONS: LoggedSession[] = [];
+
+// ===================== BACKEND LOADERS =====================
+
+async function loadTeamMembers(): Promise<void> {
+    try {
+        const res = await fetch('/api/users');
+        if (!res.ok) throw new Error('Failed to load users');
+
+        const users: ApiUser[] = await res.json();
+
+        TEAM_MEMBERS = users
+            .filter((u) => u.role !== 'ADMIN' && u.role !== 'PRODUCT_OWNER')
+            .map((u) => ({
+                name: u.name,
+                team: u.team?.name ?? 'Unassigned',
+                initials: u.name
+                    .split(' ')
+                    .map((p) => p[0])
+                    .join('')
+                    .slice(0, 2)
+                    .toUpperCase(),
+            }));
+    } catch (err) {
+        console.error('Failed to load team members:', err);
+        TEAM_MEMBERS = [];
+    }
+}
+
+async function loadSessions(): Promise<void> {
+    try {
+        const res = await fetch('/api/timelogs');
+        if (!res.ok) throw new Error('Failed to load sessions');
+
+        const logs: ApiTimeLog[] = await res.json();
+
+        SESSIONS = logs.map((log) => ({
+            member: log.user?.name ?? 'Unknown',
+            hours: log.hours,
+            daysAgo: Math.max(
+                0,
+                Math.floor(
+                    (Date.now() - new Date(log.date).getTime()) /
+                        (1000 * 60 * 60 * 24)
+                )
+            ),
+        }));
+    } catch (err) {
+        console.error('Failed to load sessions:', err);
+        SESSIONS = [];
+    }
+}
+
+// ===================== STATIC DATA (task hours + burndown) =====================
 
 const TASK_HOURS: { label: string; hours: number }[] = [
     { label: 'Design', hours: 0 },
@@ -59,7 +109,6 @@ const TASK_HOURS: { label: string; hours: number }[] = [
     { label: 'Burndown', hours: 0 },
 ];
 
-// Illustrative static burndown data (not tied to the time-range filter).
 const BURNDOWN_PROJECTED = [80, 71, 62, 53, 44, 35, 26, 20];
 const BURNDOWN_ACTUAL = [80, 73, 65, 60, 62, 55, 48, 45];
 
@@ -114,10 +163,8 @@ switchAccountOverlay.addEventListener('click', (e: MouseEvent) => {
 accountList.querySelectorAll<HTMLLIElement>('.account-row').forEach((row) => {
     row.addEventListener('click', () => {
         const name = row.dataset['name'] ?? 'Unknown';
-        // Placeholder: wire this to your real auth/account-switch logic once
-        // the backend supports multiple accounts per login.
         closeModal(switchAccountOverlay);
-        alert(`Switched to ${name}`); // simple stand-in; swap for a toast if you add one to this page
+        alert(`Switched to ${name}`);
     });
 });
 
@@ -194,7 +241,7 @@ function openMemberModal(member: TeamMember, maxDaysAgo: number): void {
 
     const sessions = SESSIONS.filter(
         (s) => s.member === member.name && s.daysAgo < maxDaysAgo
-    ).sort((a, b) => b.daysAgo - a.daysAgo); // oldest first
+    ).sort((a, b) => b.daysAgo - a.daysAgo);
 
     memberChartWrap.innerHTML = '';
 
@@ -284,7 +331,6 @@ function renderBurndownChart(): void {
     burndownChart.innerHTML = '';
     burndownChart.setAttribute('viewBox', `0 0 ${width} ${height}`);
 
-    // Axis lines
     const axisY = document.createElementNS(svgNS, 'line');
     axisY.setAttribute('x1', String(paddingLeft));
     axisY.setAttribute('y1', String(paddingTop));
@@ -301,7 +347,6 @@ function renderBurndownChart(): void {
     axisX.setAttribute('stroke', '#D1D5DB');
     burndownChart.appendChild(axisX);
 
-    // Axis labels
     const yLabel = document.createElementNS(svgNS, 'text');
     yLabel.setAttribute('x', '4');
     yLabel.setAttribute('y', '12');
@@ -318,7 +363,6 @@ function renderBurndownChart(): void {
     xLabel.textContent = 'Days';
     burndownChart.appendChild(xLabel);
 
-    // Projected line (dashed black)
     const projectedLine = document.createElementNS(svgNS, 'polyline');
     projectedLine.setAttribute('points', projectedPoints);
     projectedLine.setAttribute('fill', 'none');
@@ -327,7 +371,6 @@ function renderBurndownChart(): void {
     projectedLine.setAttribute('stroke-dasharray', '6,4');
     burndownChart.appendChild(projectedLine);
 
-    // Actual line (solid blue)
     const actualLine = document.createElementNS(svgNS, 'polyline');
     actualLine.setAttribute('points', actualPoints);
     actualLine.setAttribute('fill', 'none');
@@ -338,6 +381,13 @@ function renderBurndownChart(): void {
 
 // ===================== INIT =====================
 
-renderContributionTable();
-renderTaskHoursChart();
-renderBurndownChart();
+async function init(): Promise<void> {
+    await loadTeamMembers();
+    await loadSessions();
+
+    renderContributionTable();
+    renderTaskHoursChart();
+    renderBurndownChart();
+}
+
+init();

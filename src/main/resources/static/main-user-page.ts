@@ -8,9 +8,10 @@ type CardData = {
         progress: number;
         tags: string[];
         avatars: string[];
-        date?: string; // ISO date string, e.g. "2026-09-01"
+        date?: string;
         priority?: Priority;
     };
+    team?: string;
 };
 
 type ColumnData = {
@@ -31,6 +32,7 @@ const sprintBoards: Record<string, SprintData> = {
                 cards: [
                     {
                         title: "US01 - Set Up Login",
+                        team: "Team Alpha",
                         detailed: {
                             progress: 30,
                             tags: ["Front-end", "Urgent"],
@@ -39,17 +41,17 @@ const sprintBoards: Record<string, SprintData> = {
                             priority: "Urgent",
                         },
                     },
-                    { title: "TEXT" },
+                    { title: "TEXT", team: "Team Alpha" },
                 ],
             },
-            { name: "In Progress", cards: [{ title: "Set Up Login" }] },
-            { name: "Completed", cards: [{ title: "Set Up Login" }, { title: "TEXT" }] },
+            { name: "In Progress", cards: [{ title: "Set Up Login", team: "Team Alpha" }] },
+            { name: "Completed", cards: [{ title: "Set Up Login", team: "Team Alpha" }, { title: "TEXT", team: "Team Alpha" }] },
         ],
     },
     "2": {
         columns: [
-            { name: "Product Backlog", cards: [{ title: "Design Dashboard" }] },
-            { name: "Sprint Backlog", cards: [{ title: "Design Dashboard" }] },
+            { name: "Product Backlog", cards: [{ title: "Design Dashboard", team: "Team Alpha" }] },
+            { name: "Sprint Backlog", cards: [{ title: "Design Dashboard", team: "Team Alpha" }] },
             { name: "In Progress", cards: [] },
             { name: "Completed", cards: [] },
         ],
@@ -66,8 +68,9 @@ const sprintBoards: Record<string, SprintData> = {
 
 let currentSprintId = "1";
 
-// Formats an ISO date ("2026-09-01") as a short display badge ("1 Sep"),
-// using a fixed locale so it doesn't depend on the visitor's browser settings.
+// Change this to match the logged-in user's team
+const CURRENT_USER_TEAM = "Team Alpha";
+
 function formatDateBadge(isoDate: string): string {
     const date = new Date(`${isoDate}T00:00:00`);
     return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
@@ -132,7 +135,19 @@ function renderBoard(sprintId: string): void {
     if (!data) return;
 
     currentSprintId = sprintId;
-    board.innerHTML = data.columns
+
+    // Filter: only show cards for the logged-in user's team
+    const filtered = {
+        ...data,
+        columns: data.columns.map((col) => ({
+            ...col,
+            cards: col.cards.filter((c) => {
+                return !c.team || c.team === CURRENT_USER_TEAM;
+            }),
+        })),
+    };
+
+    board.innerHTML = filtered.columns
         .map(
             (column, colIndex) => `
         <section class="column">
