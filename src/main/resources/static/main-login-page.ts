@@ -1,19 +1,20 @@
-// login.ts
-// Compile with: tsc  (uses your project's tsconfig.json)
-// Written to satisfy "strict": true (strictNullChecks + noImplicitAny).
+// main-login-page.ts
+// Compile with: tsc (uses tsconfig.json)
+// Written to satisfy "strict": true
 
 // ============================================================
-// DEMO MODE — set to true while your backend's /api/login isn't
-// ready yet. Flip to false once the real endpoint exists.
-// While true: userId "admin" + password "admin" succeeds,
-// anything else shows the "incorrect" error.
+// DEMO MODE — set to false for real backend login
 // ============================================================
-const DEMO_MODE = true;
+const DEMO_MODE = false;
 
 interface LoginResponse {
     message?: string;
     token?: string;
     redirectTo?: string;
+    role?: string;
+    id?: number;
+    name?: string;
+    email?: string;
 }
 
 function requireElement<T extends HTMLElement>(id: string): T {
@@ -56,14 +57,14 @@ async function handleLoginDemo(userId: string, password: string): Promise<LoginR
         throw new Error('Incorrect user ID or password.');
     }
 
-    return { redirectTo: '/sprint-board' };
+    return { redirectTo: 'index-sprint-planning-page.html', role: 'ADMIN' };
 }
 
 async function handleLoginReal(userId: string, password: string): Promise<LoginResponse> {
-    const res = await fetch('/api/login', {
+    const res = await fetch('/api/users/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, password }),
+        body: JSON.stringify({ email: userId, password }),
     });
 
     const data: LoginResponse = await res.json();
@@ -81,8 +82,7 @@ form.addEventListener('submit', async (e: SubmitEvent) => {
     const userId = userIdInput.value.trim();
     const password = passwordInput.value;
 
-    // Empty-field validation (frontend-only check, runs whether or not
-    // DEMO_MODE is on, since it never needs the backend).
+    // Empty-field validation
     if (!userId || !password) {
         showError('Please fill in both fields.');
         passwordInput.value = '';
@@ -101,7 +101,12 @@ form.addEventListener('submit', async (e: SubmitEvent) => {
             localStorage.setItem('authToken', data.token);
         }
 
-        window.location.href = data.redirectTo || '/sprint-board';
+        // ✅ Redirect based on role
+        if (data.role === 'ADMIN') {
+            window.location.href = 'index-sprint-planning-page.html';
+        } else {
+            window.location.href = 'index-user-page.html';
+        }
 
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Incorrect user ID or password.';
