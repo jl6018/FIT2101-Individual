@@ -2,18 +2,24 @@ package webapplication.service;
 
 import webapplication.model.Task;
 import webapplication.model.TaskStatus;
+import webapplication.model.User;
 import webapplication.repository.TaskRepository;
+import webapplication.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class TaskService {
 
     private final TaskRepository taskRepository;
+    private final UserRepository userRepository;
 
-    public TaskService(TaskRepository taskRepository) {
+    public TaskService(TaskRepository taskRepository, UserRepository userRepository) {
         this.taskRepository = taskRepository;
+        this.userRepository = userRepository;
     }
 
     public List<Task> getAllTasks() {
@@ -25,7 +31,6 @@ public class TaskService {
                 .orElseThrow(() -> new RuntimeException("Task not found"));
     }
 
-    // MUST HANDLE: Null status, negative progress, >100 progress
     public Task createTask(Task task) {
         if (task.getStatus() == null) {
             task.setStatus(TaskStatus.PRODUCT_BACKLOG);
@@ -51,7 +56,6 @@ public class TaskService {
         return taskRepository.save(task);
     }
 
-    // MUST THROW IllegalArgumentException for <0 or >100
     public Task updateProgress(Long id, int progress) {
         if (progress < 0 || progress > 100) {
             throw new IllegalArgumentException("Progress must be between 0 and 100");
@@ -71,5 +75,27 @@ public class TaskService {
 
     public void deleteTask(Long id) {
         taskRepository.deleteById(id);
+    }
+
+    public Task assignTask(Long taskId, Long userId) {
+        Task task = getTaskById(taskId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        task.setAssignedUser(user);
+        return taskRepository.save(task);
+    }
+
+    public Task updateStatus(Long taskId, TaskStatus status) {
+        Task task = getTaskById(taskId);
+        task.setStatus(status);
+        return taskRepository.save(task);
+    }
+
+    public Map<TaskStatus, List<Task>> getBoardView() {
+        Map<TaskStatus, List<Task>> board = new LinkedHashMap<>();
+        for (TaskStatus status : TaskStatus.values()) {
+            board.put(status, taskRepository.findByStatus(status));
+        }
+        return board;
     }
 }

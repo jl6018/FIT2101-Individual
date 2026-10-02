@@ -2,6 +2,7 @@ package webapplication.controller;
 
 import webapplication.model.User;
 import webapplication.service.UserService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -43,5 +44,14 @@ public class UserController {
     @DeleteMapping("/{id}")
     public void deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody User loginRequest) {
+        User user = userService.login(loginRequest.getEmail(), loginRequest.getPassword());
+        if (user == null) {
+            return ResponseEntity.status(401).body("Invalid email or password");
+        }
+        return ResponseEntity.ok(user);
     }
 }

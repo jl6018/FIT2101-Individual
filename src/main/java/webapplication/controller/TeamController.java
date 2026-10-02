@@ -40,6 +40,14 @@ public class TeamController {
         return teamService.addMember(teamId, userId);
     }
 
+    @DeleteMapping("/{teamId}/members/{userId}")
+    public Team removeMember(
+            @PathVariable Long teamId,
+            @PathVariable Long userId) {
+
+        return teamService.removeMember(teamId, userId);
+    }
+
     @DeleteMapping("/{id}")
     public void deleteTeam(@PathVariable Long id) {
         teamService.deleteTeam(id);

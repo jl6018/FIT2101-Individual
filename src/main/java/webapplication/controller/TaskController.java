@@ -6,6 +6,7 @@ import webapplication.service.TaskService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/tasks")
@@ -66,5 +67,26 @@ public class TaskController {
     @DeleteMapping("/{id}")
     public void deleteTask(@PathVariable Long id) {
         taskService.deleteTask(id);
+    }
+
+    @GetMapping("/board")
+    public Map<TaskStatus, List<Task>> getBoard() {
+        return taskService.getBoardView();
+    }
+
+    @PutMapping("/{id}/assign")
+    public Task assignTask(
+            @PathVariable Long id,
+            @RequestParam Long userId) {
+
+        return taskService.assignTask(id, userId);
+    }
+
+    @PutMapping("/{id}/status")
+    public Task updateStatus(
+            @PathVariable Long id,
+            @RequestParam TaskStatus status) {
+
+        return taskService.updateStatus(id, status);
     }
 }
