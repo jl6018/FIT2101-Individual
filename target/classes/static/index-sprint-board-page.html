@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Symph — Sprint Board</title>
-    <link rel="stylesheet" href="style-sprint-planning-page.css">
+    <link rel="stylesheet" href="style-sprint-board-page.css">
 </head>
 <body>
 <div class="app-shell">
@@ -35,12 +35,18 @@
 
         <div class="panel">
             <h2>Kanban Columns</h2>
-            <p class="muted">Use the Admin Board for full editing. This is a read-only view.</p>
+            <p class="muted">Tasks are loaded from the backend. Use the Admin Board for full editing.</p>
             <a href="index-admin-page.html" class="btn-primary" style="display:inline-block;margin-top:8px;text-decoration:none;">
                 Open Admin Board
             </a>
         </div>
+
+        <div class="board-columns" id="boardColumns">
+            <p class="muted">Loading board...</p>
+        </div>
     </main>
 </div>
+
+<script src="main-sprint-board-page.js" type="module" defer></script>
 </body>
 </html>
