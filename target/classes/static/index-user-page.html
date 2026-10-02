@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Board</title>
+
+    <link rel="stylesheet" href="style-user-page.css"/>
+</head>
+<body>
+<nav class="navbar">
+    <div class="logo">SYMPH</div>
+    <div class="search-bar">
+        <input type="text" placeholder="Search" />
+        <span class="search-icon">🔍</span>
+    </div>
+    <div class="navbar-icons">
+        <span>📢</span>
+        <span>🔔</span>
+        <div class="avatar avatar-dark">U</div>
+    </div>
+</nav>
+
+<header class="project-header">
+    <div class="project-header-left">
+        <h1>Project Name</h1>
+    </div>
+    <div class="project-header-right">
+        <div class="avatar-stack">
+            <div class="avatar avatar-teal">T</div>
+            <div class="avatar avatar-pink">H</div>
+            <div class="avatar avatar-gray">B</div>
+            <span class="avatar-more">+2</span>
+        </div>
+        <button class="share-btn">👤+ Share</button>
+        <span class="menu-dots">⋯</span>
+    </div>
+</header>
+
+<div class="sprint-tabs">
+    <button class="sprint-tab active" data-sprint="1">Sprint 1</button>
+    <button class="sprint-tab" data-sprint="2">Sprint 2</button>
+    <button class="sprint-tab" data-sprint="3">Sprint 3</button>
+</div>
+
+<main class="board" id="board"></main>
+
+<script type="module" src="main-user-page.js" defer></script>
+</body>
+</html>

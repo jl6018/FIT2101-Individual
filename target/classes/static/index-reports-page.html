@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symph — Reports</title>
+    <link rel="stylesheet" href="style-reports-page.css">
+</head>
+
+<body>
+
+<div class="app-shell">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="logo"><span class="s1">SYM</span><span class="s2">PH</span></div>
+
+        <nav class="nav">
+            <!-- Placeholder link — point this at your teammate's actual Sprint Board file/route -->
+            <a href="index-sprint-board-page.html" class="nav-item">
+                <span class="dot"></span> Sprint Board
+            </a>
+            <a href="index-sprint-planning-page.html" class="nav-item">
+                <span class="dot"></span> Sprint Planning
+            </a>
+            <a href="index-team-management-page.html" class="nav-item">
+                <span class="dot"></span> Team Management
+            </a>
+            <a href="index-reports-page.html" class="nav-item active">
+                <span class="dot dot-active"></span> Reports
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="signed-in">Signed in as <strong>Admin</strong></div>
+            <button id="switchAccountBtn" class="switch-account-btn">Switch Account</button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+        <div class="top-bar">
+            <span class="top-bar-badge">Admin</span>
+            <input type="text" class="top-bar-search" placeholder="Search">
+            <div class="top-bar-icons">
+                <button class="icon-btn" aria-label="Announcements">📣</button>
+                <button class="icon-btn" aria-label="Notifications">🔔</button>
+                <button class="icon-btn" aria-label="Help">❓</button>
+                <span class="icon-avatar">U</span>
+            </div>
+        </div>
+
+        <h1>Reports</h1>
+        <p class="page-subtitle">Time contribution, hours per task and sprint burndown</p>
+
+        <!-- TIME RANGE -->
+        <section class="panel">
+            <h2>Time range</h2>
+            <div class="time-range-row" id="timeRangeRow">
+                <button class="range-btn" data-weeks="1">1 week</button>
+                <button class="range-btn active" data-weeks="2">2 weeks</button>
+                <button class="range-btn" data-weeks="3">3 weeks</button>
+            </div>
+        </section>
+
+        <!-- TEAM CONTRIBUTION -->
+        <section class="panel">
+            <h2 id="contributionTitle">Team contribution — last 14 days</h2>
+            <p class="muted">Average hours per day = total hours logged in this range ÷ days that member
+                actually logged work. Click a row for their individual history.</p>
+
+            <table class="contribution-table">
+                <thead>
+                <tr>
+                    <th>Member</th>
+                    <th>Total hours</th>
+                    <th>Days worked</th>
+                    <th>Avg / day</th>
+                </tr>
+                </thead>
+                <tbody id="contributionBody"></tbody>
+            </table>
+        </section>
+
+        <!-- HOURS PER TASK -->
+        <section class="panel">
+            <h2>Hours per task</h2>
+            <p class="muted">Total logged hours against each task in this sprint.</p>
+            <div class="bar-chart" id="taskHoursChart"></div>
+        </section>
+
+        <!-- SPRINT BURNDOWN -->
+        <section class="panel">
+            <h2>Sprint burndown</h2>
+            <p class="muted">Illustrative example — actual vs projected velocity across the sprint.</p>
+            <div class="burndown-wrap">
+                <svg id="burndownChart" viewBox="0 0 600 260" class="burndown-svg"></svg>
+            </div>
+            <div class="legend">
+                <span class="legend-item"><span class="legend-swatch projected"></span> Projected velocity</span>
+                <span class="legend-item"><span class="legend-swatch actual"></span> Actual velocity</span>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- ===================== MODAL: Member History ===================== -->
+<div class="modal-overlay" id="memberOverlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="memberModalName">
+        <button class="modal-close" id="closeMemberModalBtn" aria-label="Close">✕</button>
+        <h2 id="memberModalName" class="modal-title"></h2>
+        <p class="modal-subtitle" id="memberModalTeam"></p>
+
+        <div id="memberChartWrap" class="bar-chart member-chart"></div>
+        <p id="memberEmptyState" class="muted" style="display:none;">No hours logged yet</p>
+
+        <hr class="modal-divider">
+        <p class="modal-total" id="memberModalTotal"></p>
+    </div>
+</div>
+
+<!-- ===================== MODAL: Switch Account ===================== -->
+<div class="modal-overlay" id="switchAccountOverlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="switchAccountTitle">
+        <button class="modal-close" id="closeSwitchAccountBtn" aria-label="Close">✕</button>
+        <h2 id="switchAccountTitle" class="modal-title">Switch Account</h2>
+        <p class="modal-subtitle">Choose an account to sign in as.</p>
+
+        <ul class="account-list" id="accountList">
+            <li class="account-row" data-name="Admin" data-role="Admin">
+                <span class="avatar">A</span>
+                <span class="account-info">
+                        <span class="account-name">Admin</span>
+                        <span class="account-role">Administrator</span>
+                    </span>
+            </li>
+            <li class="account-row" data-name="Priya Nair" data-role="Team Alpha">
+                <span class="avatar">P</span>
+                <span class="account-info">
+                        <span class="account-name">Priya Nair</span>
+                        <span class="account-role">Team Alpha</span>
+                    </span>
+            </li>
+            <li class="account-row" data-name="Daniel Wu" data-role="Team Alpha">
+                <span class="avatar">D</span>
+                <span class="account-info">
+                        <span class="account-name">Daniel Wu</span>
+                        <span class="account-role">Team Alpha</span>
+                    </span>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<script src="main-reports-page.js" type="module" defer></script>
+</body>
+
+</html>

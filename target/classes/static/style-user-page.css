@@ -1,0 +1,487 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+    background-color: #e8e9fc;
+}
+
+/* Navbar */
+.navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 32px;
+    background-color: #e0e1fa;
+}
+
+.logo {
+    font-weight: bold;
+    font-size: 1.5rem;
+    letter-spacing: 1px;
+}
+
+.search-bar {
+    flex: 1;
+    max-width: 600px;
+    margin: 0 32px;
+    position: relative;
+}
+
+.search-bar input {
+    width: 100%;
+    padding: 10px 16px;
+    border-radius: 24px;
+    border: none;
+    background: white;
+}
+
+.search-icon {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.navbar-icons {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* Avatars */
+.avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.avatar-small {
+    width: 24px;
+    height: 24px;
+    font-size: 0.7rem;
+}
+
+.avatar-dark { background-color: #1a1a1a; }
+.avatar-teal { background-color: #4fb8a6; }
+.avatar-pink { background-color: #e05d9c; }
+.avatar-gray { background-color: #a0a0a0; }
+.avatar-purple { background-color: #6b4ce6; }
+
+/* Project header */
+.project-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 32px;
+    background-color: #5E71CE;
+    color: white;
+}
+
+.project-header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.project-header-left h1 {
+    font-size: 1.6rem;
+    font-weight: 500;
+}
+
+.badge {
+    background-color: #1a1a1a;
+    color: white;
+    padding: 6px 16px;
+    border-radius: 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.project-header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.avatar-stack {
+    display: flex;
+    align-items: center;
+}
+
+.avatar-stack .avatar {
+    margin-left: -8px;
+    border: 2px solid #7b7fd4;
+}
+
+.avatar-more {
+    margin-left: 8px;
+    font-size: 0.85rem;
+}
+
+.share-btn {
+    background: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.menu-dots {
+    font-size: 1.4rem;
+    cursor: pointer;
+}
+
+/* Sprint tabs */
+.sprint-tabs {
+    display: flex;
+    gap: 16px;
+    padding: 24px 32px 0;
+}
+
+.sprint-tab {
+    padding: 12px 32px;
+    border: none;
+    border-radius: 24px;
+    background-color: #B7D3FF;
+    color: #1a1a1a;
+    font-weight: 600;
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+
+.sprint-tab.active {
+    background-color: #6C99E0;
+    color: white;
+}
+
+/* Board */
+.board {
+    display: flex;
+    gap: 24px;
+    padding: 24px 32px;
+    align-items: flex-start;
+}
+
+.column {
+    flex: 1;
+    background-color: #c3c6f5;
+    border-radius: 16px;
+    padding: 20px;
+    min-height: 500px;
+}
+
+.column h2 {
+    font-size: 1.1rem;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.card {
+    background-color: #5f6699;
+    color: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    font-weight: 500;
+}
+
+.card-detailed {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.card-title-row {
+    display: flex;
+    align-items: center;
+}
+
+.status-checkbox {
+    -webkit-appearance: none;
+    appearance: none;
+    box-sizing: border-box;
+    width: 0;
+    height: 18px;
+    border: 0 solid white;
+    border-radius: 50%;
+    cursor: pointer;
+    position: relative;
+    opacity: 0;
+    margin-right: 0;
+    transition: width 0.2s ease, opacity 0.2s ease, margin-right 0.2s ease, border-width 0.2s ease;
+    flex-shrink: 0;
+}
+
+.card:hover .status-checkbox {
+    width: 18px;
+    opacity: 1;
+    margin-right: 8px;
+    border-width: 2px;
+}
+
+.status-checkbox:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: #CBD6FF;
+    transform: scale(1.15);
+}
+
+.status-checkbox:checked {
+    background-color: #CBD6FF;
+    border-color: #CBD6FF;
+    border-width: 2px;
+    opacity: 1;
+    width: 18px;
+}
+
+.status-checkbox:checked::after {
+    content: "✓";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.card-title {
+    flex: 1;
+    font-weight: 600;
+}
+
+.progress-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+}
+
+.progress-bar {
+    height: 6px;
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: #f0924a;
+}
+
+.tags-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tag {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.tag-frontend {
+    background-color: white;
+    color: #333;
+}
+
+.tag-urgent {
+    background-color: #d9534f;
+    color: white;
+}
+
+.tag-avatars {
+    display: flex;
+    margin-left: auto;
+}
+
+.tag-avatars .avatar {
+    margin-left: -6px;
+}
+
+.card-footer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+}
+
+.date-badge {
+    background-color: #cbd0f5;
+    color: #2b2b45;
+    padding: 4px 10px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* ===== Log Time Modal ===== */
+.edit-icon {
+    cursor: pointer;
+    margin-left: 8px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.card:hover .edit-icon {
+    opacity: 0.85;
+}
+
+.edit-icon:hover {
+    opacity: 1;
+}
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 20, 30, 0.55);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 24px;
+}
+
+.modal-overlay.visible {
+    display: flex;
+}
+
+.modal {
+    background-color: #d7dafa;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 900px;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 32px 40px;
+}
+
+.modal-user {
+    max-width: 480px;
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+}
+
+.modal-column-label {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #333;
+}
+
+.modal-icon-btn {
+    cursor: pointer;
+    font-size: 1.2rem;
+    background: none;
+    border: none;
+    color: #1a1a1a;
+}
+
+.modal-title-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 28px;
+}
+
+.modal-title-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background-color: #8f93e8;
+    flex-shrink: 0;
+}
+
+.modal-title-text {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.modal-section {
+    margin-bottom: 12px;
+}
+
+.modal-section h3 {
+    font-size: 1.3rem;
+    margin-bottom: 12px;
+}
+
+.worklog-box {
+    background: linear-gradient(135deg, #9195e6, #6266c4);
+    border-radius: 14px;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: white;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.worklog-info {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.worklog-time {
+    font-weight: 700;
+    font-size: 1.05rem;
+}
+
+.worklog-estimate {
+    color: white;
+    font-weight: 500;
+    font-size: 0.95rem;
+    opacity: 0.9;
+}
+
+.worklog-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.worklog-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid white;
+    background: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+}
+
+.worklog-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.worklog-play-btn {
+    font-size: 1rem;
+}

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symph — Team Management</title>
+    <link rel="stylesheet" href="style-team-management-page.css">
+</head>
+
+<body>
+
+<div class="app-shell">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="logo"><span class="s1">SYM</span><span class="s2">PH</span></div>
+
+        <nav class="nav">
+            <!-- Placeholder link — point this at your teammate's actual Sprint Board file/route -->
+            <a href="index-sprint-board-page.html" class="nav-item">
+                <span class="dot"></span> Sprint Board
+            </a>
+            <a href="index-sprint-planning-page.html" class="nav-item">
+                <span class="dot"></span> Sprint Planning
+            </a>
+            <a href="index-team-management-page.html" class="nav-item active">
+                <span class="dot dot-active"></span> Team Management
+            </a>
+            <!-- Placeholder link — point this at your Reports file once built -->
+            <a href="index-reports-page.html" class="nav-item">
+                <span class="dot"></span> Reports
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="signed-in">Signed in as <strong>Admin</strong></div>
+            <button id="switchAccountBtn" class="switch-account-btn">Switch Account</button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+        <h1>Team Management</h1>
+
+        <div class="action-row">
+            <button id="addMemberBtn" class="btn-primary">+ Add member</button>
+            <button id="inviteProductOwnerBtn" class="btn-primary">Invite Product Owner</button>
+        </div>
+
+        <table class="members-table">
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Team</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody id="membersBody">
+            <tr data-name="Priya Nair" data-team="Team Alpha">
+                <td>Priya Nair</td>
+                <td>Frontend Developer</td>
+                <td>Team Alpha</td>
+                <td><button class="remove-btn">Remove</button></td>
+            </tr>
+            <tr data-name="Daniel Wu" data-team="Team Alpha">
+                <td>Daniel Wu</td>
+                <td>Backend Developer</td>
+                <td>Team Alpha</td>
+                <td><button class="remove-btn">Remove</button></td>
+            </tr>
+            <tr data-name="Farah Idris" data-team="Team Beta">
+                <td>Farah Idris</td>
+                <td>Frontend Developer</td>
+                <td>Team Beta</td>
+                <td><button class="remove-btn">Remove</button></td>
+            </tr>
+            <tr data-name="Aiden Cole" data-team="Team Beta">
+                <td>Aiden Cole</td>
+                <td>Backend Developer</td>
+                <td>Team Beta</td>
+                <td><button class="remove-btn">Remove</button></td>
+            </tr>
+            <tr data-name="Mei Ling Tan" data-team="Team Gamma">
+                <td>Mei Ling Tan</td>
+                <td>QA Lead</td>
+                <td>Team Gamma</td>
+                <td><button class="remove-btn">Remove</button></td>
+            </tr>
+            <tr data-name="Sam Okafor" data-team="Team Gamma">
+                <td>Sam Okafor</td>
+                <td>Backend Developer</td>
+                <td>Team Gamma</td>
+                <td><button class="remove-btn">Remove</button></td>
+            </tr>
+            </tbody>
+        </table>
+    </main>
+</div>
+
+<!-- ===================== MODAL: Add Member ===================== -->
+<div class="modal-overlay" id="addMemberOverlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="addMemberTitle">
+        <button class="modal-close" id="closeAddMemberBtn" aria-label="Close">✕</button>
+        <h2 id="addMemberTitle" class="modal-title">Add Member</h2>
+
+        <form id="addMemberForm">
+            <div class="form-field">
+                <label for="memberName">Full name</label>
+                <input type="text" id="memberName" name="memberName" placeholder="Jane Doe" required>
+            </div>
+
+            <div class="form-field">
+                <label for="memberEmail">Email</label>
+                <input type="email" id="memberEmail" name="memberEmail" placeholder="jane@company.com" required>
+            </div>
+
+            <div class="form-field">
+                <label for="memberTeam">Team</label>
+                <select id="memberTeam" name="memberTeam">
+                    <option value="Team Alpha">Team Alpha</option>
+                    <option value="Team Beta">Team Beta</option>
+                    <option value="Team Gamma">Team Gamma</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn-primary full-width">Add member</button>
+        </form>
+    </div>
+</div>
+
+<!-- ===================== MODAL: Invite Product Owner ===================== -->
+<div class="modal-overlay" id="inviteOverlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="inviteTitle">
+        <button class="modal-close" id="closeInviteBtn" aria-label="Close">✕</button>
+        <h2 id="inviteTitle" class="modal-title">Invite Product Owner</h2>
+        <p class="modal-subtitle">They'll receive a sign-in link by email — there's no public sign-up form.</p>
+
+        <form id="inviteForm">
+            <div class="form-field">
+                <label for="ownerEmail">Email address</label>
+                <input type="email" id="ownerEmail" name="ownerEmail" placeholder="owner@company.com" required>
+            </div>
+
+            <button type="submit" class="btn-primary full-width">Send invite</button>
+        </form>
+    </div>
+</div>
+
+<!-- ===================== MODAL: Remove Member ===================== -->
+<div class="modal-overlay" id="removeMemberOverlay">
+    <div class="modal modal-narrow" role="dialog" aria-modal="true" aria-labelledby="removeMemberTitle">
+        <h2 id="removeMemberTitle" class="modal-title">Remove <span id="removeMemberName"></span>?</h2>
+        <p class="modal-subtitle">They'll lose access to <span id="removeMemberTeam"></span>'s board
+            immediately.</p>
+
+        <div class="modal-actions">
+            <button id="cancelRemoveBtn" class="btn-secondary">Cancel</button>
+            <button id="confirmRemoveBtn" class="btn-danger">Remove member</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== TOAST NOTIFICATION ===================== -->
+<div class="toast" id="toast"></div>
+
+<script src="main-team-management-page.js" type="module" defer></script>
+</body>
+
+</html>

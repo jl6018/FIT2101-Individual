@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symph — Login</title>
+    <link rel="stylesheet" href="style-login-page.css">
+</head>
+
+<body>
+
+<div class="login-wrap">
+    <div class="logo"><span class="s1">SYM</span><span class="s2">PH</span></div>
+    <h1>Welcome to Symph</h1>
+
+    <div class="card">
+        <div class="error-banner" id="errorBanner">
+            <span id="errorText">Incorrect user ID or password.</span>
+            <button class="close-x" id="dismissError" aria-label="Dismiss error">✕</button>
+        </div>
+
+        <form id="loginForm" novalidate>
+            <div class="field">
+                <label for="userId">User ID</label>
+                <input type="text" id="userId" name="userId" placeholder="Please enter your user ID"
+                       autocomplete="username">
+            </div>
+
+            <div class="field">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Please enter your password"
+                       autocomplete="current-password">
+            </div>
+
+            <button type="submit" class="submit" id="submitBtn">Log in</button>
+        </form>
+
+        <!-- ⬇️ ADD THIS LINE RIGHT HERE ⬇️ -->
+        <p style="text-align:center;margin-top:16px;font-size:14px;">
+            Don't have an account? <a href="index-register-page.html">Register</a>
+        </p>
+        <!-- ⬆️ END OF ADDED LINE ⬆️ -->
+
+    </div>
+</div>
+
+<!-- login.js is the compiled output of login.ts -->
+<script src="main-login-page.js" type="module" defer></script>
+</body>
+
+</html>
