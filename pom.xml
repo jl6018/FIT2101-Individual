@@ -14,12 +14,12 @@
     </parent>
 
     <!-- Project information -->
-    <groupId>com.example</groupId>
-    <artifactId>webapp</artifactId>
+    <groupId>webapplication</groupId>
+    <artifactId>symph</artifactId>
     <version>0.0.1-SNAPSHOT</version>
 
-    <name>WebApp</name>
-    <description>Task Management Web Application</description>
+    <name>Symph</name>
+    <description>Web Application</description>
 
     <!-- Java version -->
     <properties>
