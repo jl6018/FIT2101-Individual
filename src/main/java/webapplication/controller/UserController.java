@@ -1,8 +1,12 @@
 package webapplication.controller;
 
+import jakarta.validation.Valid;
+import webapplication.login.LoginRequest;
+import webapplication.login.LoginResponse;
 import webapplication.model.User;
 import webapplication.service.UserService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -29,15 +33,18 @@ public class UserController {
     }
 
     @PostMapping
-    public User createUser(@RequestBody User user) {
-        return userService.createUser(user);
+    public ResponseEntity<?> createUser(@Valid @RequestBody User user) {
+        try {
+            return ResponseEntity.ok(userService.createUser(user));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        }
     }
 
     @PutMapping("/{id}")
     public User updateUser(
             @PathVariable Long id,
-            @RequestBody User user) {
-
+            @Valid @RequestBody User user) {
         return userService.updateUser(id, user);
     }
 
@@ -47,12 +54,27 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody User loginRequest) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
         User user = userService.login(loginRequest.getEmail(), loginRequest.getPassword());
         if (user == null) {
-            return ResponseEntity.status(401)
-                    .body(java.util.Map.of("message", "Invalid email or password"));
+            return ResponseEntity.status(401).body("Invalid email or password");
         }
-        return ResponseEntity.ok(user);
+        LoginResponse response = new LoginResponse(
+                user.getId(), user.getName(), user.getEmail(), user.getRole()
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    // ===================== HANDLE VALIDATION ERRORS =====================
+    // Returns the field error message as plain text
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<String> handleValidation(MethodArgumentNotValidException ex) {
+        String message = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(err -> err.getDefaultMessage())
+                .findFirst()
+                .orElse("Invalid request");
+        return ResponseEntity.status(400).body(message);
     }
 }

@@ -1,5 +1,7 @@
 package webapplication.service;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import webapplication.model.User;
 import webapplication.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -25,16 +27,17 @@ public class UserService {
     }
 
     public User createUser(User user) {
+        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already registered");
+        }
         return userRepository.save(user);
     }
 
     public User updateUser(Long id, User updatedUser) {
         User user = getUserById(id);
-
         user.setName(updatedUser.getName());
         user.setEmail(updatedUser.getEmail());
         user.setRole(updatedUser.getRole());
-
         return userRepository.save(user);
     }
 

@@ -1,6 +1,7 @@
 package webapplication.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 
 @Entity
 @Table(name = "users")
@@ -10,13 +11,25 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "Name is required")
+    @Size(min = 2, max = 100, message = "Name must be 2-100 characters")
+    @Pattern(regexp = "^[a-zA-Z\\s'-]+$",
+            message = "Name can only contain letters, spaces, hyphens, and apostrophes")
     private String name;
 
+    @NotBlank(message = "Email is required")
+    @Email(message = "Please enter a proper email like user@example.com")
     @Column(unique = true, nullable = false)
     private String email;
 
+    @NotBlank(message = "Password is required")
+    @Size(min = 8, message = "Password must be at least 8 characters")
+    @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$",
+            message = "Password must contain at least one letter and one number")
     private String password;
 
+    @NotBlank(message = "Role is required")
+    @Pattern(regexp = "ADMIN|EMPLOYEE", message = "Role must be ADMIN or EMPLOYEE")
     private String role;
 
     public User() {
