@@ -1,9 +1,11 @@
 {
   "name": "ma_wednesday10am_team5",
   "version": "1.0.0",
-  "description": "FIT2101 S2 2026 group repository.",
+  "description": "FIT2101 S2 2026 group repository — Symph project management tool.",
   "main": "index.js",
   "scripts": {
+    "compile": "tsc",
+    "watch": "tsc --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
