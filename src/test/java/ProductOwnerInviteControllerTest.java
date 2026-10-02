@@ -1,4 +1,3 @@
-/*
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,19 +14,17 @@ import webapplication.service.ProductOwnerInviteService;
 import java.util.Arrays;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-*
+/**
  * Unit tests for ProductOwnerInviteController.
  * Tests sending invite, invalid email, and retrieving invites.
  *
  * @author Lim Jia Li
  * @version 17.0.16
-
-
+ */
 @WebMvcTest(controllers = ProductOwnerInviteController.class)
 @ContextConfiguration(classes = Application.class)
 class ProductOwnerInviteControllerTest {
@@ -41,10 +38,9 @@ class ProductOwnerInviteControllerTest {
     @MockitoBean
     private ProductOwnerInviteService inviteService;
 
-*
+    /**
      * Tests sending an invite with a valid email returns 200 OK.
-
-
+     */
     @Test
     void testInviteProductOwner_ValidEmail_ReturnsOk() throws Exception {
         ProductOwnerInvite invite = new ProductOwnerInvite();
@@ -60,10 +56,9 @@ class ProductOwnerInviteControllerTest {
                 .andExpect(jsonPath("$.email").value("owner@example.com"));
     }
 
-*
+    /**
      * Tests sending an invite with an invalid email returns 400 Bad Request.
-
-
+     */
     @Test
     void testInviteProductOwner_InvalidEmail_Returns400() throws Exception {
         when(inviteService.inviteProductOwner(any(ProductOwnerInvite.class)))
@@ -77,10 +72,9 @@ class ProductOwnerInviteControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
-*
+    /**
      * Tests sending an invite with an empty email returns 400 Bad Request.
-
-
+     */
     @Test
     void testInviteProductOwner_EmptyEmail_Returns400() throws Exception {
         when(inviteService.inviteProductOwner(any(ProductOwnerInvite.class)))
@@ -94,10 +88,9 @@ class ProductOwnerInviteControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
-*
+    /**
      * Tests retrieving all invites returns the correct count.
-
-
+     */
     @Test
     void testGetAllInvites_ReturnsOk() throws Exception {
         ProductOwnerInvite i1 = new ProductOwnerInvite();
@@ -115,10 +108,9 @@ class ProductOwnerInviteControllerTest {
                 .andExpect(jsonPath("$.length()").value(2));
     }
 
-*
+    /**
      * Tests retrieving an invite by ID returns 200 OK with the correct email.
-
-
+     */
     @Test
     void testGetInviteById_ReturnsOk() throws Exception {
         ProductOwnerInvite invite = new ProductOwnerInvite();
@@ -132,4 +124,3 @@ class ProductOwnerInviteControllerTest {
                 .andExpect(jsonPath("$.email").value("owner@example.com"));
     }
 }
-*/
