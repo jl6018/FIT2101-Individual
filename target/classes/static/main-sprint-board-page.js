@@ -3,24 +3,17 @@ if (sessionStorage.getItem('loggedIn') !== 'true') {
     window.location.href = 'index-login-page.html';
     throw new Error('Not logged in');
 }
-// ===================== END AUTH GUARD =====================
+// ===================== END GUARD =====================
 
-function requireElement(id) {
-    const el = document.getElementById(id);
-    if (!el) throw new Error(`Missing element: ${id}`);
-    return el;
-}
-
-// ===================== SWITCH ACCOUNT / LOGOUT =====================
-const switchAccountBtn = document.getElementById('switchAccountBtn');
-switchAccountBtn?.addEventListener('click', () => {
+// ===================== LOGOUT =====================
+document.getElementById('logoutBtn')?.addEventListener('click', () => {
     if (confirm('Log out?')) {
         sessionStorage.clear();
         window.location.href = 'index-login-page.html';
     }
 });
+// ===================== END LOGOUT =====================
 
-// ===================== LOAD BOARD =====================
 async function loadBoard() {
     const container = document.getElementById('boardColumns');
     if (!container) return;
@@ -30,8 +23,6 @@ async function loadBoard() {
         if (!res.ok) throw new Error('Failed to load board');
 
         const data = await res.json();
-        // data = { PRODUCT_BACKLOG: [...], IN_PROGRESS: [...], IN_REVIEW: [...], COMPLETED: [...] }
-
         container.innerHTML = '';
 
         Object.entries(data).forEach(([status, tasks]) => {
@@ -50,7 +41,6 @@ async function loadBoard() {
             `;
             container.appendChild(column);
         });
-
     } catch (err) {
         console.error(err);
         container.innerHTML = '<p class="muted">Unable to load board.</p>';

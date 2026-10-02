@@ -1,9 +1,25 @@
+// ===================== EMPLOYEE GUARD =====================
 if (sessionStorage.getItem('loggedIn') !== 'true') {
     window.location.href = 'index-login-page.html';
     throw new Error('Not logged in');
 }
+if (sessionStorage.getItem('role') !== 'EMPLOYEE') {
+    window.location.href = 'index-admin-page.html';
+    throw new Error('Employee access only');
+}
+// ===================== END GUARD =====================
+
+// ===================== LOGOUT =====================
+document.getElementById('logoutBtn')?.addEventListener('click', () => {
+    if (confirm('Log out?')) {
+        sessionStorage.clear();
+        window.location.href = 'index-login-page.html';
+    }
+});
+// ===================== END LOGOUT =====================
 
 export {};
+
 const sprintBoards = {
     "1": {
         columns: [
@@ -46,14 +62,18 @@ const sprintBoards = {
         ],
     },
 };
+
 let currentSprintId = "1";
 const CURRENT_USER_TEAM = "Team Alpha";
+
 function formatDateBadge(isoDate) {
     const date = new Date(`${isoDate}T00:00:00`);
     return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
+
 function renderCard(card, colIndex, cardIndex) {
     const cardId = `card-${colIndex}-${cardIndex}`;
+
     if (card.detailed) {
         const tagsHtml = card.detailed.tags
             .map((tag) => {
@@ -67,6 +87,7 @@ function renderCard(card, colIndex, cardIndex) {
         const dateHtml = card.detailed.date
             ? `<span class="date-badge">🗓 ${formatDateBadge(card.detailed.date)}</span>`
             : "<span></span>";
+
         return `
       <div class="card card-detailed" id="${cardId}">
         <div class="card-title-row">
@@ -90,6 +111,7 @@ function renderCard(card, colIndex, cardIndex) {
       </div>
     `;
     }
+
     return `
     <div class="card" id="${cardId}">
       <div class="card-title-row">
@@ -99,12 +121,16 @@ function renderCard(card, colIndex, cardIndex) {
     </div>
   `;
 }
+
 function renderBoard(sprintId) {
     const board = document.getElementById("board");
     if (!board) return;
+
     const data = sprintBoards[sprintId];
     if (!data) return;
+
     currentSprintId = sprintId;
+
     const filtered = {
         ...data,
         columns: data.columns.map((col) => ({
@@ -114,6 +140,7 @@ function renderBoard(sprintId) {
             }),
         })),
     };
+
     board.innerHTML = filtered.columns
         .map((column, colIndex) => `
         <section class="column">
@@ -123,12 +150,15 @@ function renderBoard(sprintId) {
       `)
         .join("");
 }
+
 function initSprintTabs() {
     const tabs = document.querySelectorAll(".sprint-tab");
+
     tabs.forEach((tab) => {
         tab.addEventListener("click", () => {
             tabs.forEach((t) => t.classList.remove("active"));
             tab.classList.add("active");
+
             const sprintId = tab.dataset.sprint;
             if (sprintId) {
                 renderBoard(sprintId);
@@ -136,5 +166,6 @@ function initSprintTabs() {
         });
     });
 }
+
 initSprintTabs();
 renderBoard(currentSprintId);
