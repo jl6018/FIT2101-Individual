@@ -1,5 +1,4 @@
 "use strict";
-// main-login-page.ts (compiled output)
 
 const DEMO_MODE = false;
 
@@ -32,15 +31,6 @@ dismissError.addEventListener('click', hideError);
 userIdInput.addEventListener('input', hideError);
 passwordInput.addEventListener('input', hideError);
 
-async function handleLoginDemo(userId, password) {
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    const success = userId === 'admin' && password === 'admin';
-    if (!success) {
-        throw new Error('Incorrect user ID or password.');
-    }
-    return { redirectTo: 'index-sprint-planning-page.html', role: 'ADMIN' };
-}
-
 async function handleLoginReal(userId, password) {
     const res = await fetch('/api/users/login', {
         method: 'POST',
@@ -48,7 +38,6 @@ async function handleLoginReal(userId, password) {
         body: JSON.stringify({ email: userId, password }),
     });
 
-    // ✅ Read as text first — then try JSON, fall back to plain text
     const text = await res.text();
     let data;
     try {
@@ -80,13 +69,14 @@ form.addEventListener('submit', async (e) => {
     submitBtn.textContent = 'Logging in...';
 
     try {
-        const data = DEMO_MODE
-            ? await handleLoginDemo(userId, password)
-            : await handleLoginReal(userId, password);
+        const data = await handleLoginReal(userId, password);
 
-        if (data.token) {
-            localStorage.setItem('authToken', data.token);
-        }
+        // ===================== SAVE LOGIN STATE =====================
+        sessionStorage.setItem('loggedIn', 'true');
+        sessionStorage.setItem('role', data.role || '');
+        sessionStorage.setItem('email', data.email || '');
+        sessionStorage.setItem('name', data.name || '');
+        // ============================================================
 
         if (data.role === 'ADMIN') {
             window.location.href = 'index-sprint-planning-page.html';
