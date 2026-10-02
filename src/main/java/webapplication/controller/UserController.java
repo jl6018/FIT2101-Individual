@@ -50,7 +50,8 @@ public class UserController {
     public ResponseEntity<?> login(@RequestBody User loginRequest) {
         User user = userService.login(loginRequest.getEmail(), loginRequest.getPassword());
         if (user == null) {
-            return ResponseEntity.status(401).body("Invalid email or password");
+            return ResponseEntity.status(401)
+                    .body(java.util.Map.of("message", "Invalid email or password"));
         }
         return ResponseEntity.ok(user);
     }
