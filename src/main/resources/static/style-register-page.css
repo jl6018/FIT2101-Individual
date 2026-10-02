@@ -1,0 +1,154 @@
+:root {
+  --lavender: #C9CFFA;
+  --black: #111111;
+  --error-bg: #FDE8E8;
+  --error-text: #C0392B;
+  --input-bg: #FFFFFF;
+  --input-placeholder: #9CA3AF;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.login-wrap {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.logo {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+}
+
+.logo .s1 { color: #6B7280; }
+.logo .s2 { color: #6366F1; }
+
+h1 {
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--black);
+  margin: 8px 0 24px;
+}
+
+.card {
+  background: var(--lavender);
+  border-radius: 16px;
+  padding: 24px;
+  text-align: left;
+}
+
+.error-banner {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--error-bg);
+  color: var(--error-text);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  margin-bottom: 16px;
+}
+
+.error-banner.visible {
+  display: flex;
+}
+
+.error-banner .close-x {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--error-text);
+  background: none;
+  border: none;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+}
+
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.field:last-of-type {
+  margin-bottom: 20px;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: none;
+  background: var(--input-bg);
+  font-size: 14px;
+  color: var(--black);
+  font-family: inherit;
+}
+
+input::placeholder {
+  color: var(--input-placeholder);
+}
+
+input:focus,
+select:focus {
+  outline: 2px solid #6366F1;
+  outline-offset: 1px;
+}
+
+button.submit {
+  width: 100%;
+  padding: 13px;
+  border: none;
+  border-radius: 10px;
+  background: var(--black);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+button.submit:hover {
+  background: #2a2a2a;
+}
+
+button.submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Register-specific link at bottom */
+.register-link {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.register-link a {
+  color: #6366F1;
+  text-decoration: underline;
+}
