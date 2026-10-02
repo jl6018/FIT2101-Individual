@@ -1,3 +1,8 @@
+if (sessionStorage.getItem('loggedIn') !== 'true') {
+    window.location.href = 'index-login-page.html';
+    throw new Error('Not logged in');
+}
+
 function requireElement(id) {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Missing element: ${id}`);

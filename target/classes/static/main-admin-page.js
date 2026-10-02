@@ -1,3 +1,8 @@
+if (sessionStorage.getItem('loggedIn') !== 'true') {
+    window.location.href = 'index-login-page.html';
+    throw new Error('Not logged in');
+}
+
 export {};
 const sprintBoards = {
     "1": {
