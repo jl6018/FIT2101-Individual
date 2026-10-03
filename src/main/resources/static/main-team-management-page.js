@@ -11,13 +11,6 @@ if (sessionStorage.getItem('loggedIn') !== 'true') {
     throw new Error('Not logged in');
 }
 
-document.getElementById('logoutBtn')?.addEventListener('click', () => {
-    if (confirm('Log out?')) {
-        sessionStorage.clear();
-        window.location.href = 'index-login-page.html';
-    }
-});
-
 function requireElement(id) {
     const el = document.getElementById(id);
     if (!el) {
@@ -25,6 +18,34 @@ function requireElement(id) {
     }
     return el;
 }
+
+// ===================== LOGOUT (MODAL) =====================
+
+const logoutBtn = requireElement('logoutBtn');
+const logoutOverlay = requireElement('logoutOverlay');
+const cancelLogoutBtn = requireElement('cancelLogoutBtn');
+const confirmLogoutBtn = requireElement('confirmLogoutBtn');
+
+logoutBtn.addEventListener('click', () => {
+    logoutOverlay.classList.add('visible');
+});
+
+cancelLogoutBtn.addEventListener('click', () => {
+    logoutOverlay.classList.remove('visible');
+});
+
+confirmLogoutBtn.addEventListener('click', () => {
+    sessionStorage.clear();
+    window.location.href = 'index-login-page.html';
+});
+
+logoutOverlay.addEventListener('click', (e) => {
+    if (e.target === logoutOverlay) {
+        logoutOverlay.classList.remove('visible');
+    }
+});
+
+// ===================== ELEMENTS =====================
 
 const addMemberBtn = requireElement('addMemberBtn');
 const inviteProductOwnerBtn = requireElement('inviteProductOwnerBtn');
@@ -82,18 +103,16 @@ function showToast(message) {
     }, 3000);
 }
 
-// ===================== LOAD USERS (DROPDOWN ONLY) =====================
+// ===================== LOAD USERS =====================
+
 async function loadMembers() {
     try {
         const res = await fetch('/api/users');
         if (!res.ok) throw new Error('Failed to load users');
 
         const allUsers = await res.json();
-
-        // Only show EMPLOYEE users in the Add Member dropdown
         registeredUsers = allUsers.filter((user) => user.role === 'EMPLOYEE');
 
-        // Fill dropdown
         memberUserSelect.innerHTML = '<option value="">Select a user...</option>';
         registeredUsers.forEach((user) => {
             const option = document.createElement('option');
@@ -101,13 +120,13 @@ async function loadMembers() {
             option.textContent = `${user.name} (${user.email}) — ${user.role}`;
             memberUserSelect.appendChild(option);
         });
-
     } catch (err) {
         console.error('Failed to load members:', err);
     }
 }
 
-// ===================== ADD MEMBER (adds to table) =====================
+// ===================== ADD MEMBER =====================
+
 addMemberForm.addEventListener('submit', (e) => {
     e.preventDefault();
 
@@ -146,12 +165,13 @@ addMemberForm.addEventListener('submit', (e) => {
 });
 
 // ===================== INVITE PRODUCT OWNER =====================
+
 inviteForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const email = ownerEmailInput.value.trim();
     if (!email) {
-        ownerEmailInput.focus();
+        alert('Please enter an email address.');
         return;
     }
 
@@ -162,9 +182,18 @@ inviteForm.addEventListener('submit', async (e) => {
             body: JSON.stringify({ email }),
         });
 
-        const text = await res.text();
         if (!res.ok) {
-            throw new Error(text || 'Failed to send invite');
+            const text = await res.text();
+            if (text.toLowerCase().includes('already')) {
+                throw new Error('Email already invited.');
+            }
+            if (text.toLowerCase().includes('invalid')) {
+                throw new Error('Invalid email address.');
+            }
+            if (text.toLowerCase().includes('required')) {
+                throw new Error('Email is required.');
+            }
+            throw new Error(text || 'Failed to send invite.');
         }
 
         closeModal(inviteOverlay);
@@ -176,7 +205,8 @@ inviteForm.addEventListener('submit', async (e) => {
     }
 });
 
-// ===================== REMOVE (REMOVES FROM TABLE ONLY — KEEPS IN DB) =====================
+// ===================== REMOVE MEMBER =====================
+
 membersBody.addEventListener('click', (e) => {
     const target = e.target;
     if (!target.classList.contains('remove-btn')) return;
@@ -202,9 +232,6 @@ confirmRemoveBtn.addEventListener('click', () => {
     }
 
     const name = rowPendingRemoval.dataset.name ?? 'Member';
-
-    // Only remove the row from the table
-    // User stays in database and dropdown
     rowPendingRemoval.remove();
     rowPendingRemoval = null;
     closeModal(removeMemberOverlay);
@@ -212,4 +239,5 @@ confirmRemoveBtn.addEventListener('click', () => {
 });
 
 // ===================== INIT =====================
+
 loadMembers();

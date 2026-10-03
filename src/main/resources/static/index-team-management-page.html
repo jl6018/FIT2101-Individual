@@ -60,6 +60,7 @@
     </main>
 </div>
 
+<!-- ===================== ADD MEMBER MODAL ===================== -->
 <div class="modal-overlay" id="addMemberOverlay">
     <div class="modal" role="dialog" aria-modal="true">
         <button class="modal-close" id="closeAddMemberBtn" aria-label="Close">✕</button>
@@ -87,6 +88,7 @@
     </div>
 </div>
 
+<!-- ===================== INVITE PRODUCT OWNER MODAL ===================== -->
 <div class="modal-overlay" id="inviteOverlay">
     <div class="modal" role="dialog" aria-modal="true">
         <button class="modal-close" id="closeInviteBtn" aria-label="Close">✕</button>
@@ -104,6 +106,7 @@
     </div>
 </div>
 
+<!-- ===================== REMOVE MEMBER MODAL ===================== -->
 <div class="modal-overlay" id="removeMemberOverlay">
     <div class="modal modal-narrow" role="dialog" aria-modal="true">
         <h2 class="modal-title">Remove <span id="removeMemberName"></span>?</h2>
@@ -116,6 +119,20 @@
     </div>
 </div>
 
+<!-- ===================== LOGOUT MODAL ===================== -->
+<div class="modal-overlay" id="logoutOverlay">
+    <div class="modal modal-narrow" role="dialog" aria-modal="true">
+        <h2 class="modal-title">Log out?</h2>
+        <p class="modal-subtitle">You'll be returned to the login page.</p>
+
+        <div class="modal-actions">
+            <button id="cancelLogoutBtn" class="btn-secondary">Cancel</button>
+            <button id="confirmLogoutBtn" class="btn-danger">Log out</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== TOAST ===================== -->
 <div class="toast" id="toast"></div>
 
 <script src="main-team-management-page.js" type="module" defer></script>
