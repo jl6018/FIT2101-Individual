@@ -1,3 +1,9 @@
+window.addEventListener('pageshow', (event) => {
+    if (event.persisted && sessionStorage.getItem('loggedIn') !== 'true') {
+        window.location.href = 'index-login-page.html';
+    }
+});
+
 // ===================== AUTH GUARD =====================
 if (sessionStorage.getItem('loggedIn') !== 'true') {
     window.location.href = 'index-login-page.html';
