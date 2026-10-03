@@ -22,7 +22,7 @@ public class ProductOwnerInviteController {
     public ResponseEntity<?> invite(@RequestBody ProductOwnerInvite invite) {
         try {
             return ResponseEntity.ok(inviteService.inviteProductOwner(invite));
-        } catch (IllegalArgumentException e) {
+        } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
