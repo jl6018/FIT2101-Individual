@@ -2,20 +2,20 @@
 // Compile with:
 //   tsc main-team-management-page.ts --module esnext --target esnext --strict --ignoreConfig
 
-// ===================== BFCACHE FIX (from B) =====================
+// ===================== BFCACHE FIX =====================
 window.addEventListener('pageshow', (event) => {
     if ((event as PageTransitionEvent).persisted && sessionStorage.getItem('loggedIn') !== 'true') {
         window.location.href = 'index-login-page.html';
     }
 });
 
-// ===================== AUTH GUARD (from B) =====================
+// ===================== AUTH GUARD =====================
 if (sessionStorage.getItem('loggedIn') !== 'true') {
     window.location.href = 'index-login-page.html';
     throw new Error('Not logged in');
 }
 
-// ===================== SHOW CURRENT USER (from B) =====================
+// ===================== SHOW CURRENT USER =====================
 const nameEl = document.getElementById('signedInName');
 if (nameEl) {
     const name = sessionStorage.getItem('name');
@@ -33,7 +33,7 @@ function requireElement<T extends HTMLElement>(id: string): T {
     return el as T;
 }
 
-// ===================== LOGOUT MODAL (from B) =====================
+// ===================== LOGOUT MODAL =====================
 const logoutBtn = requireElement<HTMLButtonElement>('logoutBtn');
 const logoutOverlay = requireElement<HTMLDivElement>('logoutOverlay');
 const cancelLogoutBtn = requireElement<HTMLButtonElement>('cancelLogoutBtn');
@@ -63,8 +63,8 @@ const closeInviteBtn = requireElement<HTMLButtonElement>('closeInviteBtn');
 const addMemberForm = requireElement<HTMLFormElement>('addMemberForm');
 const inviteForm = requireElement<HTMLFormElement>('inviteForm');
 
-// B: user dropdown instead of name/email inputs
 const memberUserSelect = requireElement<HTMLSelectElement>('memberUser');
+const memberJobTitleSelect = requireElement<HTMLSelectElement>('memberJobTitle');
 const memberTeamSelect = requireElement<HTMLSelectElement>('memberTeam');
 const ownerEmailInput = requireElement<HTMLInputElement>('ownerEmail');
 
@@ -75,7 +75,6 @@ const cancelRemoveBtn = requireElement<HTMLButtonElement>('cancelRemoveBtn');
 const confirmRemoveBtn = requireElement<HTMLButtonElement>('confirmRemoveBtn');
 const toast = requireElement<HTMLDivElement>('toast');
 
-// Track which row is currently pending removal
 let rowPendingRemoval: HTMLTableRowElement | null = null;
 let registeredUsers: { id: number; name: string; email: string; role: string }[] = [];
 
@@ -109,7 +108,7 @@ function showToast(message: string): void {
     }, 3000);
 }
 
-// ===================== LOAD USERS + TEAM MEMBERSHIPS (from B) =====================
+// ===================== LOAD USERS + TEAM MEMBERSHIPS =====================
 async function loadMembers(): Promise<void> {
     try {
         const res = await fetch('/api/users');
@@ -138,15 +137,19 @@ async function loadTeamMemberships(): Promise<void> {
         const teams = await res.json();
         membersBody.innerHTML = '';
 
-        teams.forEach((team: { id: number; name: string; members?: { id: number; name: string; role: string }[] }) => {
+        teams.forEach((team: { id: number; name: string; members?: { id: number; name: string; role: string; jobTitle?: string }[] }) => {
             (team.members || []).forEach((user) => {
+                const jobTitle = user.jobTitle ?? '—';
                 const row = document.createElement('tr');
                 row.dataset['id'] = String(user.id);
                 row.dataset['name'] = user.name;
+                row.dataset['role'] = user.role;
+                row.dataset['jobTitle'] = jobTitle;
                 row.dataset['team'] = team.name;
                 row.innerHTML = `
                     <td>${user.name}</td>
                     <td>${user.role}</td>
+                    <td>${jobTitle}</td>
                     <td>${team.name}</td>
                     <td><button class="remove-btn">Remove</button></td>
                 `;
@@ -158,14 +161,18 @@ async function loadTeamMemberships(): Promise<void> {
     }
 }
 
-// ===================== ADD MEMBER (from B) =====================
+// ===================== ADD MEMBER =====================
 addMemberForm.addEventListener('submit', async (e: SubmitEvent) => {
     e.preventDefault();
 
     const userId = memberUserSelect.value;
+    const jobTitle = memberJobTitleSelect.value;
     const team = memberTeamSelect.value;
 
+    // ⬇️ GUARDS — prevents empty values from reaching the backend
     if (!userId) { alert('Please select a user.'); return; }
+    if (!jobTitle) { alert('Please select a job title.'); return; }
+    if (!team) { alert('Please select a team.'); return; }
 
     const user = registeredUsers.find((u) => String(u.id) === userId);
     if (!user) return;
@@ -173,6 +180,8 @@ addMemberForm.addEventListener('submit', async (e: SubmitEvent) => {
     try {
         const res = await fetch(`/api/teams/by-name/${encodeURIComponent(team)}/members/${userId}`, {
             method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobTitle }),
         });
 
         if (!res.ok) {
@@ -182,16 +191,21 @@ addMemberForm.addEventListener('submit', async (e: SubmitEvent) => {
 
         const existingRow = membersBody.querySelector<HTMLTableRowElement>(`tr[data-id="${userId}"]`);
         if (existingRow) {
+            existingRow.dataset['jobTitle'] = jobTitle;
             existingRow.dataset['team'] = team;
-            existingRow.cells[2].textContent = team;
+            existingRow.cells[2].textContent = jobTitle;
+            existingRow.cells[3].textContent = team;
         } else {
             const row = document.createElement('tr');
             row.dataset['id'] = String(user.id);
             row.dataset['name'] = user.name;
+            row.dataset['role'] = user.role;
+            row.dataset['jobTitle'] = jobTitle;
             row.dataset['team'] = team;
             row.innerHTML = `
                 <td>${user.name}</td>
                 <td>${user.role}</td>
+                <td>${jobTitle}</td>
                 <td>${team}</td>
                 <td><button class="remove-btn">Remove</button></td>
             `;
@@ -207,7 +221,7 @@ addMemberForm.addEventListener('submit', async (e: SubmitEvent) => {
     }
 });
 
-// ===================== INVITE PRODUCT OWNER (from B) =====================
+// ===================== INVITE PRODUCT OWNER =====================
 inviteForm.addEventListener('submit', async (e: SubmitEvent) => {
     e.preventDefault();
 
@@ -238,7 +252,7 @@ inviteForm.addEventListener('submit', async (e: SubmitEvent) => {
     }
 });
 
-// ===================== REMOVE MEMBER (from B) =====================
+// ===================== REMOVE MEMBER =====================
 membersBody.addEventListener('click', (e: MouseEvent) => {
     const target = e.target as HTMLElement;
     if (!target.classList.contains('remove-btn')) return;

@@ -2,21 +2,22 @@
 // main-team-management-page.js
 // Merged: B's auth guard + logout + backend-driven table + user dropdown
 //       + A's remove-member modal + toast + UI
+//       + Job Title column
 
-// ===================== BFCACHE FIX (from B) =====================
+// ===================== BFCACHE FIX =====================
 window.addEventListener('pageshow', (event) => {
     if (event.persisted && sessionStorage.getItem('loggedIn') !== 'true') {
         window.location.href = 'index-login-page.html';
     }
 });
 
-// ===================== AUTH GUARD (from B) =====================
+// ===================== AUTH GUARD =====================
 if (sessionStorage.getItem('loggedIn') !== 'true') {
     window.location.href = 'index-login-page.html';
     throw new Error('Not logged in');
 }
 
-// ===================== SHOW CURRENT USER (from B) =====================
+// ===================== SHOW CURRENT USER =====================
 const nameEl = document.getElementById('signedInName');
 if (nameEl) {
     const name = sessionStorage.getItem('name');
@@ -34,7 +35,7 @@ function requireElement(id) {
     return el;
 }
 
-// ===================== LOGOUT MODAL (from B) =====================
+// ===================== LOGOUT MODAL =====================
 const logoutBtn = requireElement('logoutBtn');
 const logoutOverlay = requireElement('logoutOverlay');
 const cancelLogoutBtn = requireElement('cancelLogoutBtn');
@@ -61,6 +62,7 @@ const closeInviteBtn = requireElement('closeInviteBtn');
 const addMemberForm = requireElement('addMemberForm');
 const inviteForm = requireElement('inviteForm');
 const memberUserSelect = requireElement('memberUser');
+const memberJobTitleSelect = requireElement('memberJobTitle'); // ← NEW
 const memberTeamSelect = requireElement('memberTeam');
 const ownerEmailInput = requireElement('ownerEmail');
 const membersBody = requireElement('membersBody');
@@ -99,7 +101,7 @@ function showToast(message) {
     }, 3000);
 }
 
-// ===================== LOAD USERS + MEMBERSHIPS (from B) =====================
+// ===================== LOAD USERS + MEMBERSHIPS =====================
 async function loadMembers() {
     try {
         const res = await fetch('/api/users');
@@ -133,10 +135,13 @@ async function loadTeamMemberships() {
                 const row = document.createElement('tr');
                 row.dataset.id = user.id;
                 row.dataset.name = user.name;
+                row.dataset.role = user.role;
+                row.dataset.jobTitle = user.jobTitle ?? '—'; // fallback if missing
                 row.dataset.team = team.name;
                 row.innerHTML = `
                     <td>${user.name}</td>
                     <td>${user.role}</td>
+                    <td>${user.jobTitle ?? '—'}</td>
                     <td>${team.name}</td>
                     <td><button class="remove-btn">Remove</button></td>
                 `;
@@ -148,11 +153,12 @@ async function loadTeamMemberships() {
     }
 }
 
-// ===================== ADD MEMBER (from B) =====================
+// ===================== ADD MEMBER =====================
 addMemberForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const userId = memberUserSelect.value;
+    const jobTitle = memberJobTitleSelect.value;   // ← NEW
     const team = memberTeamSelect.value;
 
     if (!userId) { alert('Please select a user.'); return; }
@@ -163,6 +169,8 @@ addMemberForm.addEventListener('submit', async (e) => {
     try {
         const res = await fetch(`/api/teams/by-name/${encodeURIComponent(team)}/members/${userId}`, {
             method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobTitle }),
         });
 
         if (!res.ok) {
@@ -172,16 +180,21 @@ addMemberForm.addEventListener('submit', async (e) => {
 
         const existingRow = membersBody.querySelector(`tr[data-id="${userId}"]`);
         if (existingRow) {
+            existingRow.dataset.jobTitle = jobTitle;
             existingRow.dataset.team = team;
-            existingRow.cells[2].textContent = team;
+            existingRow.cells[2].textContent = jobTitle;   // Job Title cell
+            existingRow.cells[3].textContent = team;       // Team cell
         } else {
             const row = document.createElement('tr');
             row.dataset.id = user.id;
             row.dataset.name = user.name;
+            row.dataset.role = user.role;
+            row.dataset.jobTitle = jobTitle;
             row.dataset.team = team;
             row.innerHTML = `
                 <td>${user.name}</td>
                 <td>${user.role}</td>
+                <td>${jobTitle}</td>
                 <td>${team}</td>
                 <td><button class="remove-btn">Remove</button></td>
             `;
@@ -197,7 +210,7 @@ addMemberForm.addEventListener('submit', async (e) => {
     }
 });
 
-// ===================== INVITE PRODUCT OWNER (from B) =====================
+// ===================== INVITE PRODUCT OWNER =====================
 inviteForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -213,15 +226,9 @@ inviteForm.addEventListener('submit', async (e) => {
 
         if (!res.ok) {
             const text = await res.text();
-            if (text.toLowerCase().includes('already')) {
-                throw new Error('Email already invited.');
-            }
-            if (text.toLowerCase().includes('invalid')) {
-                throw new Error('Invalid email address.');
-            }
-            if (text.toLowerCase().includes('required')) {
-                throw new Error('Email is required.');
-            }
+            if (text.toLowerCase().includes('already')) throw new Error('Email already invited.');
+            if (text.toLowerCase().includes('invalid')) throw new Error('Invalid email address.');
+            if (text.toLowerCase().includes('required')) throw new Error('Email is required.');
             throw new Error(text || 'Failed to send invite.');
         }
 
@@ -234,7 +241,7 @@ inviteForm.addEventListener('submit', async (e) => {
     }
 });
 
-// ===================== REMOVE MEMBER (from B) =====================
+// ===================== REMOVE MEMBER =====================
 membersBody.addEventListener('click', (e) => {
     const target = e.target;
     if (!target.classList.contains('remove-btn')) return;
@@ -273,7 +280,6 @@ confirmRemoveBtn.addEventListener('click', async () => {
                 const delRes = await fetch(`/api/teams/${team.id}/members/${userId}`, {
                     method: 'DELETE',
                 });
-
                 if (!delRes.ok) {
                     const msg = await delRes.text();
                     throw new Error(msg || 'Failed to remove member');
