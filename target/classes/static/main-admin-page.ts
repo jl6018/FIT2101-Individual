@@ -1,420 +1,849 @@
-export {};
+// main-admin-page.ts
+// Compile with:
+//   npx tsc main-admin-page.ts --module esnext --target esnext --strict --ignoreConfig
+// The compiled main-admin-page.js is loaded as a plain <script>, so the page
+// also works when the HTML file is opened directly (file://), not only when
+// it is served by Spring Boot. Everything lives inside one function so no
+// names leak into the global scope.
+//
+// Sprint 2 stories covered on this page:
+//   US07 — assign a task to a team or to one or more employees
+//   US09 — admin views every team's board (filter button in the search bar)
+//   US10 — edit a task's name and description
+//   US11 — only the admin can delete a task (delete lives on this page only)
+//   US15 — set a due date on a task
+//   US17 — admin moves a task from In Review to Completed (drag and drop)
+//   US23 — Start Sprint button
+// US21 (remove team member) lives on the Team Management page.
 
-type Priority = "Low" | "Medium" | "High" | "Urgent";
+// ===================== ADMIN GUARD (from B) =====================
+window.addEventListener("pageshow", (event) => {
+    if ((event as PageTransitionEvent).persisted && sessionStorage.getItem("loggedIn") !== "true") {
+        window.location.href = "index-login-page.html";
+    }
+});
 
-type CardData = {
-    title: string;
-    detailed?: {
-        progress: number;
-        tags: string[];
-        avatars: string[];
-        date?: string;
-        priority?: Priority;
-    };
-    description?: string;
-    status?: string;
-    dueDate?: string;
-    assignee?: string;
-};
-
-type ColumnData = {
-    name: string;
-    cards: CardData[];
-};
-
-type SprintData = {
-    columns: ColumnData[];
-};
-
-const sprintBoards: Record<string, SprintData> = {
-    "1": {
-        columns: [
-            { name: "Product Backlog", cards: [{ title: "Set Up Login" }, { title: "TEXT" }] },
-            {
-                name: "Sprint Backlog",
-                cards: [
-                    {
-                        title: "US01 - Set Up Login",
-                        detailed: {
-                            progress: 30,
-                            tags: ["Front-end", "Urgent"],
-                            avatars: ["V", "C"],
-                            date: "2026-09-01",
-                            priority: "Urgent",
-                        },
-                    },
-                    { title: "TEXT" },
-                ],
-            },
-            { name: "In Progress", cards: [{ title: "Set Up Login" }] },
-            { name: "Completed", cards: [{ title: "Set Up Login" }, { title: "TEXT" }] },
-        ],
-    },
-    "2": {
-        columns: [
-            { name: "Product Backlog", cards: [{ title: "Design Dashboard" }] },
-            { name: "Sprint Backlog", cards: [{ title: "Design Dashboard" }] },
-            { name: "In Progress", cards: [] },
-            { name: "Completed", cards: [] },
-        ],
-    },
-    "3": {
-        columns: [
-            { name: "Product Backlog", cards: [] },
-            { name: "Sprint Backlog", cards: [] },
-            { name: "In Progress", cards: [] },
-            { name: "Completed", cards: [] },
-        ],
-    },
-};
-
-let currentSprintId = "1";
-
-function formatDateBadge(isoDate: string): string {
-    const date = new Date(`${isoDate}T00:00:00`);
-    return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+if (sessionStorage.getItem("loggedIn") !== "true") {
+    window.location.href = "index-login-page.html";
+    throw new Error("Not logged in");
+}
+if (sessionStorage.getItem("role") !== "ADMIN") {
+    window.location.href = "index-user-page.html";
+    throw new Error("Admin access only");
 }
 
-function renderCard(card: CardData, colIndex: number, cardIndex: number): string {
-    const cardId = `card-${colIndex}-${cardIndex}`;
-    const editIconHtml = `<span class="edit-icon" title="Open task details">✎</span>`;
-
-    if (card.detailed) {
-        const tagsHtml = card.detailed.tags
-            .map((tag) => {
-                const cls = tag.toLowerCase() === "urgent" ? "tag-urgent" : "tag-frontend";
-                return `<span class="tag ${cls}">${tag}</span>`;
-            })
-            .join("");
-        const avatarsHtml = card.detailed.avatars
-            .map((initial) => `<div class="avatar avatar-small avatar-purple">${initial}</div>`)
-            .join("");
-        const dateHtml = card.detailed.date
-            ? `<span class="date-badge">🗓 ${formatDateBadge(card.detailed.date)}</span>`
-            : "<span></span>";
-
-        return `
-      <div class="card card-detailed" id="${cardId}">
-        <div class="card-title-row">
-          <input type="checkbox" class="status-checkbox" />
-          <span class="card-title">${card.title}</span>
-          ${editIconHtml}
-        </div>
-        <div class="progress-row">
-          <span class="progress-percent">${card.detailed.progress}%</span>
-          <span class="progress-label">Completed</span>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" style="width: ${card.detailed.progress}%;"></div>
-        </div>
-        <div class="tags-row">
-          ${tagsHtml}
-        </div>
-        <div class="card-footer-row">
-          ${dateHtml}
-          <div class="tag-avatars">${avatarsHtml}</div>
-        </div>
-      </div>
-    `;
+(() => {
+    // ===================== SHOW CURRENT USER (from B) =====================
+    const nameEl = document.getElementById("signedInName");
+    if (nameEl) {
+        const name = sessionStorage.getItem("name");
+        const role = sessionStorage.getItem("role");
+        if (name) {
+            nameEl.textContent = role === "ADMIN" ? `${name} (Admin)` : name;
+        }
     }
 
-    return `
-    <div class="card" id="${cardId}">
-      <div class="card-title-row">
-        <input type="checkbox" class="status-checkbox" />
-        <span class="card-title">${card.title}</span>
-        ${editIconHtml}
-      </div>
-    </div>
-  `;
-}
+    // ===================== LOGOUT MODAL (from B) =====================
+    const logoutBtn = document.getElementById("logoutBtn");
+    const logoutOverlay = document.getElementById("logoutOverlay");
+    const cancelLogoutBtn = document.getElementById("cancelLogoutBtn");
+    const confirmLogoutBtn = document.getElementById("confirmLogoutBtn");
 
-function renderColumn(column: ColumnData, colIndex: number): string {
-    return `
-    <section class="column">
-      <h2>${column.name}</h2>
-      ${column.cards.map((card, cardIndex) => renderCard(card, colIndex, cardIndex)).join("")}
-      <button class="add-card" data-column="${column.name}">+ Add a card</button>
-    </section>
-  `;
-}
-
-function renderBoard(sprintId: string): void {
-    const board = document.getElementById("board");
-    if (!board) return;
-
-    const data = sprintBoards[sprintId];
-    if (!data) return;
-
-    currentSprintId = sprintId;
-    board.innerHTML = data.columns.map((column, colIndex) => renderColumn(column, colIndex)).join("");
-
-    attachAddCardListeners();
-    attachEditIconListeners(data);
-}
-
-function attachAddCardListeners(): void {
-    document.querySelectorAll<HTMLButtonElement>(".add-card").forEach((btn) => {
-        btn.addEventListener("click", () => {
-            const title = prompt("Enter card title:");
-            if (!title) return;
-
-            const description = prompt("Enter card description (optional):");
-
-            const data = sprintBoards[currentSprintId];
-            const columnName = btn.dataset.column;
-            const column = data?.columns.find((col) => col.name === columnName);
-            if (!column) return;
-
-            const newCard: CardData = { title };
-            if (description) newCard.description = description;
-
-            column.cards.push(newCard);
-            renderBoard(currentSprintId);
-            // TODO: POST the new card once the backend endpoint exists.
-        });
+    logoutBtn?.addEventListener("click", () => logoutOverlay?.classList.add("visible"));
+    cancelLogoutBtn?.addEventListener("click", () => logoutOverlay?.classList.remove("visible"));
+    confirmLogoutBtn?.addEventListener("click", () => {
+        sessionStorage.clear();
+        window.location.href = "index-login-page.html";
     });
-}
+    logoutOverlay?.addEventListener("click", (e) => {
+        if (e.target === logoutOverlay) logoutOverlay.classList.remove("visible");
+    });
 
-function attachEditIconListeners(data: SprintData): void {
-    data.columns.forEach((column, colIndex) => {
-        column.cards.forEach((card, cardIndex) => {
-            const cardEl = document.getElementById(`card-${colIndex}-${cardIndex}`);
-            const editIcon = cardEl?.querySelector<HTMLElement>(".edit-icon");
+    // ===================== TYPES =====================
+    type ColumnId = "PRODUCT_BACKLOG" | "TO_DO" | "IN_PROGRESS" | "IN_REVIEW" | "COMPLETED";
 
-            editIcon?.addEventListener("click", (event) => {
-                event.stopPropagation();
-                openModal(card);
+    type Assignee =
+        | { kind: "team"; teamId: string }
+        | { kind: "employees"; employeeIds: string[] };
+
+    type Task = {
+        id: string;
+        sprintId: string;
+        column: ColumnId;
+        title: string;
+        description: string;
+        assignee: Assignee | null;
+        dueDate: string;
+        estimateHours: number;
+    };
+
+    type Team = { id: string; name: string };
+    type Employee = { id: string; name: string; teamId: string };
+
+    // ===================== REFERENCE DATA =====================
+    const TEAMS: Team[] = [
+        { id: "alpha", name: "Team Alpha" },
+        { id: "beta", name: "Team Beta" },
+        { id: "gamma", name: "Team Gamma" },
+    ];
+
+    const MEMBERS_KEY = "symph.members.v1";
+
+    const DEFAULT_EMPLOYEES: Employee[] = [
+        { id: "Priya Nair", name: "Priya Nair", teamId: "alpha" },
+        { id: "Daniel Wu", name: "Daniel Wu", teamId: "alpha" },
+        { id: "Farah Idris", name: "Farah Idris", teamId: "beta" },
+        { id: "Aiden Cole", name: "Aiden Cole", teamId: "beta" },
+        { id: "Mei Ling Tan", name: "Mei Ling Tan", teamId: "gamma" },
+        { id: "Sam Okafor", name: "Sam Okafor", teamId: "gamma" },
+    ];
+
+    function loadEmployees(): Employee[] {
+        try {
+            const parsed: unknown = JSON.parse(window.localStorage.getItem(MEMBERS_KEY) ?? "");
+            if (Array.isArray(parsed)) {
+                return (parsed as { name?: unknown; team?: unknown }[])
+                    .filter((member) => typeof member.name === "string" && typeof member.team === "string")
+                    .map((member) => ({
+                        id: member.name as string,
+                        name: member.name as string,
+                        teamId: TEAMS.find((team) => team.name === member.team)?.id ?? "",
+                    }));
+            }
+        } catch { /* fall through */ }
+        return DEFAULT_EMPLOYEES;
+    }
+
+    const EMPLOYEES: Employee[] = loadEmployees();
+
+    const COLUMNS: { id: ColumnId; name: string }[] = [
+        { id: "PRODUCT_BACKLOG", name: "Product Backlog" },
+        { id: "TO_DO", name: "To Do" },
+        { id: "IN_PROGRESS", name: "In Progress" },
+        { id: "IN_REVIEW", name: "In Review" },
+        { id: "COMPLETED", name: "Completed" },
+    ];
+
+    function blankTask(sprintId: string, column: ColumnId): Task {
+        return { id: "", sprintId, column, title: "", description: "", assignee: null, dueDate: "", estimateHours: 0 };
+    }
+
+    function seedTasks(): Task[] {
+        const make = (id: string, sprintId: string, column: ColumnId, title: string, extra: Partial<Task> = {}): Task => ({
+            ...blankTask(sprintId, column),
+            id,
+            title,
+            ...extra,
+        });
+
+        return [
+            make("t1", "1", "PRODUCT_BACKLOG", "Set Up Login", { assignee: { kind: "team", teamId: "alpha" } }),
+            make("t2", "1", "PRODUCT_BACKLOG", "TEXT"),
+            make("t3", "1", "TO_DO", "US01 - Set Up Login", {
+                assignee: { kind: "employees", employeeIds: ["Priya Nair", "Daniel Wu"] },
+                dueDate: "2026-10-05",
+                estimateHours: 6,
+            }),
+            make("t4", "1", "TO_DO", "TEXT"),
+            make("t5", "1", "IN_PROGRESS", "Set Up Login", { assignee: { kind: "employees", employeeIds: ["Aiden Cole"] } }),
+            make("t6", "1", "IN_REVIEW", "Set Up Login", { assignee: { kind: "team", teamId: "gamma" } }),
+            make("t7", "1", "COMPLETED", "TEXT"),
+            make("t8", "2", "PRODUCT_BACKLOG", "Design Dashboard", { assignee: { kind: "team", teamId: "beta" } }),
+            make("t9", "2", "TO_DO", "Design Dashboard"),
+        ];
+    }
+
+    // ===================== STORE =====================
+    const STORAGE_KEY = "symph.adminBoard.tasks.v5";
+
+    function readSetting(key: string): string {
+        try {
+            return window.localStorage.getItem(key) ?? "";
+        } catch {
+            return "";
+        }
+    }
+
+    function writeSetting(key: string, value: string): void {
+        try {
+            window.localStorage.setItem(key, value);
+        } catch { /* ignore */ }
+    }
+
+    function loadTasks(): Task[] {
+        try {
+            const parsed: unknown = JSON.parse(readSetting(STORAGE_KEY));
+            if (Array.isArray(parsed)) return parsed as Task[];
+        } catch { /* ignore */ }
+        return seedTasks();
+    }
+
+    function saveTasks(): void {
+        writeSetting(STORAGE_KEY, JSON.stringify(tasks));
+    }
+
+    function dropRemovedEmployees(list: Task[]): boolean {
+        let changed = false;
+        list.forEach((task) => {
+            if (task.assignee?.kind !== "employees") return;
+            const stillHere = task.assignee.employeeIds.filter((id) => EMPLOYEES.some((employee) => employee.id === id));
+            if (stillHere.length === task.assignee.employeeIds.length) return;
+            task.assignee = stillHere.length > 0 ? { kind: "employees", employeeIds: stillHere } : null;
+            changed = true;
+        });
+        return changed;
+    }
+
+    let tasks: Task[] = loadTasks();
+    if (dropRemovedEmployees(tasks)) saveTasks();
+    let currentSprintId = "1";
+    let currentTeamId = "all";
+    let searchTerm = "";
+
+    // ===================== HELPERS =====================
+    function requireElement<T extends HTMLElement>(id: string): T {
+        const el = document.getElementById(id);
+        if (!el) {
+            throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
+        }
+        return el as T;
+    }
+
+    function escapeHtml(text: string): string {
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function initials(name: string): string {
+        return name
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part.charAt(0).toUpperCase())
+            .join("");
+    }
+
+    function teamName(teamId: string): string {
+        return TEAMS.find((team) => team.id === teamId)?.name ?? "Unknown team";
+    }
+
+    function findEmployee(employeeId: string): Employee | undefined {
+        return EMPLOYEES.find((employee) => employee.id === employeeId);
+    }
+
+    function assignedEmployees(assignee: Assignee | null): Employee[] {
+        if (assignee?.kind !== "employees") return [];
+        return assignee.employeeIds
+            .map(findEmployee)
+            .filter((employee): employee is Employee => employee !== undefined);
+    }
+
+    function teamsOfTask(task: Task): string[] {
+        if (!task.assignee) return [];
+        if (task.assignee.kind === "team") return [task.assignee.teamId];
+        return assignedEmployees(task.assignee).map((employee) => employee.teamId);
+    }
+
+    function assigneeLabel(assignee: Assignee | null): string {
+        if (!assignee) return "Unassigned";
+        if (assignee.kind === "team") return teamName(assignee.teamId);
+        const names = assignedEmployees(assignee).map((employee) => employee.name);
+        return names.length > 0 ? names.join(", ") : "Unassigned";
+    }
+
+    function formatEstimate(hours: number): string {
+        return `${hours}h`;
+    }
+
+    function formatDateBadge(isoDate: string): string {
+        const date = new Date(`${isoDate}T00:00:00`);
+        return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    }
+
+    // ===================== BOARD =====================
+    const board = requireElement<HTMLElement>("board");
+
+    function visibleTasks(): Task[] {
+        const term = searchTerm.toLowerCase();
+        return tasks.filter((task) => {
+            if (task.sprintId !== currentSprintId) return false;
+            if (currentTeamId !== "all" && !teamsOfTask(task).includes(currentTeamId)) return false;
+            if (term && !task.title.toLowerCase().includes(term)) return false;
+            return true;
+        });
+    }
+
+    function renderAssignee(task: Task): string {
+        if (!task.assignee) return "";
+        if (task.assignee.kind === "team") {
+            return `<span class="team-chip">${escapeHtml(teamName(task.assignee.teamId))}</span>`;
+        }
+        return assignedEmployees(task.assignee)
+            .map(
+                (employee) =>
+                    `<div class="avatar avatar-small avatar-purple" title="${escapeHtml(employee.name)} · ${escapeHtml(teamName(employee.teamId))}">${escapeHtml(initials(employee.name))}</div>`,
+            )
+            .join("");
+    }
+
+    const PENCIL_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-1L19 8l-3-3L5 16l-1 4z"/></svg>`;
+    const CLOCK_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>`;
+
+    function renderCard(task: Task): string {
+        const badges = [
+            task.dueDate ? `<span class="date-badge" title="Due date">${CLOCK_ICON} ${formatDateBadge(task.dueDate)}</span>` : "",
+            task.estimateHours > 0
+                ? `<span class="date-badge" title="Estimate">Est. ${formatEstimate(task.estimateHours)}</span>`
+                : "",
+        ].join("");
+        const assigneeHtml = renderAssignee(task);
+        const footerHtml =
+            badges || assigneeHtml
+                ? `<div class="card-footer-row"><div class="card-badges">${badges}</div><div class="tag-avatars">${assigneeHtml}</div></div>`
+                : "";
+
+        return `
+      <div class="card${footerHtml ? " card-detailed" : ""}" draggable="true" data-task="${task.id}">
+        <div class="card-title-row">
+          <span class="card-title">${escapeHtml(task.title)}</span>
+          <button type="button" class="edit-icon" data-edit="${task.id}" title="Edit task details" aria-label="Edit ${escapeHtml(task.title)}">${PENCIL_ICON}</button>
+        </div>
+        ${footerHtml}
+      </div>`;
+    }
+
+    function renderBoard(): void {
+        const shown = visibleTasks();
+
+        board.innerHTML = COLUMNS.map((column) => {
+            const cards = shown.filter((task) => task.column === column.id);
+            return `
+      <section class="column" data-column="${column.id}">
+        <h2>${column.name}</h2>
+        <div class="card-list">${cards.map(renderCard).join("")}</div>
+        <button type="button" class="add-card" data-add="${column.id}">+Add a card</button>
+      </section>`;
+        }).join("");
+    }
+
+    board.addEventListener("click", (event: MouseEvent) => {
+        const target = event.target as HTMLElement;
+
+        const editBtn = target.closest<HTMLElement>("[data-edit]");
+        if (editBtn) {
+            const task = tasks.find((candidate) => candidate.id === editBtn.dataset["edit"]);
+            if (task) openModal(task);
+            return;
+        }
+
+        const addBtn = target.closest<HTMLElement>("[data-add]");
+        if (addBtn) {
+            const draftTask = blankTask(currentSprintId, addBtn.dataset["add"] as ColumnId);
+            if (currentTeamId !== "all") {
+                draftTask.assignee = { kind: "team", teamId: currentTeamId };
+            }
+            openModal(draftTask);
+        }
+    });
+
+    // ===================== DRAG AND DROP (US17) =====================
+    let draggedTaskId: string | null = null;
+
+    function clearDropMarkers(): void {
+        board.querySelectorAll(".drop-target, .drop-before").forEach((el) => {
+            el.classList.remove("drop-target", "drop-before");
+        });
+    }
+
+    function cardAfterPointer(column: HTMLElement, pointerY: number): HTMLElement | null {
+        const cards = Array.from(column.querySelectorAll<HTMLElement>(".card:not(.dragging)"));
+        return (
+            cards.find((card) => {
+                const box = card.getBoundingClientRect();
+                return pointerY < box.top + box.height / 2;
+            }) ?? null
+        );
+    }
+
+    board.addEventListener("dragstart", (event: DragEvent) => {
+        const card = (event.target as HTMLElement).closest<HTMLElement>("[data-task]");
+        if (!card || !event.dataTransfer) return;
+        draggedTaskId = card.dataset["task"] ?? null;
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", draggedTaskId ?? "");
+        card.classList.add("dragging");
+    });
+
+    board.addEventListener("dragover", (event: DragEvent) => {
+        const column = (event.target as HTMLElement).closest<HTMLElement>(".column");
+        if (!column || !draggedTaskId) return;
+        event.preventDefault();
+
+        clearDropMarkers();
+        column.classList.add("drop-target");
+        cardAfterPointer(column, event.clientY)?.classList.add("drop-before");
+    });
+
+    board.addEventListener("drop", (event: DragEvent) => {
+        const column = (event.target as HTMLElement).closest<HTMLElement>(".column");
+        if (!column || !draggedTaskId) return;
+        event.preventDefault();
+
+        const moved = tasks.find((task) => task.id === draggedTaskId);
+        const beforeId = cardAfterPointer(column, event.clientY)?.dataset["task"];
+        if (moved) {
+            const from = COLUMNS.find((candidate) => candidate.id === moved.column)?.name ?? "";
+            moved.column = column.dataset["column"] as ColumnId;
+
+            tasks = tasks.filter((task) => task !== moved);
+            const beforeIndex = beforeId ? tasks.findIndex((task) => task.id === beforeId) : -1;
+            if (beforeIndex >= 0) {
+                tasks.splice(beforeIndex, 0, moved);
+            } else {
+                tasks.push(moved);
+            }
+
+            saveTasks();
+            const to = COLUMNS.find((candidate) => candidate.id === moved.column)?.name ?? "";
+            if (from !== to) showToast(`Moved to ${to}`);
+        }
+
+        draggedTaskId = null;
+        renderBoard();
+    });
+
+    board.addEventListener("dragend", () => {
+        draggedTaskId = null;
+        clearDropMarkers();
+        board.querySelector(".dragging")?.classList.remove("dragging");
+    });
+
+    // ===================== SPRINT TABS + SEARCH =====================
+    function initSprintTabs(): void {
+        const tabs = document.querySelectorAll<HTMLButtonElement>(".sprint-tab");
+
+        tabs.forEach((tab) => {
+            tab.addEventListener("click", () => {
+                tabs.forEach((other) => other.classList.remove("active"));
+                tab.classList.add("active");
+
+                const sprintId = tab.dataset["sprint"];
+                if (sprintId) {
+                    currentSprintId = sprintId;
+                    renderBoard();
+                    renderTeamFilter();
+                }
             });
         });
+    }
+
+    requireElement<HTMLInputElement>("searchInput").addEventListener("input", (event: Event) => {
+        searchTerm = (event.target as HTMLInputElement).value.trim();
+        renderBoard();
     });
-}
 
-function initSprintTabs(): void {
-    const tabs = document.querySelectorAll<HTMLButtonElement>(".sprint-tab");
+    // ===================== TEAM FILTER (US09) =====================
+    const teamFilterBtn = requireElement<HTMLButtonElement>("teamFilterBtn");
+    const teamFilterMenu = requireElement<HTMLDivElement>("teamFilterMenu");
+    const teamFilterLabel = requireElement<HTMLSpanElement>("teamFilterLabel");
 
-    tabs.forEach((tab) => {
-        tab.addEventListener("click", () => {
-            tabs.forEach((t) => t.classList.remove("active"));
-            tab.classList.add("active");
+    function renderTeamFilter(): void {
+        const inSprint = tasks.filter((task) => task.sprintId === currentSprintId);
+        const options = [
+            { id: "all", name: "All teams", count: inSprint.length },
+            ...TEAMS.map((team) => ({
+                id: team.id,
+                name: team.name,
+                count: inSprint.filter((task) => teamsOfTask(task).includes(team.id)).length,
+            })),
+        ];
 
-            const sprintId = tab.dataset.sprint;
-            if (sprintId) {
-                renderBoard(sprintId);
+        teamFilterMenu.innerHTML =
+            `<span class="popover-label">View board for</span>` +
+            options
+                .map((option) => {
+                    const active = option.id === currentTeamId;
+                    return `
+            <button type="button" class="filter-option${active ? " active" : ""}" data-team="${option.id}" role="menuitemradio" aria-checked="${active}">
+              <span>${escapeHtml(option.name)}</span><span class="filter-count">${option.count}</span>
+            </button>`;
+                })
+                .join("");
+
+        teamFilterLabel.textContent = currentTeamId === "all" ? "All teams" : teamName(currentTeamId);
+        teamFilterBtn.classList.toggle("filtered", currentTeamId !== "all");
+    }
+
+    function setTeamFilterOpen(open: boolean): void {
+        teamFilterMenu.classList.toggle("visible", open);
+        teamFilterBtn.setAttribute("aria-expanded", String(open));
+    }
+
+    teamFilterBtn.addEventListener("click", (event: MouseEvent) => {
+        event.stopPropagation();
+        renderTeamFilter();
+        setTeamFilterOpen(!teamFilterMenu.classList.contains("visible"));
+    });
+
+    teamFilterMenu.addEventListener("click", (event: MouseEvent) => {
+        event.stopPropagation();
+        const option = (event.target as HTMLElement).closest<HTMLElement>("[data-team]");
+        if (!option) return;
+        currentTeamId = option.dataset["team"] ?? "all";
+        setTeamFilterOpen(false);
+        renderTeamFilter();
+        renderBoard();
+    });
+
+    document.addEventListener("click", () => setTeamFilterOpen(false));
+
+    // ===================== TASK MODAL (US07, US10, US11, US15) =====================
+    const overlay = requireElement<HTMLDivElement>("taskModalOverlay");
+    const columnSelect = requireElement<HTMLSelectElement>("modalColumn");
+    const titleInput = requireElement<HTMLInputElement>("modalTitle");
+    const errorText = requireElement<HTMLParagraphElement>("modalError");
+    const descriptionBox = requireElement<HTMLTextAreaElement>("modalDescription");
+    const summary = requireElement<HTMLDivElement>("modalSummary");
+    const saveBtn = requireElement<HTMLButtonElement>("modalSaveBtn");
+    const deleteBtn = requireElement<HTMLButtonElement>("modalDeleteBtn");
+    const dueDateInput = requireElement<HTMLInputElement>("dueDateInput");
+    const assigneeSelect = requireElement<HTMLSelectElement>("assigneeSelect");
+    const employeeList = requireElement<HTMLDivElement>("employeeList");
+    const estimateInput = requireElement<HTMLInputElement>("estimateInput");
+
+    let draft: Task | null = null;
+    let assignKind: "team" | "employees" = "team";
+
+    function openModal(task: Task): void {
+        draft = JSON.parse(JSON.stringify(task)) as Task;
+        assignKind = draft.assignee?.kind ?? "team";
+
+        columnSelect.value = draft.column;
+        titleInput.value = draft.title;
+        descriptionBox.value = draft.description;
+        dueDateInput.value = draft.dueDate;
+        estimateInput.value = draft.estimateHours > 0 ? String(draft.estimateHours) : "";
+        errorText.textContent = "";
+        saveBtn.textContent = draft.id ? "Save" : "Create task";
+        deleteBtn.hidden = draft.id === "";
+        setDeleteArmed(false);
+
+        renderDraft();
+        closePopovers();
+        overlay.classList.add("visible");
+        titleInput.focus();
+    }
+
+    function closeModal(): void {
+        overlay.classList.remove("visible");
+        closePopovers();
+        draft = null;
+    }
+
+    function renderDraft(): void {
+        if (!draft) return;
+
+        const chips: string[] = [
+            `<span class="summary-chip"><b>Assigned to</b> ${escapeHtml(assigneeLabel(draft.assignee))}</span>`,
+            `<span class="summary-chip"><b>Due</b> ${draft.dueDate ? formatDateBadge(draft.dueDate) : "No due date"}</span>`,
+            `<span class="summary-chip"><b>Estimate</b> ${draft.estimateHours > 0 ? formatEstimate(draft.estimateHours) : "Not set"}</span>`,
+        ];
+        summary.innerHTML = chips.join("");
+
+        renderAssignControls();
+    }
+
+    function renderAssignControls(): void {
+        if (!draft) return;
+
+        document.querySelectorAll<HTMLButtonElement>("[data-assign-kind]").forEach((segment) => {
+            segment.classList.toggle("active", segment.dataset["assignKind"] === assignKind);
+        });
+
+        assigneeSelect.hidden = assignKind !== "team";
+        employeeList.hidden = assignKind !== "employees";
+
+        const assignee = draft.assignee;
+
+        assigneeSelect.innerHTML =
+            `<option value="">Choose a team…</option>` +
+            TEAMS.map((team) => `<option value="${team.id}">${escapeHtml(team.name)}</option>`).join("");
+        assigneeSelect.value = assignee?.kind === "team" ? assignee.teamId : "";
+
+        const ticked = assignee?.kind === "employees" ? assignee.employeeIds : [];
+        employeeList.innerHTML =
+            EMPLOYEES.length === 0
+                ? `<p class="employee-empty">No employees yet. Add them on Team Management.</p>`
+                : EMPLOYEES.map(
+                      (employee) => `
+            <label class="employee-option">
+              <input type="checkbox" value="${escapeHtml(employee.id)}" ${ticked.includes(employee.id) ? "checked" : ""} />
+              <span>${escapeHtml(employee.name)}</span>
+              <span class="employee-team">${escapeHtml(teamName(employee.teamId))}</span>
+            </label>`,
+                  ).join("");
+    }
+
+    function saveModal(): void {
+        if (!draft) return;
+
+        const title = titleInput.value.trim();
+        if (title.length < 2) {
+            errorText.textContent = "Give the task a name of at least 2 characters.";
+            titleInput.focus();
+            return;
+        }
+
+        draft.title = title;
+        draft.description = descriptionBox.value.trim();
+        draft.column = columnSelect.value as ColumnId;
+
+        const isNew = draft.id === "";
+        if (isNew) {
+            draft.id = `t${Date.now()}`;
+            tasks.push(draft);
+        } else {
+            const saved = draft;
+            tasks = tasks.map((task) => (task.id === saved.id ? saved : task));
+        }
+
+        saveTasks();
+        closeModal();
+        renderBoard();
+        renderTeamFilter();
+        showToast(isNew ? "Task created" : "Changes saved");
+    }
+
+    // ----- Delete (US11) -----
+    let deleteArmed = false;
+
+    function setDeleteArmed(armed: boolean): void {
+        deleteArmed = armed;
+        deleteBtn.textContent = armed ? "Click again to delete" : "Delete task";
+        deleteBtn.classList.toggle("armed", armed);
+    }
+
+    deleteBtn.addEventListener("click", () => {
+        if (!draft) return;
+        if (!deleteArmed) {
+            setDeleteArmed(true);
+            return;
+        }
+        const removedId = draft.id;
+        tasks = tasks.filter((task) => task.id !== removedId);
+        saveTasks();
+        closeModal();
+        renderBoard();
+        renderTeamFilter();
+        showToast("Task deleted");
+    });
+
+    deleteBtn.addEventListener("blur", () => setDeleteArmed(false));
+
+    // ----- Popovers -----
+    function closePopovers(): void {
+        overlay.querySelectorAll<HTMLElement>(".popover.visible").forEach((popover) => popover.classList.remove("visible"));
+    }
+
+    document.querySelectorAll<HTMLButtonElement>("[data-popover]").forEach((button) => {
+        button.addEventListener("click", (event: MouseEvent) => {
+            event.stopPropagation();
+            const popover = document.getElementById(button.dataset["popover"] ?? "");
+            if (!popover) return;
+            const wasOpen = popover.classList.contains("visible");
+            closePopovers();
+            if (!wasOpen) {
+                popover.classList.add("visible");
+                popover.querySelector<HTMLElement>("input, select")?.focus();
             }
         });
     });
-}
 
-/* =========================================================
-   Task Detail Modal (Admin) — with status, priority, due date,
-   assign-to, delete, and start sprint features (Sprint 2)
-   ========================================================= */
-
-let activeCard: CardData | null = null;
-
-function buildModal(): void {
-    const modalHtml = `
-    <div class="modal-overlay" id="task-modal-overlay">
-      <div class="modal">
-        <div class="modal-header">
-          <span class="modal-column-label">Edit card</span>
-          <div class="modal-header-icons">
-            <span class="modal-icon-btn modal-close" id="modal-close-btn" title="Close">✕</span>
-          </div>
-        </div>
-
-        <div class="modal-title-row">
-          <span class="modal-title-dot"></span>
-          <input class="modal-title-input" id="modal-task-title" type="text" value="" />
-        </div>
-
-        <div class="modal-section">
-          <h3>Description</h3>
-          <textarea class="modal-description" id="modal-description" placeholder="Add a more detailed description..."></textarea>
-        </div>
-
-        <div class="modal-section">
-          <h3>Status</h3>
-          <select id="modal-status">
-            <option value="Product Backlog">Product Backlog</option>
-            <option value="Sprint Backlog">Sprint Backlog</option>
-            <option value="In Progress">In Progress</option>
-            <option value="In Review">In Review</option>
-            <option value="Completed">Completed</option>
-          </select>
-        </div>
-
-        <div class="modal-section">
-          <h3>Priority</h3>
-          <select id="modal-priority">
-            <option value="Low">Low</option>
-            <option value="Medium">Medium</option>
-            <option value="High">High</option>
-            <option value="Urgent">Urgent</option>
-          </select>
-        </div>
-
-        <div class="modal-section">
-          <h3>Due date</h3>
-          <input type="date" id="modal-due-date" />
-        </div>
-
-        <div class="modal-section">
-          <h3>Assign to</h3>
-          <select id="modal-assignee">
-            <option value="">Unassigned</option>
-            <option value="team:Team Alpha">Team Alpha</option>
-            <option value="team:Team Beta">Team Beta</option>
-            <option value="user:Priya Nair">Priya Nair</option>
-            <option value="user:Daniel Wu">Daniel Wu</option>
-          </select>
-        </div>
-
-        <div class="modal-footer">
-          <button class="modal-delete-btn" id="modal-delete-btn" type="button">Delete</button>
-          <button class="modal-save-btn" id="modal-save-btn" type="button">Save</button>
-        </div>
-      </div>
-    </div>
-  `;
-
-    document.body.insertAdjacentHTML("beforeend", modalHtml);
-
-    const overlay = document.getElementById("task-modal-overlay") as HTMLElement;
-    const closeBtn = document.getElementById("modal-close-btn") as HTMLElement;
-    const saveBtn = document.getElementById("modal-save-btn") as HTMLButtonElement;
-    const deleteBtn = document.getElementById("modal-delete-btn") as HTMLButtonElement;
-
-    closeBtn.addEventListener("click", closeModal);
-    overlay.addEventListener("click", (event) => {
-        if (event.target === overlay) closeModal();
-    });
-    document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") closeModal();
+    overlay.querySelectorAll<HTMLElement>(".popover").forEach((popover) => {
+        popover.addEventListener("click", (event: MouseEvent) => event.stopPropagation());
     });
 
+    // ----- Due date (US15) -----
+    dueDateInput.addEventListener("change", () => {
+        if (!draft) return;
+        draft.dueDate = dueDateInput.value;
+        renderDraft();
+    });
+
+    requireElement<HTMLButtonElement>("dueDateClearBtn").addEventListener("click", () => {
+        if (!draft) return;
+        draft.dueDate = "";
+        dueDateInput.value = "";
+        renderDraft();
+    });
+
+    // ----- Estimate -----
+    estimateInput.addEventListener("input", () => {
+        if (!draft) return;
+        const hours = Number(estimateInput.value);
+        draft.estimateHours = Number.isFinite(hours) && hours > 0 ? hours : 0;
+        renderDraft();
+    });
+
+    requireElement<HTMLButtonElement>("estimateClearBtn").addEventListener("click", () => {
+        if (!draft) return;
+        draft.estimateHours = 0;
+        estimateInput.value = "";
+        renderDraft();
+    });
+
+    // ----- Assignee (US07) -----
+    document.querySelectorAll<HTMLButtonElement>("[data-assign-kind]").forEach((segment) => {
+        segment.addEventListener("click", () => {
+            assignKind = segment.dataset["assignKind"] === "employees" ? "employees" : "team";
+            renderAssignControls();
+        });
+    });
+
+    assigneeSelect.addEventListener("change", () => {
+        if (!draft) return;
+        draft.assignee = assigneeSelect.value ? { kind: "team", teamId: assigneeSelect.value } : null;
+        renderDraft();
+    });
+
+    employeeList.addEventListener("change", () => {
+        if (!draft) return;
+        const employeeIds = Array.from(employeeList.querySelectorAll<HTMLInputElement>("input:checked")).map(
+            (box) => box.value,
+        );
+        draft.assignee = employeeIds.length > 0 ? { kind: "employees", employeeIds } : null;
+        summary.querySelector(".summary-chip")!.innerHTML = `<b>Assigned to</b> ${escapeHtml(assigneeLabel(draft.assignee))}`;
+    });
+
+    requireElement<HTMLButtonElement>("unassignBtn").addEventListener("click", () => {
+        if (!draft) return;
+        draft.assignee = null;
+        renderDraft();
+    });
+
+    // ----- Open / close wiring -----
     saveBtn.addEventListener("click", saveModal);
-    deleteBtn.addEventListener("click", deleteActiveCard);
-}
+    titleInput.addEventListener("input", () => (errorText.textContent = ""));
+    titleInput.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (event.key === "Enter") saveModal();
+    });
+    requireElement<HTMLButtonElement>("modalCloseBtn").addEventListener("click", closeModal);
+    requireElement<HTMLButtonElement>("modalCancelBtn").addEventListener("click", closeModal);
 
-function openModal(card: CardData): void {
-    activeCard = card;
-
-    const overlay = document.getElementById("task-modal-overlay");
-    const titleInput = document.getElementById("modal-task-title") as HTMLInputElement;
-    const descriptionBox = document.getElementById("modal-description") as HTMLTextAreaElement;
-    const statusSelect = document.getElementById("modal-status") as HTMLSelectElement;
-    const prioritySelect = document.getElementById("modal-priority") as HTMLSelectElement;
-    const dueDateInput = document.getElementById("modal-due-date") as HTMLInputElement;
-    const assigneeSelect = document.getElementById("modal-assignee") as HTMLSelectElement;
-
-    if (titleInput) titleInput.value = card.title;
-    if (descriptionBox) descriptionBox.value = card.description ?? "";
-    if (statusSelect && card.status) statusSelect.value = card.status;
-    if (prioritySelect && card.detailed?.priority) prioritySelect.value = card.detailed.priority;
-    if (dueDateInput && card.dueDate) dueDateInput.value = card.dueDate;
-    if (assigneeSelect && card.assignee) assigneeSelect.value = card.assignee;
-
-    overlay?.classList.add("visible");
-}
-
-function saveModal(): void {
-    if (!activeCard) return;
-
-    const titleInput = document.getElementById("modal-task-title") as HTMLInputElement;
-    const descriptionBox = document.getElementById("modal-description") as HTMLTextAreaElement;
-    const statusSelect = document.getElementById("modal-status") as HTMLSelectElement;
-    const prioritySelect = document.getElementById("modal-priority") as HTMLSelectElement;
-    const dueDateInput = document.getElementById("modal-due-date") as HTMLInputElement;
-    const assigneeSelect = document.getElementById("modal-assignee") as HTMLSelectElement;
-
-    const title = titleInput.value.trim();
-    if (!title) {
-        alert("Title can't be empty.");
-        return;
-    }
-
-    activeCard.title = title;
-    activeCard.description = descriptionBox.value;
-    activeCard.status = statusSelect.value;
-    activeCard.dueDate = dueDateInput.value;
-    activeCard.assignee = assigneeSelect.value;
-    if (activeCard.detailed) {
-        activeCard.detailed.priority = prioritySelect.value as Priority;
-    }
-
-    // TODO: PATCH /api/tasks/:id once backend exists
-
-    activeCard = null;
-    document.getElementById("task-modal-overlay")?.classList.remove("visible");
-    renderBoard(currentSprintId);
-}
-
-function deleteActiveCard(): void {
-    if (!activeCard) return;
-    if (!confirm("Delete this task?")) return;
-
-    // TODO: DELETE /api/tasks/:id once backend exists
-
-    activeCard = null;
-    document.getElementById("task-modal-overlay")?.classList.remove("visible");
-    renderBoard(currentSprintId);
-}
-
-function closeModal(): void {
-    const overlay = document.getElementById("task-modal-overlay");
-    overlay?.classList.remove("visible");
-
-    activeCard = null;
-}
-
-// Add team switcher for admin (US09)
-function addTeamSwitcher(): void {
-    const headerRight = document.querySelector(".project-header-right");
-    if (!headerRight) return;
-
-    const switcher = document.createElement("select");
-    switcher.id = "adminTeamSwitcher";
-    switcher.className = "admin-team-switcher";
-    switcher.innerHTML = `
-        <option value="all">All Teams</option>
-        <option value="Team Alpha">Team Alpha</option>
-        <option value="Team Beta">Team Beta</option>
-        <option value="Team Gamma">Team Gamma</option>
-    `;
-
-    switcher.addEventListener("change", () => {
-        // TODO: fetch /api/tasks/board?team=...
-        renderBoard(currentSprintId);
+    overlay.addEventListener("click", (event: MouseEvent) => {
+        if (event.target === overlay) {
+            closeModal();
+        } else {
+            closePopovers();
+        }
     });
 
-    headerRight.insertBefore(switcher, headerRight.firstChild);
-}
+    document.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (event.key !== "Escape") return;
+        setTeamFilterOpen(false);
+        if (!overlay.classList.contains("visible")) return;
+        if (overlay.querySelector(".popover.visible")) {
+            closePopovers();
+        } else {
+            closeModal();
+        }
+    });
 
-// Add start sprint button (US23)
-function addStartSprintButton(): void {
-    const headerRight = document.querySelector(".project-header-right");
-    if (!headerRight) return;
+    // ===================== TOAST =====================
+    const toast = requireElement<HTMLDivElement>("toast");
+    let toastTimeoutId: number | undefined;
 
-    const btn = document.createElement("button");
-    btn.id = "startSprintBtn";
-    btn.className = "start-sprint-btn";
-    btn.textContent = "▶ Start Sprint";
+    function showToast(message: string): void {
+        toast.textContent = message;
+        toast.classList.add("visible");
 
-    btn.addEventListener("click", () => {
+        if (toastTimeoutId !== undefined) {
+            window.clearTimeout(toastTimeoutId);
+        }
+        toastTimeoutId = window.setTimeout(() => {
+            toast.classList.remove("visible");
+        }, 3000);
+    }
+
+    // ===================== PROJECT NAME =====================
+    const PROJECT_NAME_KEY = "symph.projectName";
+    const projectNameInput = requireElement<HTMLInputElement>("projectName");
+    let projectName = readSetting(PROJECT_NAME_KEY) || "Project Name";
+
+    function fitProjectName(): void {
+        const sizer = document.createElement("span");
+        sizer.className = "project-name-sizer";
+        sizer.textContent = projectNameInput.value || " ";
+        projectNameInput.parentElement?.appendChild(sizer);
+        projectNameInput.style.width = `${Math.ceil(sizer.getBoundingClientRect().width) + 26}px`;
+        sizer.remove();
+    }
+
+    function commitProjectName(): void {
+        const typed = projectNameInput.value.trim();
+        if (typed) {
+            projectName = typed;
+            writeSetting(PROJECT_NAME_KEY, projectName);
+        }
+        projectNameInput.value = projectName;
+        fitProjectName();
+    }
+
+    projectNameInput.addEventListener("input", fitProjectName);
+    projectNameInput.addEventListener("blur", commitProjectName);
+    projectNameInput.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (event.key === "Enter") {
+            projectNameInput.blur();
+        } else if (event.key === "Escape") {
+            projectNameInput.value = projectName;
+            projectNameInput.blur();
+        }
+    });
+
+    projectNameInput.value = projectName;
+    fitProjectName();
+    document.fonts?.ready.then(fitProjectName);
+
+    // ===================== SIDEBAR =====================
+    const SIDEBAR_KEY = "symph.sidebarCollapsed";
+    const appShell = requireElement<HTMLDivElement>("appShell");
+    const sidebarToggle = requireElement<HTMLButtonElement>("sidebarToggle");
+
+    function setSidebarCollapsed(collapsed: boolean): void {
+        appShell.classList.toggle("sidebar-collapsed", collapsed);
+        sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+        sidebarToggle.setAttribute("aria-label", collapsed ? "Expand menu" : "Collapse menu");
+        sidebarToggle.title = collapsed ? "Expand menu" : "Collapse menu";
+    }
+
+    sidebarToggle.addEventListener("click", () => {
+        const collapsed = !appShell.classList.contains("sidebar-collapsed");
+        setSidebarCollapsed(collapsed);
+        writeSetting(SIDEBAR_KEY, collapsed ? "1" : "0");
+    });
+
+    setSidebarCollapsed(readSetting(SIDEBAR_KEY) === "1");
+
+    // Switch Account clears session so the guard works properly.
+    requireElement<HTMLButtonElement>("switchAccountBtn").addEventListener("click", () => {
+        sessionStorage.clear();
+        window.location.href = "index-login-page.html";
+    });
+
+    // ===================== START SPRINT (from B / US23) =====================
+    const startSprintBtn = document.getElementById("startSprintBtn");
+    startSprintBtn?.addEventListener("click", () => {
         if (!confirm("Start the sprint now? Time tracking will begin.")) return;
         // TODO: POST /api/sprints/:id/start
-        alert("Sprint started");
+        showToast("Sprint started");
     });
 
-    headerRight.insertBefore(btn, headerRight.firstChild);
-}
-
-// ===================== INIT =====================
-
-buildModal();
-initSprintTabs();
-renderBoard(currentSprintId);
-addTeamSwitcher();
-addStartSprintButton();
+    // ===================== START =====================
+    initSprintTabs();
+    renderTeamFilter();
+    renderBoard();
+})();

@@ -2,72 +2,225 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Board</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symph — Admin Board</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style-admin-page.css"/>
+
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 </head>
 <body>
-<nav class="navbar">
-    <div class="logo">SYMPH</div>
-    <div class="search-bar">
-        <input type="text" placeholder="Search" />
-        <span class="search-icon">🔍</span>
-    </div>
-    <div class="navbar-icons">
-        <span>📢</span>
-        <span>🔔</span>
-        <span id="signedInName" style="font-size: 0.85rem; margin-right: 8px;">Admin</span>
-        <div class="avatar avatar-dark">U</div>
-        <button id="logoutBtn" class="logout-btn">Log out</button>
-    </div>
-</nav>
-
-<header class="project-header">
-    <div class="project-header-left">
-        <a href="index-sprint-board-page.html" class="back-btn" title="Back to Sprint Board">← Back</a>
-        <h1>Project Name</h1>
-        <span class="badge">Admin</span>
-    </div>
-    <div class="project-header-right">
-        <button class="start-sprint-btn" id="startSprintBtn">▶ Start Sprint</button>
-        <select id="adminTeamSwitcher" class="admin-team-switcher">
-            <option value="all">All Teams</option>
-            <option value="Team Alpha">Team Alpha</option>
-            <option value="Team Beta">Team Beta</option>
-            <option value="Team Gamma">Team Gamma</option>
-        </select>
-        <div class="avatar-stack">
-            <div class="avatar avatar-teal">T</div>
-            <div class="avatar avatar-pink">H</div>
-            <div class="avatar avatar-gray">B</div>
-            <span class="avatar-more">+2</span>
+<div class="app-shell" id="appShell">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-top">
+            <a class="logo" href="index-admin-page.html"><img src="images/symph-logo.png" alt="Symph" /></a>
+            <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Collapse menu" aria-expanded="true">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+            </button>
         </div>
-        <button class="share-btn">👤+ Share</button>
-        <span class="menu-dots">⋯</span>
-    </div>
-</header>
 
-<div class="sprint-tabs">
-    <button class="sprint-tab active" data-sprint="1">Sprint 1</button>
-    <button class="sprint-tab" data-sprint="2">Sprint 2</button>
-    <button class="sprint-tab" data-sprint="3">Sprint 3</button>
+        <nav class="nav">
+            <a href="index-admin-page.html" class="nav-item active" title="Sprint Board">
+                <span class="dot dot-active"></span> <span class="nav-label">Sprint Board</span>
+            </a>
+            <a href="index-sprint-planning-page.html" class="nav-item" title="Sprint Planning">
+                <span class="dot"></span> <span class="nav-label">Sprint Planning</span>
+            </a>
+            <a href="index-team-management-page.html" class="nav-item" title="Team Management">
+                <span class="dot"></span> <span class="nav-label">Team Management</span>
+            </a>
+            <a href="index-reports-page.html" class="nav-item" title="Reports">
+                <span class="dot"></span> <span class="nav-label">Reports</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="signed-in">Signed in as <strong id="signedInName">Admin</strong></div>
+            <button id="switchAccountBtn" class="switch-account-btn" type="button">Switch Account</button>
+        </div>
+    </aside>
+
+    <div class="app-main">
+        <nav class="navbar">
+            <div class="search-bar">
+                <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/>
+                </svg>
+                <input type="text" id="searchInput" placeholder="Search" aria-label="Search tasks" />
+                <!-- US09: admin switches between every team's board from here -->
+                <div class="team-filter">
+                    <button id="teamFilterBtn" class="team-filter-btn" type="button" aria-haspopup="true"
+                            aria-expanded="false" title="Choose which team's board to view">
+                        <span id="teamFilterLabel">All teams</span>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M3 6h18M3 12h18M3 18h18"/>
+                            <circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="14" cy="18" r="2"/>
+                        </svg>
+                    </button>
+                    <div class="popover team-filter-menu" id="teamFilterMenu" role="menu"></div>
+                </div>
+            </div>
+            <div class="navbar-icons">
+                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 10v4h3l8 5V5L6 10H3z"/><path d="M17.5 9.5a4 4 0 010 5M20 7a8 8 0 010 10"/>
+                </svg>
+                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 17V11a6 6 0 0112 0v6l2 2H4l2-2z"/><path d="M10 21h4"/>
+                </svg>
+                <div class="avatar avatar-dark">U</div>
+                <button id="logoutBtn" class="logout-btn" type="button">Log out</button>
+            </div>
+        </nav>
+
+        <header class="project-header">
+            <div class="project-header-left">
+                <h1 class="project-name">
+                    <input id="projectName" class="project-name-input" type="text" value="Project Name"
+                           maxlength="40" aria-label="Project name (click to rename)" title="Click to rename" />
+                </h1>
+                <span class="badge">Admin</span>
+            </div>
+            <div class="project-header-right">
+                <button class="start-sprint-btn" id="startSprintBtn" type="button">▶ Start Sprint</button>
+                <div class="avatar-stack">
+                    <div class="avatar avatar-teal">T</div>
+                    <div class="avatar avatar-pink">H</div>
+                    <div class="avatar avatar-gray">B</div>
+                    <span class="avatar-more">+2</span>
+                </div>
+                <button class="share-btn" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="10" cy="8" r="4"/><path d="M3 20c0-3.5 3-6 7-6s7 2.5 7 6M19 8v6M16 11h6"/>
+                    </svg>
+                    Share
+                </button>
+                <span class="menu-dots">⋯</span>
+            </div>
+        </header>
+
+        <div class="board-controls">
+            <div class="sprint-tabs">
+                <button class="sprint-tab active" data-sprint="1" type="button">Sprint 1</button>
+                <button class="sprint-tab" data-sprint="2" type="button">Sprint 2</button>
+                <button class="sprint-tab" data-sprint="3" type="button">Sprint 3</button>
+            </div>
+        </div>
+
+        <main class="board" id="board"></main>
+    </div>
 </div>
 
-<main class="board" id="board"></main>
+<!-- ===================== MODAL: Create / edit task (US07, US10, US11, US15) ===================== -->
+<div class="modal-overlay" id="taskModalOverlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Task details">
+        <div class="modal-header">
+            <select class="pill pill-select" id="modalColumn" aria-label="Column">
+                <option value="PRODUCT_BACKLOG">Product Backlog</option>
+                <option value="TO_DO">To Do</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="IN_REVIEW">In Review</option>
+                <option value="COMPLETED">Completed</option>
+            </select>
+            <div class="modal-header-icons">
+                <span class="modal-dots">⋯</span>
+                <button class="modal-close" id="modalCloseBtn" type="button" aria-label="Close">✕</button>
+            </div>
+        </div>
 
+        <div class="modal-body">
+            <div class="modal-title-row">
+                <span class="modal-title-dot"></span>
+                <input class="modal-title-input" id="modalTitle" type="text" placeholder="Task Name"
+                       maxlength="200" aria-label="Task name" />
+            </div>
+            <p class="modal-error" id="modalError" role="alert"></p>
+
+            <div class="modal-toolbar">
+                <div class="toolbar-group">
+                    <div class="pill-wrap">
+                        <button class="pill" type="button" data-popover="datePopover">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+                            Dates
+                        </button>
+                        <div class="popover" id="datePopover">
+                            <label class="popover-label" for="dueDateInput">Due date</label>
+                            <div class="popover-row">
+                                <input type="date" id="dueDateInput" />
+                                <button class="popover-btn popover-btn-quiet" id="dueDateClearBtn" type="button">Clear</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pill-wrap">
+                        <button class="pill" type="button" data-popover="estimatePopover">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="7.5"/><path d="M12 9v4l2.5 2M9.5 3h5"/></svg>
+                            Estimate
+                        </button>
+                        <div class="popover" id="estimatePopover">
+                            <label class="popover-label" for="estimateInput">Estimate (hours)</label>
+                            <div class="popover-row">
+                                <input type="number" id="estimateInput" min="0" max="999" step="0.5" placeholder="0" />
+                                <button class="popover-btn popover-btn-quiet" id="estimateClearBtn" type="button">Clear</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pill-wrap">
+                        <button class="pill" type="button" data-popover="membersPopover">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"/></svg>
+                            Members
+                        </button>
+                        <div class="popover popover-wide" id="membersPopover">
+                            <span class="popover-label">Assign this task to</span>
+                            <div class="segmented" role="group" aria-label="Assign to a team or to employees">
+                                <button type="button" class="segment" data-assign-kind="team">A team</button>
+                                <button type="button" class="segment" data-assign-kind="employees">Employees</button>
+                            </div>
+                            <select id="assigneeSelect" aria-label="Team"></select>
+                            <div id="employeeList" class="employee-list" role="group" aria-label="Employees" hidden></div>
+                            <button class="popover-btn popover-btn-quiet" id="unassignBtn" type="button">Unassign</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-summary" id="modalSummary"></div>
+
+            <section class="modal-section">
+                <h3>Description</h3>
+                <textarea class="modal-description" id="modalDescription" maxlength="2000"
+                          placeholder="Add a more detailed description..."></textarea>
+            </section>
+
+            <div class="modal-footer">
+                <button class="modal-delete-btn" id="modalDeleteBtn" type="button">Delete task</button>
+                <button class="modal-cancel-btn" id="modalCancelBtn" type="button">Cancel</button>
+                <button class="modal-save-btn" id="modalSaveBtn" type="button">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== MODAL: Logout ===================== -->
 <div class="modal-overlay" id="logoutOverlay">
     <div class="modal modal-narrow" role="dialog" aria-modal="true">
         <h2 class="modal-title">Log out?</h2>
         <p class="modal-subtitle">You'll be returned to the login page.</p>
         <div class="modal-actions">
-            <button id="cancelLogoutBtn" class="btn-secondary">Cancel</button>
-            <button id="confirmLogoutBtn" class="btn-danger">Log out</button>
+            <button id="cancelLogoutBtn" class="btn-secondary" type="button">Cancel</button>
+            <button id="confirmLogoutBtn" class="btn-danger" type="button">Log out</button>
         </div>
     </div>
 </div>
 
-<script type="module" src="main-admin-page.js" defer></script>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="main-admin-page.js" defer></script>
 </body>
 </html>
