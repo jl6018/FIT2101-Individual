@@ -54,8 +54,7 @@ public class TeamService {
         return teamRepository.save(team);
     }
 
-    // ✅ NEW: Add a member by team NAME (auto-creates team if it doesn't exist)
-    public Team addMemberByName(String teamName, Long userId) {
+    public Team addMemberByName(String teamName, Long userId, String jobTitle) {
         Team team = teamRepository.findByName(teamName)
                 .orElseGet(() -> {
                     Team t = new Team();
@@ -65,6 +64,11 @@ public class TeamService {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // ✅ Save job title to the user
+        if (jobTitle != null && !jobTitle.isBlank()) {
+            user.setJobTitle(jobTitle);
+        }
 
         if (!team.getMembers().contains(user)) {
             team.getMembers().add(user);

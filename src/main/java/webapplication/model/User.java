@@ -33,7 +33,10 @@ public class User {
     @Pattern(regexp = "ADMIN|EMPLOYEE", message = "Role must be ADMIN or EMPLOYEE")
     private String role;
 
-    // ✅ @JsonIgnore prevents infinite recursion when serializing
+    // ✅ NEW: Job title (optional)
+    @Column(name = "job_title", length = 100)
+    private String jobTitle;
+
     @ManyToOne
     @JoinColumn(name = "team_id")
     @JsonIgnore
@@ -63,6 +66,10 @@ public class User {
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+
+    // ✅ NEW getter/setter
+    public String getJobTitle() { return jobTitle; }
+    public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }
 
     public Team getTeam() { return team; }
     public void setTeam(Team team) { this.team = team; }

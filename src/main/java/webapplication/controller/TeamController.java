@@ -5,6 +5,7 @@ import webapplication.service.TeamService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/teams")
@@ -42,8 +43,11 @@ public class TeamController {
     @PostMapping("/by-name/{teamName}/members/{userId}")
     public Team addMemberByName(
             @PathVariable String teamName,
-            @PathVariable Long userId) {
-        return teamService.addMemberByName(teamName, userId);
+            @PathVariable Long userId,
+            @RequestBody(required = false) Map<String, String> body) {
+
+        String jobTitle = (body != null) ? body.get("jobTitle") : null;
+        return teamService.addMemberByName(teamName, userId, jobTitle);
     }
 
     @DeleteMapping("/{teamId}/members/{userId}")
