@@ -34,35 +34,56 @@ public class TeamService {
         return teamRepository.save(team);
     }
 
-    // ✅ ADDED: To change the team name
     public Team updateTeam(Long id, Team teamDetails) {
         Team team = getTeamById(id);
         team.setName(teamDetails.getName());
         return teamRepository.save(team);
     }
 
-    // ✅ EXISTING: To add a member
     public Team addMember(Long teamId, Long userId) {
-
         Team team = getTeamById(teamId);
-
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        team.getMembers().add(user);
+        if (!team.getMembers().contains(user)) {
+            team.getMembers().add(user);
+        }
+        user.setTeam(team);
+        userRepository.save(user);
 
         return teamRepository.save(team);
     }
 
-    // ✅ ADDED: To remove a member (Week 4 requirement)
-    public Team removeMember(Long teamId, Long userId) {
-
-        Team team = getTeamById(teamId);
+    // ✅ NEW: Add a member by team NAME (auto-creates team if it doesn't exist)
+    public Team addMemberByName(String teamName, Long userId) {
+        Team team = teamRepository.findByName(teamName)
+                .orElseGet(() -> {
+                    Team t = new Team();
+                    t.setName(teamName);
+                    return teamRepository.save(t);
+                });
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        if (!team.getMembers().contains(user)) {
+            team.getMembers().add(user);
+        }
+        user.setTeam(team);
+        userRepository.save(user);
+
+        return teamRepository.save(team);
+    }
+
+    // ✅ UPDATED: Remove member also clears user.team
+    public Team removeMember(Long teamId, Long userId) {
+        Team team = getTeamById(teamId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         team.getMembers().remove(user);
+        user.setTeam(null);
+        userRepository.save(user);
 
         return teamRepository.save(team);
     }

@@ -36,15 +36,20 @@ public class TeamController {
     public Team addMember(
             @PathVariable Long teamId,
             @PathVariable Long userId) {
-
         return teamService.addMember(teamId, userId);
+    }
+
+    @PostMapping("/by-name/{teamName}/members/{userId}")
+    public Team addMemberByName(
+            @PathVariable String teamName,
+            @PathVariable Long userId) {
+        return teamService.addMemberByName(teamName, userId);
     }
 
     @DeleteMapping("/{teamId}/members/{userId}")
     public Team removeMember(
             @PathVariable Long teamId,
             @PathVariable Long userId) {
-
         return teamService.removeMember(teamId, userId);
     }
 
