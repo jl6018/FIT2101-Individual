@@ -11,6 +11,15 @@ if (sessionStorage.getItem('loggedIn') !== 'true') {
     throw new Error('Not logged in');
 }
 
+const nameEl = document.getElementById('signedInName');
+if (nameEl) {
+    const name = sessionStorage.getItem('name');
+    const role = sessionStorage.getItem('role');
+    if (name) {
+        nameEl.textContent = role === 'ADMIN' ? `${name} (Admin)` : name;
+    }
+}
+
 function requireElement(id) {
     const el = document.getElementById(id);
     if (!el) {
@@ -19,33 +28,20 @@ function requireElement(id) {
     return el;
 }
 
-// ===================== LOGOUT (MODAL) =====================
-
 const logoutBtn = requireElement('logoutBtn');
 const logoutOverlay = requireElement('logoutOverlay');
 const cancelLogoutBtn = requireElement('cancelLogoutBtn');
 const confirmLogoutBtn = requireElement('confirmLogoutBtn');
 
-logoutBtn.addEventListener('click', () => {
-    logoutOverlay.classList.add('visible');
-});
-
-cancelLogoutBtn.addEventListener('click', () => {
-    logoutOverlay.classList.remove('visible');
-});
-
+logoutBtn.addEventListener('click', () => logoutOverlay.classList.add('visible'));
+cancelLogoutBtn.addEventListener('click', () => logoutOverlay.classList.remove('visible'));
 confirmLogoutBtn.addEventListener('click', () => {
     sessionStorage.clear();
     window.location.href = 'index-login-page.html';
 });
-
 logoutOverlay.addEventListener('click', (e) => {
-    if (e.target === logoutOverlay) {
-        logoutOverlay.classList.remove('visible');
-    }
+    if (e.target === logoutOverlay) logoutOverlay.classList.remove('visible');
 });
-
-// ===================== ELEMENTS =====================
 
 const addMemberBtn = requireElement('addMemberBtn');
 const inviteProductOwnerBtn = requireElement('inviteProductOwnerBtn');
@@ -69,13 +65,8 @@ const toast = requireElement('toast');
 let rowPendingRemoval = null;
 let registeredUsers = [];
 
-function openModal(overlay) {
-    overlay.classList.add('visible');
-}
-
-function closeModal(overlay) {
-    overlay.classList.remove('visible');
-}
+function openModal(overlay) { overlay.classList.add('visible'); }
+function closeModal(overlay) { overlay.classList.remove('visible'); }
 
 addMemberBtn.addEventListener('click', () => openModal(addMemberOverlay));
 closeAddMemberBtn.addEventListener('click', () => closeModal(addMemberOverlay));
@@ -84,26 +75,19 @@ closeInviteBtn.addEventListener('click', () => closeModal(inviteOverlay));
 
 [addMemberOverlay, inviteOverlay, removeMemberOverlay].forEach((overlay) => {
     overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
-            closeModal(overlay);
-        }
+        if (e.target === overlay) closeModal(overlay);
     });
 });
 
 let toastTimeoutId;
-
 function showToast(message) {
     toast.textContent = message;
     toast.classList.add('visible');
-    if (toastTimeoutId !== undefined) {
-        window.clearTimeout(toastTimeoutId);
-    }
+    if (toastTimeoutId !== undefined) window.clearTimeout(toastTimeoutId);
     toastTimeoutId = window.setTimeout(() => {
         toast.classList.remove('visible');
     }, 3000);
 }
-
-// ===================== LOAD USERS =====================
 
 async function loadMembers() {
     try {
@@ -124,8 +108,6 @@ async function loadMembers() {
         console.error('Failed to load members:', err);
     }
 }
-
-// ===================== LOAD TEAM MEMBERSHIPS =====================
 
 async function loadTeamMemberships() {
     try {
@@ -155,24 +137,18 @@ async function loadTeamMemberships() {
     }
 }
 
-// ===================== ADD MEMBER =====================
-
 addMemberForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const userId = memberUserSelect.value;
     const team = memberTeamSelect.value;
 
-    if (!userId) {
-        alert('Please select a user.');
-        return;
-    }
+    if (!userId) { alert('Please select a user.'); return; }
 
     const user = registeredUsers.find((u) => u.id == userId);
     if (!user) return;
 
     try {
-        // ✅ Save to backend FIRST
         const res = await fetch(`/api/teams/by-name/${encodeURIComponent(team)}/members/${userId}`, {
             method: 'POST',
         });
@@ -182,7 +158,6 @@ addMemberForm.addEventListener('submit', async (e) => {
             throw new Error(msg || 'Failed to add member');
         }
 
-        // Then update HTML
         const existingRow = membersBody.querySelector(`tr[data-id="${userId}"]`);
         if (existingRow) {
             existingRow.dataset.team = team;
@@ -210,16 +185,11 @@ addMemberForm.addEventListener('submit', async (e) => {
     }
 });
 
-// ===================== INVITE PRODUCT OWNER =====================
-
 inviteForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const email = ownerEmailInput.value.trim();
-    if (!email) {
-        alert('Please enter an email address.');
-        return;
-    }
+    if (!email) { alert('Please enter an email address.'); return; }
 
     try {
         const res = await fetch('/api/invites', {
@@ -251,8 +221,6 @@ inviteForm.addEventListener('submit', async (e) => {
     }
 });
 
-// ===================== REMOVE MEMBER =====================
-
 membersBody.addEventListener('click', (e) => {
     const target = e.target;
     if (!target.classList.contains('remove-btn')) return;
@@ -282,7 +250,6 @@ confirmRemoveBtn.addEventListener('click', async () => {
     const teamName = rowPendingRemoval.dataset.team;
 
     try {
-        // ✅ Save to backend FIRST
         if (userId && teamName) {
             const teamsRes = await fetch('/api/teams');
             const teams = await teamsRes.json();
@@ -309,8 +276,6 @@ confirmRemoveBtn.addEventListener('click', async () => {
         alert('Remove failed: ' + message);
     }
 });
-
-// ===================== INIT =====================
 
 loadMembers();
 loadTeamMemberships();

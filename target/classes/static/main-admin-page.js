@@ -15,6 +15,17 @@ if (sessionStorage.getItem('role') !== 'ADMIN') {
 }
 // ===================== END GUARD =====================
 
+// ===================== SHOW CURRENT USER =====================
+const nameEl = document.getElementById('signedInName');
+if (nameEl) {
+    const name = sessionStorage.getItem('name');
+    const role = sessionStorage.getItem('role');
+    if (name) {
+        nameEl.textContent = role === 'ADMIN' ? `${name} (Admin)` : name;
+    }
+}
+// ===================== END SHOW CURRENT USER =====================
+
 // ===================== LOGOUT MODAL =====================
 const logoutBtn = document.getElementById('logoutBtn');
 const logoutOverlay = document.getElementById('logoutOverlay');
