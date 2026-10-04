@@ -18,6 +18,12 @@ public class TimeLogController {
         this.timeLogService = timeLogService;
     }
 
+    // ✅ NEW — handles GET /api/timelogs (for Reports page)
+    @GetMapping
+    public List<TimeLog> getAllTimeLogs() {
+        return timeLogService.getAllTimeLogs();
+    }
+
     @PostMapping
     public TimeLog logHours(@RequestBody TimeLog timeLog) {
         return timeLogService.logHours(timeLog);

@@ -16,6 +16,11 @@ public class TimeLogService {
         this.timeLogRepository = timeLogRepository;
     }
 
+    // ✅ NEW — returns all time logs (for Reports page)
+    public List<TimeLog> getAllTimeLogs() {
+        return timeLogRepository.findAll();
+    }
+
     public TimeLog logHours(TimeLog timeLog) {
         return timeLogRepository.save(timeLog);
     }
