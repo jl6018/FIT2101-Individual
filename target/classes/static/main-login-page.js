@@ -85,7 +85,7 @@ form.addEventListener('submit', async (e) => {
         // ============================================================
 
         if (data.role === 'ADMIN') {
-            window.location.href = 'index-sprint-planning-page.html';
+            window.location.href = 'index-sprint-board-page.html';
         } else {
             window.location.href = 'index-user-page.html';
         }

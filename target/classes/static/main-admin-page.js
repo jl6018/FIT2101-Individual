@@ -15,12 +15,20 @@ if (sessionStorage.getItem('role') !== 'ADMIN') {
 }
 // ===================== END GUARD =====================
 
-// ===================== LOGOUT =====================
-document.getElementById('logoutBtn')?.addEventListener('click', () => {
-    if (confirm('Log out?')) {
-        sessionStorage.clear();
-        window.location.href = 'index-login-page.html';
-    }
+// ===================== LOGOUT MODAL =====================
+const logoutBtn = document.getElementById('logoutBtn');
+const logoutOverlay = document.getElementById('logoutOverlay');
+const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+
+logoutBtn?.addEventListener('click', () => logoutOverlay?.classList.add('visible'));
+cancelLogoutBtn?.addEventListener('click', () => logoutOverlay?.classList.remove('visible'));
+confirmLogoutBtn?.addEventListener('click', () => {
+    sessionStorage.clear();
+    window.location.href = 'index-login-page.html';
+});
+logoutOverlay?.addEventListener('click', (e) => {
+    if (e.target === logoutOverlay) logoutOverlay.classList.remove('visible');
 });
 // ===================== END LOGOUT =====================
 
