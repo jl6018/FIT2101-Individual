@@ -2,6 +2,29 @@
 // Compile with:
 //   tsc main-reports-page.ts --module esnext --target esnext --strict --ignoreConfig
 
+// ===================== BFCACHE FIX (from B) =====================
+window.addEventListener('pageshow', (event) => {
+    if ((event as PageTransitionEvent).persisted && sessionStorage.getItem('loggedIn') !== 'true') {
+        window.location.href = 'index-login-page.html';
+    }
+});
+
+// ===================== AUTH GUARD (from B) =====================
+if (sessionStorage.getItem('loggedIn') !== 'true') {
+    window.location.href = 'index-login-page.html';
+    throw new Error('Not logged in');
+}
+
+// ===================== SHOW CURRENT USER (from B) =====================
+const nameEl = document.getElementById('signedInName');
+if (nameEl) {
+    const name = sessionStorage.getItem('name');
+    const role = sessionStorage.getItem('role');
+    if (name) {
+        nameEl.textContent = role === 'ADMIN' ? `${name} (Admin)` : name;
+    }
+}
+
 function requireElement<T extends Element>(id: string): T {
     const el = document.getElementById(id);
     if (!el) {
@@ -11,7 +34,6 @@ function requireElement<T extends Element>(id: string): T {
 }
 
 // ===================== DATA TYPES =====================
-
 interface TeamMember {
     name: string;
     team: string;
@@ -42,12 +64,10 @@ interface ApiUser {
 }
 
 // ===================== STATE =====================
-
 let TEAM_MEMBERS: TeamMember[] = [];
 let SESSIONS: LoggedSession[] = [];
 
-// ===================== BACKEND LOADERS =====================
-
+// ===================== BACKEND LOADERS (from B) =====================
 async function loadTeamMembers(): Promise<void> {
     try {
         const res = await fetch('/api/users');
@@ -86,8 +106,7 @@ async function loadSessions(): Promise<void> {
             daysAgo: Math.max(
                 0,
                 Math.floor(
-                    (Date.now() - new Date(log.date).getTime()) /
-                        (1000 * 60 * 60 * 24)
+                    (Date.now() - new Date(log.date).getTime()) / (1000 * 60 * 60 * 24)
                 )
             ),
         }));
@@ -98,7 +117,6 @@ async function loadSessions(): Promise<void> {
 }
 
 // ===================== STATIC DATA (task hours + burndown) =====================
-
 const TASK_HOURS: { label: string; hours: number }[] = [
     { label: 'Design', hours: 0 },
     { label: 'Build', hours: 5.5 },
@@ -113,7 +131,6 @@ const BURNDOWN_PROJECTED = [80, 71, 62, 53, 44, 35, 26, 20];
 const BURNDOWN_ACTUAL = [80, 73, 65, 60, 62, 55, 48, 45];
 
 // ===================== ELEMENTS =====================
-
 const timeRangeRow = requireElement<HTMLDivElement>('timeRangeRow');
 const contributionTitle = requireElement<HTMLHeadingElement>('contributionTitle');
 const contributionBody = requireElement<HTMLTableSectionElement>('contributionBody');
@@ -128,48 +145,38 @@ const memberChartWrap = requireElement<HTMLDivElement>('memberChartWrap');
 const memberEmptyState = requireElement<HTMLParagraphElement>('memberEmptyState');
 const memberModalTotal = requireElement<HTMLParagraphElement>('memberModalTotal');
 
-const switchAccountBtn = requireElement<HTMLButtonElement>('switchAccountBtn');
-const switchAccountOverlay = requireElement<HTMLDivElement>('switchAccountOverlay');
-const closeSwitchAccountBtn = requireElement<HTMLButtonElement>('closeSwitchAccountBtn');
-const accountList = requireElement<HTMLUListElement>('accountList');
+const logoutBtn = requireElement<HTMLButtonElement>('logoutBtn');
+const logoutOverlay = requireElement<HTMLDivElement>('logoutOverlay');
+const cancelLogoutBtn = requireElement<HTMLButtonElement>('cancelLogoutBtn');
+const confirmLogoutBtn = requireElement<HTMLButtonElement>('confirmLogoutBtn');
 
 let selectedWeeks = 2;
 
 // ===================== MODAL OPEN/CLOSE =====================
-
 function openModal(overlay: HTMLDivElement): void {
     overlay.classList.add('visible');
 }
-
 function closeModal(overlay: HTMLDivElement): void {
     overlay.classList.remove('visible');
 }
 
 closeMemberModalBtn.addEventListener('click', () => closeModal(memberOverlay));
 memberOverlay.addEventListener('click', (e: MouseEvent) => {
-    if (e.target === memberOverlay) {
-        closeModal(memberOverlay);
-    }
+    if (e.target === memberOverlay) closeModal(memberOverlay);
 });
 
-switchAccountBtn.addEventListener('click', () => openModal(switchAccountOverlay));
-closeSwitchAccountBtn.addEventListener('click', () => closeModal(switchAccountOverlay));
-switchAccountOverlay.addEventListener('click', (e: MouseEvent) => {
-    if (e.target === switchAccountOverlay) {
-        closeModal(switchAccountOverlay);
-    }
+// Logout modal (from B)
+logoutBtn.addEventListener('click', () => logoutOverlay.classList.add('visible'));
+cancelLogoutBtn.addEventListener('click', () => logoutOverlay.classList.remove('visible'));
+confirmLogoutBtn.addEventListener('click', () => {
+    sessionStorage.clear();
+    window.location.href = 'index-login-page.html';
 });
-
-accountList.querySelectorAll<HTMLLIElement>('.account-row').forEach((row) => {
-    row.addEventListener('click', () => {
-        const name = row.dataset['name'] ?? 'Unknown';
-        closeModal(switchAccountOverlay);
-        alert(`Switched to ${name}`);
-    });
+logoutOverlay.addEventListener('click', (e: MouseEvent) => {
+    if (e.target === logoutOverlay) logoutOverlay.classList.remove('visible');
 });
 
 // ===================== TIME RANGE =====================
-
 timeRangeRow.querySelectorAll<HTMLButtonElement>('.range-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
         const weeks = Number(btn.dataset['weeks']);
@@ -185,7 +192,6 @@ timeRangeRow.querySelectorAll<HTMLButtonElement>('.range-btn').forEach((btn) => 
 });
 
 // ===================== CONTRIBUTION TABLE =====================
-
 interface MemberStats {
     totalHours: number;
     daysWorked: number;
@@ -278,7 +284,6 @@ function openMemberModal(member: TeamMember, maxDaysAgo: number): void {
 }
 
 // ===================== HOURS PER TASK CHART =====================
-
 const TASK_BAR_COLORS = ['#8B5FBF', '#8B5FBF', '#F5C518', '#F5C518', '#F06478', '#F06478', '#2ED4C6'];
 
 function renderTaskHoursChart(): void {
@@ -302,7 +307,6 @@ function renderTaskHoursChart(): void {
 }
 
 // ===================== BURNDOWN CHART (SVG) =====================
-
 function renderBurndownChart(): void {
     const width = 600;
     const height = 260;
@@ -380,7 +384,6 @@ function renderBurndownChart(): void {
 }
 
 // ===================== INIT =====================
-
 async function init(): Promise<void> {
     await loadTeamMembers();
     await loadSessions();

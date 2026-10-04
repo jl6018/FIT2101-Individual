@@ -4,6 +4,8 @@ window.addEventListener('pageshow', (event) => {
     }
 });
 
+"use strict";
+
 if (sessionStorage.getItem('loggedIn') !== 'true') {
     window.location.href = 'index-login-page.html';
     throw new Error('Not logged in');
@@ -18,39 +20,41 @@ if (nameEl) {
     }
 }
 
-const logoutBtn = document.getElementById('logoutBtn');
-const logoutOverlay = document.getElementById('logoutOverlay');
-const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
-const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
-
-logoutBtn?.addEventListener('click', () => logoutOverlay.classList.add('visible'));
-cancelLogoutBtn?.addEventListener('click', () => logoutOverlay.classList.remove('visible'));
-confirmLogoutBtn?.addEventListener('click', () => {
-    sessionStorage.clear();
-    window.location.href = 'index-login-page.html';
-});
-logoutOverlay?.addEventListener('click', (e) => {
-    if (e.target === logoutOverlay) logoutOverlay.classList.remove('visible');
-});
-
 function requireElement(id) {
     const el = document.getElementById(id);
     if (!el) {
-        throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
+        throw new Error(`Missing element: ${id}`);
     }
     return el;
 }
 
-// ===================== AUTOMATIC AVATAR COLOR =====================
+// ===================== LOGOUT MODAL =====================
+const logoutBtn = requireElement('logoutBtn');
+const logoutOverlay = requireElement('logoutOverlay');
+const cancelLogoutBtn = requireElement('cancelLogoutBtn');
+const confirmLogoutBtn = requireElement('confirmLogoutBtn');
+
+logoutBtn.addEventListener('click', () => logoutOverlay.classList.add('visible'));
+cancelLogoutBtn.addEventListener('click', () => logoutOverlay.classList.remove('visible'));
+confirmLogoutBtn.addEventListener('click', () => {
+    sessionStorage.clear();
+    window.location.href = 'index-login-page.html';
+});
+logoutOverlay.addEventListener('click', (e) => {
+    if (e.target === logoutOverlay) logoutOverlay.classList.remove('visible');
+});
+
+// ===================== AVATAR COLOR =====================
 function getAvatarColor(index) {
     const hue = (index * 137) % 360;
     return `hsl(${hue}, 65%, 55%)`;
 }
-// ===================== END AVATAR COLOR =====================
 
+// ===================== STATE =====================
 let TEAM_MEMBERS = [];
 let SESSIONS = [];
 
+// ===================== BACKEND LOADERS =====================
 async function loadTeamMembers() {
     try {
         const res = await fetch('/api/users');
@@ -90,6 +94,7 @@ async function loadSessions() {
     }
 }
 
+// ===================== STATIC CHART DATA =====================
 const TASK_HOURS = [
     { label: 'Design', hours: 0 },
     { label: 'Build', hours: 5.5 },
@@ -102,6 +107,7 @@ const TASK_HOURS = [
 const BURNDOWN_PROJECTED = [80, 71, 62, 53, 44, 35, 26, 20];
 const BURNDOWN_ACTUAL = [80, 73, 65, 60, 62, 55, 48, 45];
 
+// ===================== ELEMENTS =====================
 const timeRangeRow = requireElement('timeRangeRow');
 const contributionTitle = requireElement('contributionTitle');
 const contributionBody = requireElement('contributionBody');
@@ -117,6 +123,7 @@ const memberModalTotal = requireElement('memberModalTotal');
 
 let selectedWeeks = 2;
 
+// ===================== MODAL OPEN/CLOSE =====================
 function openModal(overlay) { overlay.classList.add('visible'); }
 function closeModal(overlay) { overlay.classList.remove('visible'); }
 
@@ -125,6 +132,7 @@ memberOverlay.addEventListener('click', (e) => {
     if (e.target === memberOverlay) closeModal(memberOverlay);
 });
 
+// ===================== TIME RANGE =====================
 timeRangeRow.querySelectorAll('.range-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
         const weeks = Number(btn.dataset['weeks']);
@@ -135,6 +143,7 @@ timeRangeRow.querySelectorAll('.range-btn').forEach((btn) => {
     });
 });
 
+// ===================== CONTRIBUTION TABLE =====================
 function computeStats(memberName, maxDaysAgo) {
     const sessions = SESSIONS.filter((s) => s.member === memberName && s.daysAgo < maxDaysAgo);
     const totalHours = sessions.reduce((sum, s) => sum + s.hours, 0);
@@ -155,7 +164,6 @@ function renderContributionTable() {
         row.className = 'member-row-clickable';
         row.dataset['member'] = member.name;
 
-        // ✅ Auto-generate color per member using the index
         const avatarColor = getAvatarColor(index);
 
         row.innerHTML = `
@@ -209,6 +217,7 @@ function openMemberModal(member, maxDaysAgo) {
     openModal(memberOverlay);
 }
 
+// ===================== TASK HOURS CHART =====================
 const TASK_BAR_COLORS = ['#8B5FBF', '#8B5FBF', '#F5C518', '#F5C518', '#F06478', '#F06478', '#2ED4C6'];
 
 function renderTaskHoursChart() {
@@ -228,6 +237,7 @@ function renderTaskHoursChart() {
     });
 }
 
+// ===================== BURNDOWN =====================
 function renderBurndownChart() {
     const width = 600, height = 260;
     const paddingLeft = 40, paddingBottom = 30, paddingTop = 10;
@@ -265,6 +275,22 @@ function renderBurndownChart() {
     axisX.setAttribute('stroke', '#D1D5DB');
     burndownChart.appendChild(axisX);
 
+    const yLabel = document.createElementNS(svgNS, 'text');
+    yLabel.setAttribute('x', '4');
+    yLabel.setAttribute('y', '12');
+    yLabel.setAttribute('font-size', '11');
+    yLabel.setAttribute('fill', '#6B7280');
+    yLabel.textContent = 'Story pts';
+    burndownChart.appendChild(yLabel);
+
+    const xLabel = document.createElementNS(svgNS, 'text');
+    xLabel.setAttribute('x', String(width - 45));
+    xLabel.setAttribute('y', String(height - 8));
+    xLabel.setAttribute('font-size', '11');
+    xLabel.setAttribute('fill', '#6B7280');
+    xLabel.textContent = 'Days';
+    burndownChart.appendChild(xLabel);
+
     const projectedLine = document.createElementNS(svgNS, 'polyline');
     projectedLine.setAttribute('points', projectedPoints);
     projectedLine.setAttribute('fill', 'none');
@@ -281,6 +307,7 @@ function renderBurndownChart() {
     burndownChart.appendChild(actualLine);
 }
 
+// ===================== INIT =====================
 async function init() {
     await loadTeamMembers();
     await loadSessions();

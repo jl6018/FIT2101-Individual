@@ -136,3 +136,35 @@ button.submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* ============================================================
+   APPENDED FROM A — image logo support
+   (only used if the HTML uses <img src="images/symph-logo.png">)
+   ============================================================ */
+
+.logo {
+  display: inline-block;
+  line-height: 0;
+}
+
+.logo img {
+  height: 64px;
+  width: auto;
+}
+
+/* ============================================================
+   APPENDED FROM B — Register link styling
+   (only used if the HTML has the "Don't have an account?" link)
+   ============================================================ */
+
+.register-link,
+.login-wrap p a {
+  color: #6366F1;
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.register-link:hover,
+.login-wrap p a:hover {
+  color: #4F46E5;
+}

@@ -1,11 +1,18 @@
 // main-login-page.ts
-// Compile with: tsc (uses tsconfig.json)
-// Written to satisfy "strict": true
+// Compile with:
+//   npx tsc main-login-page.ts --module esnext --target esnext --strict --ignoreConfig
 
 // ============================================================
 // DEMO MODE — set to false for real backend login
 // ============================================================
 const DEMO_MODE = false;
+
+// ===================== BFCACHE FIX (from B) =====================
+window.addEventListener('pageshow', (event) => {
+    if ((event as PageTransitionEvent).persisted && sessionStorage.getItem('loggedIn') !== 'true') {
+        window.location.href = 'index-login-page.html';
+    }
+});
 
 interface LoginResponse {
     message?: string;
@@ -43,13 +50,11 @@ function hideError(): void {
 }
 
 dismissError.addEventListener('click', hideError);
-
-// Hide the banner as soon as the person starts fixing their input
 userIdInput.addEventListener('input', hideError);
 passwordInput.addEventListener('input', hideError);
 
+// ===================== DEMO LOGIN (from A) =====================
 async function handleLoginDemo(userId: string, password: string): Promise<LoginResponse> {
-    // Fake network delay so the "Logging in..." state is visible
     await new Promise((resolve) => setTimeout(resolve, 400));
 
     const success = userId === 'admin' && password === 'admin';
@@ -57,9 +62,15 @@ async function handleLoginDemo(userId: string, password: string): Promise<LoginR
         throw new Error('Incorrect user ID or password.');
     }
 
-    return { redirectTo: 'index-sprint-planning-page.html', role: 'ADMIN' };
+    return {
+        id: 1,
+        name: 'Admin',
+        email: 'admin@company.com',
+        role: 'ADMIN',
+    };
 }
 
+// ===================== REAL LOGIN (from B) =====================
 async function handleLoginReal(userId: string, password: string): Promise<LoginResponse> {
     const res = await fetch('/api/users/login', {
         method: 'POST',
@@ -67,7 +78,13 @@ async function handleLoginReal(userId: string, password: string): Promise<LoginR
         body: JSON.stringify({ email: userId, password }),
     });
 
-    const data: LoginResponse = await res.json();
+    const text = await res.text();
+    let data: LoginResponse;
+    try {
+        data = text ? JSON.parse(text) : {};
+    } catch {
+        data = { message: text };
+    }
 
     if (!res.ok) {
         throw new Error(data.message || 'Incorrect user ID or password.');
@@ -82,7 +99,6 @@ form.addEventListener('submit', async (e: SubmitEvent) => {
     const userId = userIdInput.value.trim();
     const password = passwordInput.value;
 
-    // Empty-field validation
     if (!userId || !password) {
         showError('Please fill in both fields.');
         passwordInput.value = '';
@@ -101,9 +117,16 @@ form.addEventListener('submit', async (e: SubmitEvent) => {
             localStorage.setItem('authToken', data.token);
         }
 
-        // ✅ Redirect based on role
+        // ===================== SESSION STORAGE (from B) =====================
+        sessionStorage.setItem('loggedIn', 'true');
+        sessionStorage.setItem('role', data.role || '');
+        sessionStorage.setItem('email', data.email || '');
+        sessionStorage.setItem('name', data.name || '');
+        sessionStorage.setItem('userId', String(data.id ?? ''));
+
+        // ===================== ROLE-BASED REDIRECT (from B) =====================
         if (data.role === 'ADMIN') {
-            window.location.href = 'index-sprint-planning-page.html';
+            window.location.href = 'index-admin-page.html';
         } else {
             window.location.href = 'index-user-page.html';
         }

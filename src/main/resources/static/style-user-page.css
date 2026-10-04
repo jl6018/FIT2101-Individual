@@ -486,6 +486,10 @@ body {
     font-size: 1rem;
 }
 
+/* ============================================================
+   APPENDED FROM B — logout button + logout confirmation modal
+   ============================================================ */
+
 .logout-btn {
     background: white;
     border: none;
@@ -501,8 +505,6 @@ body {
 .logout-btn:hover {
     background: #F3F4F6;
 }
-
-/* ===================== LOGOUT MODAL ===================== */
 
 .modal-narrow {
     max-width: 380px;
@@ -560,4 +562,19 @@ body {
 
 .btn-danger:hover {
     background: #B91C1C;
+}
+
+/* ============================================================
+   KEPT FROM A — image logo support
+   (only used if the HTML uses <img src="images/symph-logo.png">)
+   ============================================================ */
+
+.logo {
+    display: inline-block;
+    line-height: 0;
+}
+
+.logo img {
+    height: 40px;
+    width: auto;
 }

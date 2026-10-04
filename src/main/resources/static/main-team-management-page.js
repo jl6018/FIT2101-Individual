@@ -1,16 +1,22 @@
+"use strict";
+// main-team-management-page.js
+// Merged: B's auth guard + logout + backend-driven table + user dropdown
+//       + A's remove-member modal + toast + UI
+
+// ===================== BFCACHE FIX (from B) =====================
 window.addEventListener('pageshow', (event) => {
     if (event.persisted && sessionStorage.getItem('loggedIn') !== 'true') {
         window.location.href = 'index-login-page.html';
     }
 });
 
-"use strict";
-
+// ===================== AUTH GUARD (from B) =====================
 if (sessionStorage.getItem('loggedIn') !== 'true') {
     window.location.href = 'index-login-page.html';
     throw new Error('Not logged in');
 }
 
+// ===================== SHOW CURRENT USER (from B) =====================
 const nameEl = document.getElementById('signedInName');
 if (nameEl) {
     const name = sessionStorage.getItem('name');
@@ -28,6 +34,7 @@ function requireElement(id) {
     return el;
 }
 
+// ===================== LOGOUT MODAL (from B) =====================
 const logoutBtn = requireElement('logoutBtn');
 const logoutOverlay = requireElement('logoutOverlay');
 const cancelLogoutBtn = requireElement('cancelLogoutBtn');
@@ -43,6 +50,7 @@ logoutOverlay.addEventListener('click', (e) => {
     if (e.target === logoutOverlay) logoutOverlay.classList.remove('visible');
 });
 
+// ===================== ELEMENTS =====================
 const addMemberBtn = requireElement('addMemberBtn');
 const inviteProductOwnerBtn = requireElement('inviteProductOwnerBtn');
 const addMemberOverlay = requireElement('addMemberOverlay');
@@ -65,6 +73,7 @@ const toast = requireElement('toast');
 let rowPendingRemoval = null;
 let registeredUsers = [];
 
+// ===================== MODAL OPEN/CLOSE =====================
 function openModal(overlay) { overlay.classList.add('visible'); }
 function closeModal(overlay) { overlay.classList.remove('visible'); }
 
@@ -79,6 +88,7 @@ closeInviteBtn.addEventListener('click', () => closeModal(inviteOverlay));
     });
 });
 
+// ===================== TOAST =====================
 let toastTimeoutId;
 function showToast(message) {
     toast.textContent = message;
@@ -89,6 +99,7 @@ function showToast(message) {
     }, 3000);
 }
 
+// ===================== LOAD USERS + MEMBERSHIPS (from B) =====================
 async function loadMembers() {
     try {
         const res = await fetch('/api/users');
@@ -137,6 +148,7 @@ async function loadTeamMemberships() {
     }
 }
 
+// ===================== ADD MEMBER (from B) =====================
 addMemberForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -185,6 +197,7 @@ addMemberForm.addEventListener('submit', async (e) => {
     }
 });
 
+// ===================== INVITE PRODUCT OWNER (from B) =====================
 inviteForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -221,6 +234,7 @@ inviteForm.addEventListener('submit', async (e) => {
     }
 });
 
+// ===================== REMOVE MEMBER (from B) =====================
 membersBody.addEventListener('click', (e) => {
     const target = e.target;
     if (!target.classList.contains('remove-btn')) return;
@@ -277,5 +291,6 @@ confirmRemoveBtn.addEventListener('click', async () => {
     }
 });
 
+// ===================== INIT =====================
 loadMembers();
 loadTeamMemberships();

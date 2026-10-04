@@ -1,8 +1,29 @@
 // main-team-management-page.ts
 // Compile with:
 //   tsc main-team-management-page.ts --module esnext --target esnext --strict --ignoreConfig
-// (matches the same override used for the login and sprint planning pages,
-// since the browser loads this as an ES module via <script type="module">)
+
+// ===================== BFCACHE FIX (from B) =====================
+window.addEventListener('pageshow', (event) => {
+    if ((event as PageTransitionEvent).persisted && sessionStorage.getItem('loggedIn') !== 'true') {
+        window.location.href = 'index-login-page.html';
+    }
+});
+
+// ===================== AUTH GUARD (from B) =====================
+if (sessionStorage.getItem('loggedIn') !== 'true') {
+    window.location.href = 'index-login-page.html';
+    throw new Error('Not logged in');
+}
+
+// ===================== SHOW CURRENT USER (from B) =====================
+const nameEl = document.getElementById('signedInName');
+if (nameEl) {
+    const name = sessionStorage.getItem('name');
+    const role = sessionStorage.getItem('role');
+    if (name) {
+        nameEl.textContent = role === 'ADMIN' ? `${name} (Admin)` : name;
+    }
+}
 
 function requireElement<T extends HTMLElement>(id: string): T {
     const el = document.getElementById(id);
@@ -12,12 +33,25 @@ function requireElement<T extends HTMLElement>(id: string): T {
     return el as T;
 }
 
-// ===================== ELEMENTS =====================
+// ===================== LOGOUT MODAL (from B) =====================
+const logoutBtn = requireElement<HTMLButtonElement>('logoutBtn');
+const logoutOverlay = requireElement<HTMLDivElement>('logoutOverlay');
+const cancelLogoutBtn = requireElement<HTMLButtonElement>('cancelLogoutBtn');
+const confirmLogoutBtn = requireElement<HTMLButtonElement>('confirmLogoutBtn');
 
+logoutBtn.addEventListener('click', () => logoutOverlay.classList.add('visible'));
+cancelLogoutBtn.addEventListener('click', () => logoutOverlay.classList.remove('visible'));
+confirmLogoutBtn.addEventListener('click', () => {
+    sessionStorage.clear();
+    window.location.href = 'index-login-page.html';
+});
+logoutOverlay.addEventListener('click', (e: MouseEvent) => {
+    if (e.target === logoutOverlay) logoutOverlay.classList.remove('visible');
+});
+
+// ===================== ELEMENTS =====================
 const addMemberBtn = requireElement<HTMLButtonElement>('addMemberBtn');
 const inviteProductOwnerBtn = requireElement<HTMLButtonElement>('inviteProductOwnerBtn');
-const switchAccountBtn = requireElement<HTMLButtonElement>('switchAccountBtn');
-const switchAccountOverlay = requireElement<HTMLDivElement>('switchAccountOverlay');
 
 const addMemberOverlay = requireElement<HTMLDivElement>('addMemberOverlay');
 const inviteOverlay = requireElement<HTMLDivElement>('inviteOverlay');
@@ -25,165 +59,196 @@ const removeMemberOverlay = requireElement<HTMLDivElement>('removeMemberOverlay'
 
 const closeAddMemberBtn = requireElement<HTMLButtonElement>('closeAddMemberBtn');
 const closeInviteBtn = requireElement<HTMLButtonElement>('closeInviteBtn');
-const closeSwitchAccountBtn = requireElement<HTMLButtonElement>('closeSwitchAccountBtn');
-
 
 const addMemberForm = requireElement<HTMLFormElement>('addMemberForm');
 const inviteForm = requireElement<HTMLFormElement>('inviteForm');
 
-const memberNameInput = requireElement<HTMLInputElement>('memberName');
-const memberEmailInput = requireElement<HTMLInputElement>('memberEmail');
+// B: user dropdown instead of name/email inputs
+const memberUserSelect = requireElement<HTMLSelectElement>('memberUser');
 const memberTeamSelect = requireElement<HTMLSelectElement>('memberTeam');
-
 const ownerEmailInput = requireElement<HTMLInputElement>('ownerEmail');
 
 const membersBody = requireElement<HTMLTableSectionElement>('membersBody');
-
 const removeMemberName = requireElement<HTMLSpanElement>('removeMemberName');
 const removeMemberTeam = requireElement<HTMLSpanElement>('removeMemberTeam');
 const cancelRemoveBtn = requireElement<HTMLButtonElement>('cancelRemoveBtn');
 const confirmRemoveBtn = requireElement<HTMLButtonElement>('confirmRemoveBtn');
-const accountList = requireElement<HTMLUListElement>('accountList');
 const toast = requireElement<HTMLDivElement>('toast');
 
 // Track which row is currently pending removal
 let rowPendingRemoval: HTMLTableRowElement | null = null;
+let registeredUsers: { id: number; name: string; email: string; role: string }[] = [];
 
 // ===================== MODAL OPEN/CLOSE =====================
-
 function openModal(overlay: HTMLDivElement): void {
     overlay.classList.add('visible');
 }
-
 function closeModal(overlay: HTMLDivElement): void {
     overlay.classList.remove('visible');
 }
 
 addMemberBtn.addEventListener('click', () => openModal(addMemberOverlay));
 closeAddMemberBtn.addEventListener('click', () => closeModal(addMemberOverlay));
-
 inviteProductOwnerBtn.addEventListener('click', () => openModal(inviteOverlay));
 closeInviteBtn.addEventListener('click', () => closeModal(inviteOverlay));
 
-switchAccountBtn.addEventListener('click', () => {
-    // Placeholder — wire this up once you have a shared switch-account
-    // component/page consistent with the one on Sprint Planning.
-    showToast('Switch account — coming soon on this page');
-});
-switchAccountBtn.addEventListener('click', () => openModal(switchAccountOverlay));
-closeSwitchAccountBtn.addEventListener('click', () => closeModal(switchAccountOverlay));
-
-
-// Close a modal by clicking its dark backdrop (outside the white card)
-[addMemberOverlay, inviteOverlay, removeMemberOverlay, switchAccountOverlay].forEach((overlay) => {
+[addMemberOverlay, inviteOverlay, removeMemberOverlay].forEach((overlay) => {
     overlay.addEventListener('click', (e: MouseEvent) => {
-        if (e.target === overlay) {
-            closeModal(overlay);
-        }
-    });
-});
-
-// ===================== SWITCH ACCOUNT =====================
-
-accountList.querySelectorAll<HTMLLIElement>('.account-row').forEach((row) => {
-    row.addEventListener('click', () => {
-        const name = row.dataset['name'] ?? 'Unknown';
-        // Placeholder: wire this to your real auth/account-switch logic once
-        // the backend supports multiple accounts per login.
-        closeModal(switchAccountOverlay);
-        showToast(`Switched to ${name}`);
+        if (e.target === overlay) closeModal(overlay);
     });
 });
 
 // ===================== TOAST =====================
-
 let toastTimeoutId: number | undefined;
-
 function showToast(message: string): void {
     toast.textContent = message;
     toast.classList.add('visible');
-
-    if (toastTimeoutId !== undefined) {
-        window.clearTimeout(toastTimeoutId);
-    }
+    if (toastTimeoutId !== undefined) window.clearTimeout(toastTimeoutId);
     toastTimeoutId = window.setTimeout(() => {
         toast.classList.remove('visible');
     }, 3000);
 }
 
-// ===================== ADD MEMBER =====================
+// ===================== LOAD USERS + TEAM MEMBERSHIPS (from B) =====================
+async function loadMembers(): Promise<void> {
+    try {
+        const res = await fetch('/api/users');
+        if (!res.ok) throw new Error('Failed to load users');
 
-addMemberForm.addEventListener('submit', (e: SubmitEvent) => {
+        const allUsers = await res.json();
+        registeredUsers = allUsers.filter((user: { role: string }) => user.role === 'EMPLOYEE');
+
+        memberUserSelect.innerHTML = '<option value="">Select a user...</option>';
+        registeredUsers.forEach((user) => {
+            const option = document.createElement('option');
+            option.value = String(user.id);
+            option.textContent = `${user.name} (${user.email}) — ${user.role}`;
+            memberUserSelect.appendChild(option);
+        });
+    } catch (err) {
+        console.error('Failed to load members:', err);
+    }
+}
+
+async function loadTeamMemberships(): Promise<void> {
+    try {
+        const res = await fetch('/api/teams');
+        if (!res.ok) return;
+
+        const teams = await res.json();
+        membersBody.innerHTML = '';
+
+        teams.forEach((team: { id: number; name: string; members?: { id: number; name: string; role: string }[] }) => {
+            (team.members || []).forEach((user) => {
+                const row = document.createElement('tr');
+                row.dataset['id'] = String(user.id);
+                row.dataset['name'] = user.name;
+                row.dataset['team'] = team.name;
+                row.innerHTML = `
+                    <td>${user.name}</td>
+                    <td>${user.role}</td>
+                    <td>${team.name}</td>
+                    <td><button class="remove-btn">Remove</button></td>
+                `;
+                membersBody.appendChild(row);
+            });
+        });
+    } catch (err) {
+        console.error('Failed to load team memberships:', err);
+    }
+}
+
+// ===================== ADD MEMBER (from B) =====================
+addMemberForm.addEventListener('submit', async (e: SubmitEvent) => {
     e.preventDefault();
 
-    const name = memberNameInput.value.trim();
-    const email = memberEmailInput.value.trim();
+    const userId = memberUserSelect.value;
     const team = memberTeamSelect.value;
 
-    if (!name || !email) {
-        return;
+    if (!userId) { alert('Please select a user.'); return; }
+
+    const user = registeredUsers.find((u) => String(u.id) === userId);
+    if (!user) return;
+
+    try {
+        const res = await fetch(`/api/teams/by-name/${encodeURIComponent(team)}/members/${userId}`, {
+            method: 'POST',
+        });
+
+        if (!res.ok) {
+            const msg = await res.text();
+            throw new Error(msg || 'Failed to add member');
+        }
+
+        const existingRow = membersBody.querySelector<HTMLTableRowElement>(`tr[data-id="${userId}"]`);
+        if (existingRow) {
+            existingRow.dataset['team'] = team;
+            existingRow.cells[2].textContent = team;
+        } else {
+            const row = document.createElement('tr');
+            row.dataset['id'] = String(user.id);
+            row.dataset['name'] = user.name;
+            row.dataset['team'] = team;
+            row.innerHTML = `
+                <td>${user.name}</td>
+                <td>${user.role}</td>
+                <td>${team}</td>
+                <td><button class="remove-btn">Remove</button></td>
+            `;
+            membersBody.appendChild(row);
+        }
+
+        closeModal(addMemberOverlay);
+        showToast(`${user.name} added to ${team}`);
+        addMemberForm.reset();
+    } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to add member';
+        alert('Add member failed: ' + message);
     }
-
-    // TODO: replace with a real POST to your backend once the endpoint
-    // exists, e.g.:
-    // await fetch('/api/team-members', { method: 'POST', body: JSON.stringify({ name, email, team }) })
-
-    const row = document.createElement('tr');
-    row.dataset['name'] = name;
-    row.dataset['team'] = team;
-    row.innerHTML = `
-    <td>${name}</td>
-    <td>Member</td>
-    <td>${team}</td>
-    <td><button class="remove-btn">Remove</button></td>
-  `;
-    membersBody.appendChild(row);
-
-    closeModal(addMemberOverlay);
-    showToast(`${name} added to ${team}`);
-
-    addMemberForm.reset();
 });
 
-// ===================== INVITE PRODUCT OWNER =====================
-
-inviteForm.addEventListener('submit', (e: SubmitEvent) => {
+// ===================== INVITE PRODUCT OWNER (from B) =====================
+inviteForm.addEventListener('submit', async (e: SubmitEvent) => {
     e.preventDefault();
 
     const email = ownerEmailInput.value.trim();
-    if (!email) {
-        ownerEmailInput.focus();
-        return;
+    if (!email) { alert('Please enter an email address.'); return; }
+
+    try {
+        const res = await fetch('/api/invites', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            if (text.toLowerCase().includes('already')) throw new Error('Email already invited.');
+            if (text.toLowerCase().includes('invalid')) throw new Error('Invalid email address.');
+            if (text.toLowerCase().includes('required')) throw new Error('Email is required.');
+            throw new Error(text || 'Failed to send invite.');
+        }
+
+        closeModal(inviteOverlay);
+        showToast(`Invite sent to ${email}`);
+        inviteForm.reset();
+    } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to send invite';
+        alert(message);
     }
-
-    // TODO: replace with a real POST to your backend, e.g.:
-    // await fetch('/api/invite-product-owner', { method: 'POST', body: JSON.stringify({ email }) })
-
-    closeModal(inviteOverlay);
-    showToast(`Invite sent to ${email}`);
-
-    inviteForm.reset();
 });
 
-// ===================== REMOVE MEMBER =====================
-// Event delegation: one listener on the table body catches clicks on any
-// "Remove" button, including ones added later via Add Member.
-
+// ===================== REMOVE MEMBER (from B) =====================
 membersBody.addEventListener('click', (e: MouseEvent) => {
     const target = e.target as HTMLElement;
-    if (!target.classList.contains('remove-btn')) {
-        return;
-    }
+    if (!target.classList.contains('remove-btn')) return;
 
     const row = target.closest('tr');
-    if (!row) {
-        return;
-    }
+    if (!row) return;
 
     rowPendingRemoval = row;
     removeMemberName.textContent = row.dataset['name'] ?? 'this member';
     removeMemberTeam.textContent = row.dataset['team'] ?? 'their team';
-
     openModal(removeMemberOverlay);
 });
 
@@ -192,20 +257,43 @@ cancelRemoveBtn.addEventListener('click', () => {
     closeModal(removeMemberOverlay);
 });
 
-confirmRemoveBtn.addEventListener('click', () => {
+confirmRemoveBtn.addEventListener('click', async () => {
     if (!rowPendingRemoval) {
         closeModal(removeMemberOverlay);
         return;
     }
 
     const name = rowPendingRemoval.dataset['name'] ?? 'Member';
+    const userId = rowPendingRemoval.dataset['id'];
+    const teamName = rowPendingRemoval.dataset['team'];
 
-    // TODO: replace with a real DELETE request to your backend, e.g.:
-    // await fetch(`/api/team-members/${memberId}`, { method: 'DELETE' })
+    try {
+        if (userId && teamName) {
+            const teamsRes = await fetch('/api/teams');
+            const teams = await teamsRes.json();
+            const team = teams.find((t: { name: string }) => t.name === teamName);
 
-    rowPendingRemoval.remove();
-    rowPendingRemoval = null;
+            if (team) {
+                const delRes = await fetch(`/api/teams/${team.id}/members/${userId}`, {
+                    method: 'DELETE',
+                });
+                if (!delRes.ok) {
+                    const msg = await delRes.text();
+                    throw new Error(msg || 'Failed to remove member');
+                }
+            }
+        }
 
-    closeModal(removeMemberOverlay);
-    showToast(`${name} removed`);
+        rowPendingRemoval.remove();
+        rowPendingRemoval = null;
+        closeModal(removeMemberOverlay);
+        showToast(`${name} removed from team`);
+    } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to remove member';
+        alert('Remove failed: ' + message);
+    }
 });
+
+// ===================== INIT =====================
+loadMembers();
+loadTeamMemberships();
