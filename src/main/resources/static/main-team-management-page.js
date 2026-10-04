@@ -125,9 +125,39 @@ async function loadMembers() {
     }
 }
 
+// ===================== LOAD TEAM MEMBERSHIPS =====================
+
+async function loadTeamMemberships() {
+    try {
+        const res = await fetch('/api/teams');
+        if (!res.ok) return;
+
+        const teams = await res.json();
+        membersBody.innerHTML = '';
+
+        teams.forEach((team) => {
+            (team.members || []).forEach((user) => {
+                const row = document.createElement('tr');
+                row.dataset.id = user.id;
+                row.dataset.name = user.name;
+                row.dataset.team = team.name;
+                row.innerHTML = `
+                    <td>${user.name}</td>
+                    <td>${user.role}</td>
+                    <td>${team.name}</td>
+                    <td><button class="remove-btn">Remove</button></td>
+                `;
+                membersBody.appendChild(row);
+            });
+        });
+    } catch (err) {
+        console.error('Failed to load team memberships:', err);
+    }
+}
+
 // ===================== ADD MEMBER =====================
 
-addMemberForm.addEventListener('submit', (e) => {
+addMemberForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const userId = memberUserSelect.value;
@@ -141,27 +171,43 @@ addMemberForm.addEventListener('submit', (e) => {
     const user = registeredUsers.find((u) => u.id == userId);
     if (!user) return;
 
-    const existingRow = membersBody.querySelector(`tr[data-id="${userId}"]`);
-    if (existingRow) {
-        existingRow.dataset.team = team;
-        existingRow.cells[2].textContent = team;
-    } else {
-        const row = document.createElement('tr');
-        row.dataset.id = user.id;
-        row.dataset.name = user.name;
-        row.dataset.team = team;
-        row.innerHTML = `
-            <td>${user.name}</td>
-            <td>${user.role}</td>
-            <td>${team}</td>
-            <td><button class="remove-btn">Remove</button></td>
-        `;
-        membersBody.appendChild(row);
-    }
+    try {
+        // ✅ Save to backend FIRST
+        const res = await fetch(`/api/teams/by-name/${encodeURIComponent(team)}/members/${userId}`, {
+            method: 'POST',
+        });
 
-    closeModal(addMemberOverlay);
-    showToast(`${user.name} added to ${team}`);
-    addMemberForm.reset();
+        if (!res.ok) {
+            const msg = await res.text();
+            throw new Error(msg || 'Failed to add member');
+        }
+
+        // Then update HTML
+        const existingRow = membersBody.querySelector(`tr[data-id="${userId}"]`);
+        if (existingRow) {
+            existingRow.dataset.team = team;
+            existingRow.cells[2].textContent = team;
+        } else {
+            const row = document.createElement('tr');
+            row.dataset.id = user.id;
+            row.dataset.name = user.name;
+            row.dataset.team = team;
+            row.innerHTML = `
+                <td>${user.name}</td>
+                <td>${user.role}</td>
+                <td>${team}</td>
+                <td><button class="remove-btn">Remove</button></td>
+            `;
+            membersBody.appendChild(row);
+        }
+
+        closeModal(addMemberOverlay);
+        showToast(`${user.name} added to ${team}`);
+        addMemberForm.reset();
+    } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to add member';
+        alert('Add member failed: ' + message);
+    }
 });
 
 // ===================== INVITE PRODUCT OWNER =====================
@@ -225,19 +271,46 @@ cancelRemoveBtn.addEventListener('click', () => {
     closeModal(removeMemberOverlay);
 });
 
-confirmRemoveBtn.addEventListener('click', () => {
+confirmRemoveBtn.addEventListener('click', async () => {
     if (!rowPendingRemoval) {
         closeModal(removeMemberOverlay);
         return;
     }
 
     const name = rowPendingRemoval.dataset.name ?? 'Member';
-    rowPendingRemoval.remove();
-    rowPendingRemoval = null;
-    closeModal(removeMemberOverlay);
-    showToast(`${name} removed from team`);
+    const userId = rowPendingRemoval.dataset.id;
+    const teamName = rowPendingRemoval.dataset.team;
+
+    try {
+        // ✅ Save to backend FIRST
+        if (userId && teamName) {
+            const teamsRes = await fetch('/api/teams');
+            const teams = await teamsRes.json();
+            const team = teams.find((t) => t.name === teamName);
+
+            if (team) {
+                const delRes = await fetch(`/api/teams/${team.id}/members/${userId}`, {
+                    method: 'DELETE',
+                });
+
+                if (!delRes.ok) {
+                    const msg = await delRes.text();
+                    throw new Error(msg || 'Failed to remove member');
+                }
+            }
+        }
+
+        rowPendingRemoval.remove();
+        rowPendingRemoval = null;
+        closeModal(removeMemberOverlay);
+        showToast(`${name} removed from team`);
+    } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to remove member';
+        alert('Remove failed: ' + message);
+    }
 });
 
 // ===================== INIT =====================
 
 loadMembers();
+loadTeamMemberships();
