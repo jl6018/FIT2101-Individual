@@ -42,13 +42,8 @@ body {
     margin-bottom: 24px;
 }
 
-.logo .s1 {
-    color: #6B7280;
-}
-
-.logo .s2 {
-    color: #6366F1;
-}
+.logo .s1 { color: #6B7280; }
+.logo .s2 { color: #6366F1; }
 
 .nav {
     display: flex;
@@ -69,14 +64,8 @@ body {
     font-weight: 500;
 }
 
-.nav-item:hover {
-    background: var(--lavender-dark);
-}
-
-.nav-item.active {
-    background: var(--lavender-dark);
-    font-weight: 700;
-}
+.nav-item:hover { background: var(--lavender-dark); }
+.nav-item.active { background: var(--lavender-dark); font-weight: 700; }
 
 .dot {
     width: 8px;
@@ -112,9 +101,7 @@ body {
     cursor: pointer;
 }
 
-.switch-account-btn:hover {
-    background: #F3F4F6;
-}
+.switch-account-btn:hover { background: #F3F4F6; }
 
 /* ===================== MAIN CONTENT ===================== */
 
@@ -159,13 +146,8 @@ h1 {
     cursor: pointer;
 }
 
-.btn-primary:hover {
-    background: #2a2a2a;
-}
-
-.btn-primary.full-width {
-    width: 100%;
-}
+.btn-primary:hover { background: #2a2a2a; }
+.btn-primary.full-width { width: 100%; }
 
 .sprints-table {
     width: 100%;
@@ -201,9 +183,7 @@ h1 {
     padding: 16px;
 }
 
-.modal-overlay.visible {
-    display: flex;
-}
+.modal-overlay.visible { display: flex; }
 
 .modal {
     background: #fff;
@@ -245,13 +225,9 @@ h1 {
     gap: 12px;
 }
 
-.form-row .form-field {
-    flex: 1;
-}
+.form-row .form-field { flex: 1; }
 
-.form-field {
-    margin-bottom: 16px;
-}
+.form-field { margin-bottom: 16px; }
 
 label {
     display: block;
@@ -332,9 +308,7 @@ select:focus {
     cursor: pointer;
 }
 
-.account-row:hover {
-    background: #F3F4F6;
-}
+.account-row:hover { background: #F3F4F6; }
 
 .avatar {
     width: 36px;
@@ -431,4 +405,17 @@ select:focus {
 
 .btn-danger:hover {
     background: #B91C1C;
+}
+
+/* ===================== LOGO IMAGE ===================== */
+
+.logo {
+    display: inline-block;
+    line-height: 0;
+}
+
+.logo img {
+    height: 48px;
+    width: auto;
+    max-width: 100%;
 }

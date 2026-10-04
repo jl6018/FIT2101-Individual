@@ -2,15 +2,19 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>User Board</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symph — User Board</title>
+
     <link rel="stylesheet" href="style-user-page.css"/>
+
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 </head>
 <body>
+
 <nav class="navbar">
-    <div class="logo">SYMPH</div>
+    <div class="logo"><img src="images/symph-logo.png" alt="Symph" /></div>
     <div class="search-bar">
         <input type="text" placeholder="Search" />
         <span class="search-icon">🔍</span>
@@ -18,8 +22,10 @@
     <div class="navbar-icons">
         <span>📢</span>
         <span>🔔</span>
+        <!-- B: id on signed-in name -->
         <span id="signedInName" style="font-size: 0.85rem; margin-right: 8px;">Employee</span>
         <div class="avatar avatar-dark">U</div>
+        <!-- B: Log out button -->
         <button id="logoutBtn" class="logout-btn">Log out</button>
     </div>
 </nav>
@@ -48,7 +54,7 @@
 
 <main class="board" id="board"></main>
 
-<!-- ===================== MODAL: Logout ===================== -->
+<!-- ===================== MODAL: Logout (B) ===================== -->
 <div class="modal-overlay" id="logoutOverlay">
     <div class="modal modal-narrow" role="dialog" aria-modal="true">
         <h2 class="modal-title">Log out?</h2>
@@ -60,6 +66,7 @@
     </div>
 </div>
 
+<!-- A had a bug here pointing to .ts — corrected to .js -->
 <script type="module" src="main-user-page.js" defer></script>
 </body>
 </html>

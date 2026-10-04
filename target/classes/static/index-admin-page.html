@@ -16,7 +16,8 @@
 </head>
 <body>
 <div class="app-shell" id="appShell">
-    <!-- SIDEBAR -->
+
+    <!-- ===================== SIDEBAR ===================== -->
     <aside class="sidebar">
         <div class="sidebar-top">
             <a class="logo" href="index-admin-page.html"><img src="images/symph-logo.png" alt="Symph" /></a>
@@ -42,18 +43,19 @@
 
         <div class="sidebar-footer">
             <div class="signed-in">Signed in as <strong id="signedInName">Admin</strong></div>
-            <button id="switchAccountBtn" class="switch-account-btn" type="button">Switch Account</button>
         </div>
     </aside>
 
     <div class="app-main">
+
+        <!-- ===================== NAVBAR ===================== -->
         <nav class="navbar">
             <div class="search-bar">
                 <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
                     <circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/>
                 </svg>
                 <input type="text" id="searchInput" placeholder="Search" aria-label="Search tasks" />
-                <!-- US09: admin switches between every team's board from here -->
+
                 <div class="team-filter">
                     <button id="teamFilterBtn" class="team-filter-btn" type="button" aria-haspopup="true"
                             aria-expanded="false" title="Choose which team's board to view">
@@ -66,6 +68,7 @@
                     <div class="popover team-filter-menu" id="teamFilterMenu" role="menu"></div>
                 </div>
             </div>
+
             <div class="navbar-icons">
                 <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M3 10v4h3l8 5V5L6 10H3z"/><path d="M17.5 9.5a4 4 0 010 5M20 7a8 8 0 010 10"/>
@@ -78,6 +81,7 @@
             </div>
         </nav>
 
+        <!-- ===================== PROJECT HEADER ===================== -->
         <header class="project-header">
             <div class="project-header-left">
                 <h1 class="project-name">
@@ -104,6 +108,7 @@
             </div>
         </header>
 
+        <!-- ===================== SPRINT TABS ===================== -->
         <div class="board-controls">
             <div class="sprint-tabs">
                 <button class="sprint-tab active" data-sprint="1" type="button">Sprint 1</button>
@@ -116,7 +121,7 @@
     </div>
 </div>
 
-<!-- ===================== MODAL: Create / edit task (US07, US10, US11, US15) ===================== -->
+<!-- ===================== MODAL: Task ===================== -->
 <div class="modal-overlay" id="taskModalOverlay">
     <div class="modal" role="dialog" aria-modal="true" aria-label="Task details">
         <div class="modal-header">
@@ -211,7 +216,7 @@
 <div class="modal-overlay" id="logoutOverlay">
     <div class="modal modal-narrow" role="dialog" aria-modal="true">
         <h2 class="modal-title">Log out?</h2>
-        <p class="modal-subtitle">You'll be returned to the login page.</p>
+        <p class="modal-subtitle">You'll need to sign in again to access the board.</p>
         <div class="modal-actions">
             <button id="cancelLogoutBtn" class="btn-secondary" type="button">Cancel</button>
             <button id="confirmLogoutBtn" class="btn-danger" type="button">Log out</button>

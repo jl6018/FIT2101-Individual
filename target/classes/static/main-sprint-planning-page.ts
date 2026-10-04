@@ -1,8 +1,29 @@
 // main-sprint-planning-page.ts
 // Compile with:
 //   tsc main-sprint-planning-page.ts --module esnext --target esnext --strict --ignoreConfig
-// (matches the same override used for the login page, since the browser
-// loads this as an ES module via <script type="module">)
+
+// ===================== BFCACHE FIX (from B) =====================
+window.addEventListener('pageshow', (event) => {
+    if ((event as PageTransitionEvent).persisted && sessionStorage.getItem('loggedIn') !== 'true') {
+        window.location.href = 'index-login-page.html';
+    }
+});
+
+// ===================== AUTH GUARD (from B) =====================
+if (sessionStorage.getItem('loggedIn') !== 'true') {
+    window.location.href = 'index-login-page.html';
+    throw new Error('Not logged in');
+}
+
+// ===================== SHOW CURRENT USER (from B) =====================
+const nameEl = document.getElementById('signedInName');
+if (nameEl) {
+    const name = sessionStorage.getItem('name');
+    const role = sessionStorage.getItem('role');
+    if (name) {
+        nameEl.textContent = role === 'ADMIN' ? `${name} (Admin)` : name;
+    }
+}
 
 function requireElement<T extends HTMLElement>(id: string): T {
     const el = document.getElementById(id);
@@ -12,19 +33,31 @@ function requireElement<T extends HTMLElement>(id: string): T {
     return el as T;
 }
 
-// ===================== ELEMENTS =====================
+// ===================== LOGOUT MODAL (from B) =====================
+const logoutBtn = requireElement<HTMLButtonElement>('logoutBtn');
+const logoutOverlay = requireElement<HTMLDivElement>('logoutOverlay');
+const cancelLogoutBtn = requireElement<HTMLButtonElement>('cancelLogoutBtn');
+const confirmLogoutBtn = requireElement<HTMLButtonElement>('confirmLogoutBtn');
 
+logoutBtn.addEventListener('click', () => logoutOverlay.classList.add('visible'));
+cancelLogoutBtn.addEventListener('click', () => logoutOverlay.classList.remove('visible'));
+confirmLogoutBtn.addEventListener('click', () => {
+    sessionStorage.clear();
+    window.location.href = 'index-login-page.html';
+});
+logoutOverlay.addEventListener('click', (e: MouseEvent) => {
+    if (e.target === logoutOverlay) logoutOverlay.classList.remove('visible');
+});
+
+// ===================== ELEMENTS =====================
 const startSprintPlanningBtn = requireElement<HTMLButtonElement>('startSprintPlanningBtn');
 const inviteProductOwnerBtn = requireElement<HTMLButtonElement>('inviteProductOwnerBtn');
-const switchAccountBtn = requireElement<HTMLButtonElement>('switchAccountBtn');
 
 const sprintPlanningOverlay = requireElement<HTMLDivElement>('sprintPlanningOverlay');
 const inviteOverlay = requireElement<HTMLDivElement>('inviteOverlay');
-const switchAccountOverlay = requireElement<HTMLDivElement>('switchAccountOverlay');
 
 const closeSprintPlanningBtn = requireElement<HTMLButtonElement>('closeSprintPlanningBtn');
 const closeInviteBtn = requireElement<HTMLButtonElement>('closeInviteBtn');
-const closeSwitchAccountBtn = requireElement<HTMLButtonElement>('closeSwitchAccountBtn');
 
 const sprintPlanningForm = requireElement<HTMLFormElement>('sprintPlanningForm');
 const inviteForm = requireElement<HTMLFormElement>('inviteForm');
@@ -38,68 +71,40 @@ const membersList = requireElement<HTMLDivElement>('membersList');
 const ownerEmailInput = requireElement<HTMLInputElement>('ownerEmail');
 
 const pastSprintsBody = requireElement<HTMLTableSectionElement>('pastSprintsBody');
-const accountList = requireElement<HTMLUListElement>('accountList');
 
 const toast = requireElement<HTMLDivElement>('toast');
 
 // ===================== MODAL OPEN/CLOSE =====================
-
 function openModal(overlay: HTMLDivElement): void {
     overlay.classList.add('visible');
 }
-
 function closeModal(overlay: HTMLDivElement): void {
     overlay.classList.remove('visible');
 }
 
 startSprintPlanningBtn.addEventListener('click', () => openModal(sprintPlanningOverlay));
 closeSprintPlanningBtn.addEventListener('click', () => closeModal(sprintPlanningOverlay));
-
 inviteProductOwnerBtn.addEventListener('click', () => openModal(inviteOverlay));
 closeInviteBtn.addEventListener('click', () => closeModal(inviteOverlay));
 
-switchAccountBtn.addEventListener('click', () => openModal(switchAccountOverlay));
-closeSwitchAccountBtn.addEventListener('click', () => closeModal(switchAccountOverlay));
-
-// Close a modal by clicking its dark backdrop (outside the white card)
-[sprintPlanningOverlay, inviteOverlay, switchAccountOverlay].forEach((overlay) => {
+[sprintPlanningOverlay, inviteOverlay].forEach((overlay) => {
     overlay.addEventListener('click', (e: MouseEvent) => {
-        if (e.target === overlay) {
-            closeModal(overlay);
-        }
+        if (e.target === overlay) closeModal(overlay);
     });
 });
 
 // ===================== TOAST =====================
-
 let toastTimeoutId: number | undefined;
-
 function showToast(message: string): void {
     toast.textContent = message;
     toast.classList.add('visible');
-
-    if (toastTimeoutId !== undefined) {
-        window.clearTimeout(toastTimeoutId);
-    }
+    if (toastTimeoutId !== undefined) window.clearTimeout(toastTimeoutId);
     toastTimeoutId = window.setTimeout(() => {
         toast.classList.remove('visible');
     }, 3000);
 }
 
-// ===================== SWITCH ACCOUNT =====================
-
-accountList.querySelectorAll<HTMLLIElement>('.account-row').forEach((row) => {
-    row.addEventListener('click', () => {
-        const name = row.dataset['name'] ?? 'Unknown';
-        // Placeholder: wire this to your real auth/account-switch logic once
-        // the backend supports multiple accounts per login.
-        closeModal(switchAccountOverlay);
-        showToast(`Switched to ${name}`);
-    });
-});
-
 // ===================== CREATE SPRINT =====================
-
 function formatDateRange(startDate: Date, weeks: number): string {
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + weeks * 7);
@@ -128,7 +133,6 @@ sprintPlanningForm.addEventListener('submit', (e: SubmitEvent) => {
 
     const dateRange = formatDateRange(new Date(), weeks);
 
-    // Build the new row and add it to the top of Past Sprints
     const row = document.createElement('tr');
     row.innerHTML = `
     <td>${sprintName}</td>
@@ -138,9 +142,7 @@ sprintPlanningForm.addEventListener('submit', (e: SubmitEvent) => {
   `;
     pastSprintsBody.prepend(row);
 
-    // TODO: replace this with a real POST to your backend once the sprint
-    // creation endpoint exists, e.g.:
-    // await fetch('/api/sprints', { method: 'POST', body: JSON.stringify({...}) })
+    // TODO: POST /api/sprints once the backend endpoint exists
 
     closeModal(sprintPlanningOverlay);
     showToast('Sprint created');
@@ -151,7 +153,6 @@ sprintPlanningForm.addEventListener('submit', (e: SubmitEvent) => {
 });
 
 // ===================== INVITE PRODUCT OWNER =====================
-
 inviteForm.addEventListener('submit', (e: SubmitEvent) => {
     e.preventDefault();
 
@@ -161,8 +162,7 @@ inviteForm.addEventListener('submit', (e: SubmitEvent) => {
         return;
     }
 
-    // TODO: replace with a real POST to your backend, e.g.:
-    // await fetch('/api/invite-product-owner', { method: 'POST', body: JSON.stringify({ email }) })
+    // TODO: POST /api/invite-product-owner once the backend endpoint exists
 
     closeModal(inviteOverlay);
     showToast(`Invite sent to ${email}`);

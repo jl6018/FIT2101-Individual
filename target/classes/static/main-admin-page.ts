@@ -55,9 +55,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         sessionStorage.clear();
         window.location.href = "index-login-page.html";
     });
-    logoutOverlay?.addEventListener("click", (e) => {
-        if (e.target === logoutOverlay) logoutOverlay.classList.remove("visible");
-    });
 
     // ===================== TYPES =====================
     type ColumnId = "PRODUCT_BACKLOG" | "TO_DO" | "IN_PROGRESS" | "IN_REVIEW" | "COMPLETED";
@@ -110,7 +107,9 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                         teamId: TEAMS.find((team) => team.name === member.team)?.id ?? "",
                     }));
             }
-        } catch { /* fall through */ }
+        } catch {
+            // Team Management has not saved a list yet — use the starter members.
+        }
         return DEFAULT_EMPLOYEES;
     }
 
@@ -167,14 +166,18 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     function writeSetting(key: string, value: string): void {
         try {
             window.localStorage.setItem(key, value);
-        } catch { /* ignore */ }
+        } catch {
+            // Still works for this visit; it just won't be remembered.
+        }
     }
 
     function loadTasks(): Task[] {
         try {
             const parsed: unknown = JSON.parse(readSetting(STORAGE_KEY));
             if (Array.isArray(parsed)) return parsed as Task[];
-        } catch { /* ignore */ }
+        } catch {
+            // Nothing saved yet, or it is unreadable — use the starter board.
+        }
         return seedTasks();
     }
 
@@ -827,12 +830,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     });
 
     setSidebarCollapsed(readSetting(SIDEBAR_KEY) === "1");
-
-    // Switch Account clears session so the guard works properly.
-    requireElement<HTMLButtonElement>("switchAccountBtn").addEventListener("click", () => {
-        sessionStorage.clear();
-        window.location.href = "index-login-page.html";
-    });
 
     // ===================== START SPRINT (from B / US23) =====================
     const startSprintBtn = document.getElementById("startSprintBtn");

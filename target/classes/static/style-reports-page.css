@@ -283,10 +283,9 @@ h1 {
     align-items: flex-end;
     gap: 24px;
     height: 220px;
-    padding-top: 24px;
+    padding: 24px 16px 0;
     background: #fff;
     border-radius: 8px;
-    padding: 24px 16px 0;
 }
 
 .bar-chart-item {
@@ -454,61 +453,25 @@ h1 {
     padding: 12px 20px;
     border: none;
     border-radius: 10px;
-    background: #DC2626;
+    background: var(--danger);
     color: #fff;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
 }
 
-.btn-danger:hover { background: #B91C1C; }
+.btn-danger:hover { background: var(--danger-dark); }
 
-/* ===================== SWITCH ACCOUNT LIST ===================== */
+/* ===================== LOGO IMAGE ===================== */
 
-.account-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+.logo {
+    display: inline-block;
+    line-height: 0;
+    margin-bottom: 24px;
 }
 
-.account-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px;
-    border-radius: 8px;
-    cursor: pointer;
-}
-
-.account-row:hover { background: #F3F4F6; }
-
-.avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: var(--lavender);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 14px;
-    flex-shrink: 0;
-}
-
-.account-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.account-name {
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.account-role {
-    font-size: 12px;
-    color: var(--text-muted);
+.logo img {
+    height: 48px;
+    width: auto;
+    max-width: 100%;
 }

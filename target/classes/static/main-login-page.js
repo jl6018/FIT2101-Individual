@@ -1,11 +1,18 @@
+"use strict";
+// main-login-page.js
+// Merged: A's DEMO_MODE + B's sessionStorage handling + role-based redirect
+
+// ===================== BFCACHE FIX (from B) =====================
 window.addEventListener('pageshow', (event) => {
     if (event.persisted && sessionStorage.getItem('loggedIn') !== 'true') {
         window.location.href = 'index-login-page.html';
     }
 });
 
-"use strict";
-
+// ============================================================
+// DEMO MODE — set to true for testing without a backend.
+// While true: userId "admin" + password "admin" succeeds.
+// ============================================================
 const DEMO_MODE = false;
 
 function requireElement(id) {
@@ -37,6 +44,24 @@ dismissError.addEventListener('click', hideError);
 userIdInput.addEventListener('input', hideError);
 passwordInput.addEventListener('input', hideError);
 
+// ===================== DEMO LOGIN (from A) =====================
+async function handleLoginDemo(userId, password) {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    const success = userId === 'admin' && password === 'admin';
+    if (!success) {
+        throw new Error('Incorrect user ID or password.');
+    }
+
+    return {
+        id: 1,
+        name: 'Admin',
+        email: 'admin@company.com',
+        role: 'ADMIN',
+    };
+}
+
+// ===================== REAL LOGIN (from B) =====================
 async function handleLoginReal(userId, password) {
     const res = await fetch('/api/users/login', {
         method: 'POST',
@@ -59,6 +84,7 @@ async function handleLoginReal(userId, password) {
     return data;
 }
 
+// ===================== SUBMIT (from B) =====================
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -75,16 +101,20 @@ form.addEventListener('submit', async (e) => {
     submitBtn.textContent = 'Logging in...';
 
     try {
-        const data = await handleLoginReal(userId, password);
+        const data = DEMO_MODE
+            ? await handleLoginDemo(userId, password)
+            : await handleLoginReal(userId, password);
 
+        // Store session (from B)
         sessionStorage.setItem('loggedIn', 'true');
         sessionStorage.setItem('role', data.role || '');
         sessionStorage.setItem('email', data.email || '');
         sessionStorage.setItem('name', data.name || '');
         sessionStorage.setItem('userId', data.id || '');
 
+        // Role-based redirect (from B) — but ADMIN goes to the admin board
         if (data.role === 'ADMIN') {
-            window.location.href = 'index-sprint-board-page.html';
+            window.location.href = 'index-admin-page.html';
         } else {
             window.location.href = 'index-user-page.html';
         }
