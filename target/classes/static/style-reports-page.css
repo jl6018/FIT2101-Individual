@@ -262,7 +262,7 @@ h1 {
     height: 26px;
     border-radius: 50%;
     background: var(--lavender-dark);
-    color: var(--black);
+    color: white;
     font-size: 11px;
     font-weight: 700;
     display: flex;
