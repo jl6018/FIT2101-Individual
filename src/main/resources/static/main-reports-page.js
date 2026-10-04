@@ -41,6 +41,13 @@ function requireElement(id) {
     return el;
 }
 
+// ===================== AUTOMATIC AVATAR COLOR =====================
+function getAvatarColor(index) {
+    const hue = (index * 137) % 360;
+    return `hsl(${hue}, 65%, 55%)`;
+}
+// ===================== END AVATAR COLOR =====================
+
 let TEAM_MEMBERS = [];
 let SESSIONS = [];
 
@@ -141,15 +148,20 @@ function renderContributionTable() {
     const maxDaysAgo = selectedWeeks * 7;
     contributionTitle.textContent = `Team contribution — last ${maxDaysAgo} days`;
     contributionBody.innerHTML = '';
-    TEAM_MEMBERS.forEach((member) => {
+
+    TEAM_MEMBERS.forEach((member, index) => {
         const stats = computeStats(member.name, maxDaysAgo);
         const row = document.createElement('tr');
         row.className = 'member-row-clickable';
         row.dataset['member'] = member.name;
+
+        // ✅ Auto-generate color per member using the index
+        const avatarColor = getAvatarColor(index);
+
         row.innerHTML = `
       <td>
         <span class="member-cell">
-          <span class="member-avatar">${member.initials}</span>
+          <span class="member-avatar" style="background: ${avatarColor};">${member.initials}</span>
           <span class="member-name-link">${member.name}</span>
         </span>
       </td>
@@ -157,6 +169,7 @@ function renderContributionTable() {
       <td>${stats.daysWorked}</td>
       <td>${stats.avgPerDay.toFixed(1)}h/day</td>
     `;
+
         row.addEventListener('click', () => openMemberModal(member, maxDaysAgo));
         contributionBody.appendChild(row);
     });
