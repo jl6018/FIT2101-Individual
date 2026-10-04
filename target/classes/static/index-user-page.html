@@ -48,6 +48,18 @@
 
 <main class="board" id="board"></main>
 
+<!-- ===================== MODAL: Logout ===================== -->
+<div class="modal-overlay" id="logoutOverlay">
+    <div class="modal modal-narrow" role="dialog" aria-modal="true">
+        <h2 class="modal-title">Log out?</h2>
+        <p class="modal-subtitle">You'll be returned to the login page.</p>
+        <div class="modal-actions">
+            <button id="cancelLogoutBtn" class="btn-secondary">Cancel</button>
+            <button id="confirmLogoutBtn" class="btn-danger">Log out</button>
+        </div>
+    </div>
+</div>
+
 <script type="module" src="main-user-page.js" defer></script>
 </body>
 </html>
