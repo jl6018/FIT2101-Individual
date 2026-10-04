@@ -14,7 +14,6 @@
 <body>
 
 <div class="app-shell">
-    <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="logo"><span class="s1">SYM</span><span class="s2">PH</span></div>
 
@@ -39,14 +38,12 @@
         </div>
     </aside>
 
-    <!-- MAIN CONTENT -->
     <main class="main">
         <h1>Sprint Planning</h1>
 
         <section class="panel">
             <h2>Start Sprint Planning</h2>
-            <p class="muted">Choose who's involved in the next sprint and add the tasks they'll work on. Sprints
-                can run up to 3 weeks.</p>
+            <p class="muted">Choose who's involved in the next sprint and add the tasks they'll work on. Sprints can run up to 3 weeks.</p>
             <button id="startSprintPlanningBtn" class="btn-primary">Start Sprint Planning</button>
         </section>
 
@@ -88,9 +85,9 @@
 
 <!-- ===================== MODAL: Start Sprint Planning ===================== -->
 <div class="modal-overlay" id="sprintPlanningOverlay">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sprintPlanningTitle">
+    <div class="modal" role="dialog" aria-modal="true">
         <button class="modal-close" id="closeSprintPlanningBtn" aria-label="Close">✕</button>
-        <h2 id="sprintPlanningTitle" class="modal-title">Sprint Planning</h2>
+        <h2 class="modal-title">Sprint Planning</h2>
         <p class="modal-subtitle">Sprints can run up to 3 weeks</p>
 
         <form id="sprintPlanningForm">
@@ -120,22 +117,6 @@
                         <input type="checkbox" name="member" value="Daniel Wu" checked>
                         <span>Daniel Wu — Team Alpha</span>
                     </label>
-                    <label class="member-row">
-                        <input type="checkbox" name="member" value="Farah Idris" checked>
-                        <span>Farah Idris — Team Beta</span>
-                    </label>
-                    <label class="member-row">
-                        <input type="checkbox" name="member" value="Aiden Cole" checked>
-                        <span>Aiden Cole — Team Beta</span>
-                    </label>
-                    <label class="member-row">
-                        <input type="checkbox" name="member" value="Mei Ling Tan" checked>
-                        <span>Mei Ling Tan — Team Gamma</span>
-                    </label>
-                    <label class="member-row">
-                        <input type="checkbox" name="member" value="Sam Okafor" checked>
-                        <span>Sam Okafor — Team Gamma</span>
-                    </label>
                 </div>
             </div>
 
@@ -156,25 +137,37 @@
 
 <!-- ===================== MODAL: Invite Product Owner ===================== -->
 <div class="modal-overlay" id="inviteOverlay">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="inviteTitle">
+    <div class="modal" role="dialog" aria-modal="true">
         <button class="modal-close" id="closeInviteBtn" aria-label="Close">✕</button>
-        <h2 id="inviteTitle" class="modal-title">Invite Product Owner</h2>
-        <p class="modal-subtitle">They'll receive a sign-in link by email — there's no public sign-up form.</p>
+        <h2 class="modal-title">Invite Product Owner</h2>
+        <p class="modal-subtitle">They'll receive a sign-in link by email.</p>
 
         <form id="inviteForm">
             <div class="form-field">
                 <label for="ownerEmail">Email address</label>
                 <input type="email" id="ownerEmail" name="ownerEmail" placeholder="owner@company.com" required>
             </div>
-
             <button type="submit" class="btn-primary full-width">Send invite</button>
         </form>
     </div>
 </div>
 
-<!-- ===================== TOAST NOTIFICATION ===================== -->
+<!-- ===================== MODAL: Logout ===================== -->
+<div class="modal-overlay" id="logoutOverlay">
+    <div class="modal modal-narrow" role="dialog" aria-modal="true">
+        <h2 class="modal-title">Log out?</h2>
+        <p class="modal-subtitle">You'll be returned to the login page.</p>
+        <div class="modal-actions">
+            <button id="cancelLogoutBtn" class="btn-secondary">Cancel</button>
+            <button id="confirmLogoutBtn" class="btn-danger">Log out</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== TOAST ===================== -->
 <div class="toast" id="toast"></div>
 
+<!-- 🔥 Cache buster: ?v=2 forces the browser to reload the JS -->
 <script src="main-sprint-planning-page.js" type="module" defer></script>
 </body>
 

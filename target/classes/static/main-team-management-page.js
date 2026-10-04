@@ -6,51 +6,60 @@ window.addEventListener('pageshow', (event) => {
 
 "use strict";
 
-// ===================== AUTH GUARD =====================
 if (sessionStorage.getItem('loggedIn') !== 'true') {
     window.location.href = 'index-login-page.html';
     throw new Error('Not logged in');
 }
-// ===================== END GUARD =====================
-
-// ===================== LOGOUT =====================
-document.getElementById('logoutBtn')?.addEventListener('click', () => {
-    if (confirm('Log out?')) {
-        sessionStorage.clear();
-        window.location.href = 'index-login-page.html';
-    }
-});
-// ===================== END LOGOUT =====================
 
 function requireElement(id) {
     const el = document.getElementById(id);
     if (!el) {
-        throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
+        throw new Error(`Missing element: ${id}`);
     }
     return el;
 }
 
+// ===================== LOGOUT (MODAL) =====================
+
+const logoutBtn = requireElement('logoutBtn');
+const logoutOverlay = requireElement('logoutOverlay');
+const cancelLogoutBtn = requireElement('cancelLogoutBtn');
+const confirmLogoutBtn = requireElement('confirmLogoutBtn');
+
+logoutBtn.addEventListener('click', () => {
+    logoutOverlay.classList.add('visible');
+});
+
+cancelLogoutBtn.addEventListener('click', () => {
+    logoutOverlay.classList.remove('visible');
+});
+
+confirmLogoutBtn.addEventListener('click', () => {
+    sessionStorage.clear();
+    window.location.href = 'index-login-page.html';
+});
+
+logoutOverlay.addEventListener('click', (e) => {
+    if (e.target === logoutOverlay) {
+        logoutOverlay.classList.remove('visible');
+    }
+});
+
 // ===================== ELEMENTS =====================
+
 const addMemberBtn = requireElement('addMemberBtn');
 const inviteProductOwnerBtn = requireElement('inviteProductOwnerBtn');
 const addMemberOverlay = requireElement('addMemberOverlay');
 const inviteOverlay = requireElement('inviteOverlay');
 const removeMemberOverlay = requireElement('removeMemberOverlay');
-
 const closeAddMemberBtn = requireElement('closeAddMemberBtn');
 const closeInviteBtn = requireElement('closeInviteBtn');
-
 const addMemberForm = requireElement('addMemberForm');
 const inviteForm = requireElement('inviteForm');
-
-const memberNameInput = requireElement('memberName');
-const memberEmailInput = requireElement('memberEmail');
+const memberUserSelect = requireElement('memberUser');
 const memberTeamSelect = requireElement('memberTeam');
-
 const ownerEmailInput = requireElement('ownerEmail');
-
 const membersBody = requireElement('membersBody');
-
 const removeMemberName = requireElement('removeMemberName');
 const removeMemberTeam = requireElement('removeMemberTeam');
 const cancelRemoveBtn = requireElement('cancelRemoveBtn');
@@ -58,8 +67,8 @@ const confirmRemoveBtn = requireElement('confirmRemoveBtn');
 const toast = requireElement('toast');
 
 let rowPendingRemoval = null;
+let registeredUsers = [];
 
-// ===================== MODAL OPEN/CLOSE =====================
 function openModal(overlay) {
     overlay.classList.add('visible');
 }
@@ -70,7 +79,6 @@ function closeModal(overlay) {
 
 addMemberBtn.addEventListener('click', () => openModal(addMemberOverlay));
 closeAddMemberBtn.addEventListener('click', () => closeModal(addMemberOverlay));
-
 inviteProductOwnerBtn.addEventListener('click', () => openModal(inviteOverlay));
 closeInviteBtn.addEventListener('click', () => closeModal(inviteOverlay));
 
@@ -82,7 +90,6 @@ closeInviteBtn.addEventListener('click', () => closeModal(inviteOverlay));
     });
 });
 
-// ===================== TOAST =====================
 let toastTimeoutId;
 
 function showToast(message) {
@@ -96,43 +103,110 @@ function showToast(message) {
     }, 3000);
 }
 
+// ===================== LOAD USERS =====================
+
+async function loadMembers() {
+    try {
+        const res = await fetch('/api/users');
+        if (!res.ok) throw new Error('Failed to load users');
+
+        const allUsers = await res.json();
+        registeredUsers = allUsers.filter((user) => user.role === 'EMPLOYEE');
+
+        memberUserSelect.innerHTML = '<option value="">Select a user...</option>';
+        registeredUsers.forEach((user) => {
+            const option = document.createElement('option');
+            option.value = user.id;
+            option.textContent = `${user.name} (${user.email}) — ${user.role}`;
+            memberUserSelect.appendChild(option);
+        });
+    } catch (err) {
+        console.error('Failed to load members:', err);
+    }
+}
+
 // ===================== ADD MEMBER =====================
+
 addMemberForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    const name = memberNameInput.value.trim();
-    const email = memberEmailInput.value.trim();
-    const team = memberTeamSelect.value;
-    if (!name || !email) return;
 
-    const row = document.createElement('tr');
-    row.dataset['name'] = name;
-    row.dataset['team'] = team;
-    row.innerHTML = `
-        <td>${name}</td>
-        <td>Member</td>
-        <td>${team}</td>
-        <td><button class="remove-btn">Remove</button></td>
-    `;
-    membersBody.appendChild(row);
+    const userId = memberUserSelect.value;
+    const team = memberTeamSelect.value;
+
+    if (!userId) {
+        alert('Please select a user.');
+        return;
+    }
+
+    const user = registeredUsers.find((u) => u.id == userId);
+    if (!user) return;
+
+    const existingRow = membersBody.querySelector(`tr[data-id="${userId}"]`);
+    if (existingRow) {
+        existingRow.dataset.team = team;
+        existingRow.cells[2].textContent = team;
+    } else {
+        const row = document.createElement('tr');
+        row.dataset.id = user.id;
+        row.dataset.name = user.name;
+        row.dataset.team = team;
+        row.innerHTML = `
+            <td>${user.name}</td>
+            <td>${user.role}</td>
+            <td>${team}</td>
+            <td><button class="remove-btn">Remove</button></td>
+        `;
+        membersBody.appendChild(row);
+    }
+
     closeModal(addMemberOverlay);
-    showToast(`${name} added to ${team}`);
+    showToast(`${user.name} added to ${team}`);
     addMemberForm.reset();
 });
 
 // ===================== INVITE PRODUCT OWNER =====================
-inviteForm.addEventListener('submit', (e) => {
+
+inviteForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+
     const email = ownerEmailInput.value.trim();
     if (!email) {
-        ownerEmailInput.focus();
+        alert('Please enter an email address.');
         return;
     }
-    closeModal(inviteOverlay);
-    showToast(`Invite sent to ${email}`);
-    inviteForm.reset();
+
+    try {
+        const res = await fetch('/api/invites', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            if (text.toLowerCase().includes('already')) {
+                throw new Error('Email already invited.');
+            }
+            if (text.toLowerCase().includes('invalid')) {
+                throw new Error('Invalid email address.');
+            }
+            if (text.toLowerCase().includes('required')) {
+                throw new Error('Email is required.');
+            }
+            throw new Error(text || 'Failed to send invite.');
+        }
+
+        closeModal(inviteOverlay);
+        showToast(`Invite sent to ${email}`);
+        inviteForm.reset();
+    } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to send invite';
+        alert(message);
+    }
 });
 
 // ===================== REMOVE MEMBER =====================
+
 membersBody.addEventListener('click', (e) => {
     const target = e.target;
     if (!target.classList.contains('remove-btn')) return;
@@ -141,8 +215,8 @@ membersBody.addEventListener('click', (e) => {
     if (!row) return;
 
     rowPendingRemoval = row;
-    removeMemberName.textContent = row.dataset['name'] ?? 'this member';
-    removeMemberTeam.textContent = row.dataset['team'] ?? 'their team';
+    removeMemberName.textContent = row.dataset.name ?? 'this member';
+    removeMemberTeam.textContent = row.dataset.team ?? 'their team';
     openModal(removeMemberOverlay);
 });
 
@@ -156,9 +230,14 @@ confirmRemoveBtn.addEventListener('click', () => {
         closeModal(removeMemberOverlay);
         return;
     }
-    const name = rowPendingRemoval.dataset['name'] ?? 'Member';
+
+    const name = rowPendingRemoval.dataset.name ?? 'Member';
     rowPendingRemoval.remove();
     rowPendingRemoval = null;
     closeModal(removeMemberOverlay);
-    showToast(`${name} removed`);
+    showToast(`${name} removed from team`);
 });
+
+// ===================== INIT =====================
+
+loadMembers();

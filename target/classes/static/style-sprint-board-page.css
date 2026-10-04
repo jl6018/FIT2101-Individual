@@ -61,14 +61,8 @@ body {
     font-weight: 500;
 }
 
-.nav-item:hover {
-    background: var(--lavender-dark);
-}
-
-.nav-item.active {
-    background: var(--lavender-dark);
-    font-weight: 700;
-}
+.nav-item:hover { background: var(--lavender-dark); }
+.nav-item.active { background: var(--lavender-dark); font-weight: 700; }
 
 .dot {
     width: 8px;
@@ -104,9 +98,7 @@ body {
     cursor: pointer;
 }
 
-.switch-account-btn:hover {
-    background: #F3F4F6;
-}
+.switch-account-btn:hover { background: #F3F4F6; }
 
 /* ===================== MAIN CONTENT ===================== */
 .main {
@@ -156,9 +148,7 @@ h1 {
     cursor: pointer;
 }
 
-.btn-primary:hover {
-    background: #2a2a2a;
-}
+.btn-primary:hover { background: #2a2a2a; }
 
 /* ===================== KANBAN BOARD ===================== */
 .board-columns {
@@ -217,4 +207,87 @@ h1 {
 .muted {
     color: var(--text-muted);
     font-size: 13px;
+}
+
+/* ===================== MODALS ===================== */
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 17, 17, 0.4);
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 16px;
+}
+
+.modal-overlay.visible {
+    display: flex;
+}
+
+.modal {
+    background: #fff;
+    border-radius: 16px;
+    padding: 28px;
+    width: 100%;
+    max-width: 420px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+.modal-narrow {
+    max-width: 380px;
+}
+
+.modal-title {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 4px;
+}
+
+.modal-subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0 0 20px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.btn-secondary {
+    flex: 1;
+    padding: 12px 20px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--black);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-secondary:hover {
+    background: #F3F4F6;
+}
+
+.btn-danger {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 10px;
+    background: #DC2626;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-danger:hover {
+    background: #B91C1C;
 }
