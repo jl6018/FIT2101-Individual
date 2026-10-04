@@ -17,16 +17,26 @@ const dismissError = requireElement('dismissError');
 function showError(message) {
     errorText.textContent = message;
     errorBanner.classList.add('visible');
+    errorBanner.style.background = '#FDE8E8';
+    errorBanner.style.color = '#C0392B';
 }
 
-function hideError() {
+function showSuccess(message) {
+    errorText.textContent = message;
+    errorBanner.classList.add('visible');
+    errorBanner.style.background = '#D1FAE5';
+    errorBanner.style.color = '#065F46';
+}
+
+function hideBanner() {
     errorBanner.classList.remove('visible');
 }
 
-dismissError.addEventListener('click', hideError);
+dismissError.addEventListener('click', hideBanner);
 
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    hideBanner();
 
     const payload = {
         name: nameInput.value.trim(),
@@ -43,6 +53,10 @@ form.addEventListener('submit', async (e) => {
         showError('Password must be at least 8 characters.');
         return;
     }
+    if (!payload.email.includes('@')) {
+        showError('Please enter a valid email address.');
+        return;
+    }
 
     submitBtn.disabled = true;
     submitBtn.textContent = 'Registering...';
@@ -55,17 +69,24 @@ form.addEventListener('submit', async (e) => {
         });
 
         if (!res.ok) {
-            const message = await res.text();
-            throw new Error(message || 'Registration failed');
+            const text = await res.text();
+            if (text.toLowerCase().includes('already') || text.toLowerCase().includes('duplicate')) {
+                throw new Error('This email is already registered. Please log in.');
+            }
+            throw new Error(text || 'Registration failed');
         }
 
-        alert('Account successfully registered! Please log in.');
-        window.location.href = 'index-login-page.html';
+        // ✅ Success — green banner, no alert popup
+        showSuccess('Account successfully registered! Redirecting to login...');
+        submitBtn.textContent = 'Registered ✅';
+
+        setTimeout(() => {
+            window.location.href = 'index-login-page.html';
+        }, 1500);
 
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Registration failed';
         showError(message);
-    } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Register';
     }
