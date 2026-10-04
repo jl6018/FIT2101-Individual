@@ -26,11 +26,18 @@
 
 <header class="project-header">
     <div class="project-header-left">
+        <a href="index-sprint-board-page.html" class="back-btn" title="Back to Sprint Board">← Back</a>
         <h1>Project Name</h1>
         <span class="badge">Admin</span>
     </div>
     <div class="project-header-right">
         <button class="start-sprint-btn" id="startSprintBtn">▶ Start Sprint</button>
+        <select id="adminTeamSwitcher" class="admin-team-switcher">
+            <option value="all">All Teams</option>
+            <option value="Team Alpha">Team Alpha</option>
+            <option value="Team Beta">Team Beta</option>
+            <option value="Team Gamma">Team Gamma</option>
+        </select>
         <div class="avatar-stack">
             <div class="avatar avatar-teal">T</div>
             <div class="avatar avatar-pink">H</div>
@@ -49,6 +56,18 @@
 </div>
 
 <main class="board" id="board"></main>
+
+<!-- ===================== MODAL: Logout ===================== -->
+<div class="modal-overlay" id="logoutOverlay">
+    <div class="modal modal-narrow" role="dialog" aria-modal="true">
+        <h2 class="modal-title">Log out?</h2>
+        <p class="modal-subtitle">You'll be returned to the login page.</p>
+        <div class="modal-actions">
+            <button id="cancelLogoutBtn" class="btn-secondary">Cancel</button>
+            <button id="confirmLogoutBtn" class="btn-danger">Log out</button>
+        </div>
+    </div>
+</div>
 
 <script type="module" src="main-admin-page.js" defer></script>
 </body>
