@@ -4,13 +4,20 @@ window.addEventListener('pageshow', (event) => {
     }
 });
 
-// ===================== AUTH GUARD =====================
 if (sessionStorage.getItem('loggedIn') !== 'true') {
     window.location.href = 'index-login-page.html';
     throw new Error('Not logged in');
 }
 
-// ===================== LOGOUT MODAL =====================
+const nameEl = document.getElementById('signedInName');
+if (nameEl) {
+    const name = sessionStorage.getItem('name');
+    const role = sessionStorage.getItem('role');
+    if (name) {
+        nameEl.textContent = role === 'ADMIN' ? `${name} (Admin)` : name;
+    }
+}
+
 const logoutBtn = document.getElementById('logoutBtn');
 const logoutOverlay = document.getElementById('logoutOverlay');
 const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
@@ -103,12 +110,8 @@ const memberModalTotal = requireElement('memberModalTotal');
 
 let selectedWeeks = 2;
 
-function openModal(overlay) {
-    overlay.classList.add('visible');
-}
-function closeModal(overlay) {
-    overlay.classList.remove('visible');
-}
+function openModal(overlay) { overlay.classList.add('visible'); }
+function closeModal(overlay) { overlay.classList.remove('visible'); }
 
 closeMemberModalBtn.addEventListener('click', () => closeModal(memberOverlay));
 memberOverlay.addEventListener('click', (e) => {

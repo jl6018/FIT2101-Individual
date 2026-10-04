@@ -33,7 +33,7 @@
         </nav>
 
         <div class="sidebar-footer">
-            <div class="signed-in">Signed in as <strong>Admin</strong></div>
+            <div class="signed-in">Signed in as <strong id="signedInName">Admin</strong></div>
             <button id="logoutBtn" class="switch-account-btn">Log out</button>
         </div>
     </aside>
@@ -64,26 +64,12 @@
                     <th>Status</th>
                 </tr>
                 </thead>
-                <tbody id="pastSprintsBody">
-                <tr>
-                    <td>Sprint 2</td>
-                    <td>5 - 19 Sep 2026</td>
-                    <td>6</td>
-                    <td>In progress</td>
-                </tr>
-                <tr>
-                    <td>Sprint 1</td>
-                    <td>30 Aug - 5 Sep 2026</td>
-                    <td>5</td>
-                    <td>Completed</td>
-                </tr>
-                </tbody>
+                <tbody id="pastSprintsBody"></tbody>
             </table>
         </section>
     </main>
 </div>
 
-<!-- ===================== MODAL: Start Sprint Planning ===================== -->
 <div class="modal-overlay" id="sprintPlanningOverlay">
     <div class="modal" role="dialog" aria-modal="true">
         <button class="modal-close" id="closeSprintPlanningBtn" aria-label="Close">✕</button>
@@ -135,7 +121,6 @@
     </div>
 </div>
 
-<!-- ===================== MODAL: Invite Product Owner ===================== -->
 <div class="modal-overlay" id="inviteOverlay">
     <div class="modal" role="dialog" aria-modal="true">
         <button class="modal-close" id="closeInviteBtn" aria-label="Close">✕</button>
@@ -152,7 +137,6 @@
     </div>
 </div>
 
-<!-- ===================== MODAL: Logout ===================== -->
 <div class="modal-overlay" id="logoutOverlay">
     <div class="modal modal-narrow" role="dialog" aria-modal="true">
         <h2 class="modal-title">Log out?</h2>
@@ -164,10 +148,8 @@
     </div>
 </div>
 
-<!-- ===================== TOAST ===================== -->
 <div class="toast" id="toast"></div>
 
-<!-- 🔥 Cache buster: ?v=2 forces the browser to reload the JS -->
 <script src="main-sprint-planning-page.js" type="module" defer></script>
 </body>
 

@@ -4,13 +4,20 @@ window.addEventListener('pageshow', (event) => {
     }
 });
 
-// ===================== AUTH GUARD =====================
 if (sessionStorage.getItem('loggedIn') !== 'true') {
     window.location.href = 'index-login-page.html';
     throw new Error('Not logged in');
 }
 
-// ===================== LOGOUT MODAL =====================
+const nameEl = document.getElementById('signedInName');
+if (nameEl) {
+    const name = sessionStorage.getItem('name');
+    const role = sessionStorage.getItem('role');
+    if (name) {
+        nameEl.textContent = role === 'ADMIN' ? `${name} (Admin)` : name;
+    }
+}
+
 const logoutBtn = document.getElementById('logoutBtn');
 const logoutOverlay = document.getElementById('logoutOverlay');
 const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
@@ -26,7 +33,6 @@ logoutOverlay?.addEventListener('click', (e) => {
     if (e.target === logoutOverlay) logoutOverlay.classList.remove('visible');
 });
 
-// ===================== BOARD =====================
 async function loadBoard() {
     const container = document.getElementById('boardColumns');
     if (!container) return;
