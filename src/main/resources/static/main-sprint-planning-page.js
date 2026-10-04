@@ -11,24 +11,39 @@ if (sessionStorage.getItem('loggedIn') !== 'true') {
     window.location.href = 'index-login-page.html';
     throw new Error('Not logged in');
 }
-// ===================== END GUARD =====================
-
-// ===================== LOGOUT =====================
-document.getElementById('logoutBtn')?.addEventListener('click', () => {
-    if (confirm('Log out?')) {
-        sessionStorage.clear();
-        window.location.href = 'index-login-page.html';
-    }
-});
-// ===================== END LOGOUT =====================
 
 function requireElement(id) {
     const el = document.getElementById(id);
     if (!el) {
-        throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
+        throw new Error(`Missing element: ${id}`);
     }
     return el;
 }
+
+// ===================== LOGOUT (MODAL) =====================
+const logoutBtn = requireElement('logoutBtn');
+const logoutOverlay = requireElement('logoutOverlay');
+const cancelLogoutBtn = requireElement('cancelLogoutBtn');
+const confirmLogoutBtn = requireElement('confirmLogoutBtn');
+
+logoutBtn.addEventListener('click', () => {
+    logoutOverlay.classList.add('visible');
+});
+
+cancelLogoutBtn.addEventListener('click', () => {
+    logoutOverlay.classList.remove('visible');
+});
+
+confirmLogoutBtn.addEventListener('click', () => {
+    sessionStorage.clear();
+    window.location.href = 'index-login-page.html';
+});
+
+logoutOverlay.addEventListener('click', (e) => {
+    if (e.target === logoutOverlay) {
+        logoutOverlay.classList.remove('visible');
+    }
+});
 
 // ===================== ELEMENTS =====================
 const startSprintPlanningBtn = requireElement('startSprintPlanningBtn');
@@ -97,11 +112,13 @@ function formatDateRange(startDate, weeks) {
 
 sprintPlanningForm.addEventListener('submit', (e) => {
     e.preventDefault();
+
     const sprintName = sprintNameInput.value.trim();
     if (!sprintName) {
         sprintNameInput.focus();
         return;
     }
+
     const weeks = Number(sprintDurationSelect.value);
     const checkedMembers = membersList.querySelectorAll('input[type="checkbox"]:checked');
     const memberCount = checkedMembers.length;

@@ -14,7 +14,6 @@
 <body>
 
 <div class="app-shell">
-    <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="logo"><span class="s1">SYM</span><span class="s2">PH</span></div>
 
@@ -39,7 +38,6 @@
         </div>
     </aside>
 
-    <!-- MAIN CONTENT -->
     <main class="main">
         <div class="top-bar">
             <span class="top-bar-badge">Admin</span>
@@ -55,7 +53,6 @@
         <h1>Reports</h1>
         <p class="page-subtitle">Time contribution, hours per task and sprint burndown</p>
 
-        <!-- TIME RANGE -->
         <section class="panel">
             <h2>Time range</h2>
             <div class="time-range-row" id="timeRangeRow">
@@ -65,12 +62,9 @@
             </div>
         </section>
 
-        <!-- TEAM CONTRIBUTION -->
         <section class="panel">
             <h2 id="contributionTitle">Team contribution — last 14 days</h2>
-            <p class="muted">Average hours per day = total hours logged in this range ÷ days that member
-                actually logged work. Click a row for their individual history.</p>
-
+            <p class="muted">Average hours per day = total hours logged in this range ÷ days that member actually logged work. Click a row for their individual history.</p>
             <table class="contribution-table">
                 <thead>
                 <tr>
@@ -84,14 +78,12 @@
             </table>
         </section>
 
-        <!-- HOURS PER TASK -->
         <section class="panel">
             <h2>Hours per task</h2>
             <p class="muted">Total logged hours against each task in this sprint.</p>
             <div class="bar-chart" id="taskHoursChart"></div>
         </section>
 
-        <!-- SPRINT BURNDOWN -->
         <section class="panel">
             <h2>Sprint burndown</h2>
             <p class="muted">Illustrative example — actual vs projected velocity across the sprint.</p>
@@ -106,18 +98,28 @@
     </main>
 </div>
 
-<!-- ===================== MODAL: Member History ===================== -->
+<!-- MODAL: Member History -->
 <div class="modal-overlay" id="memberOverlay">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="memberModalName">
+    <div class="modal" role="dialog" aria-modal="true">
         <button class="modal-close" id="closeMemberModalBtn" aria-label="Close">✕</button>
         <h2 id="memberModalName" class="modal-title"></h2>
         <p class="modal-subtitle" id="memberModalTeam"></p>
-
         <div id="memberChartWrap" class="bar-chart member-chart"></div>
         <p id="memberEmptyState" class="muted" style="display:none;">No hours logged yet</p>
-
         <hr class="modal-divider">
         <p class="modal-total" id="memberModalTotal"></p>
+    </div>
+</div>
+
+<!-- ===================== MODAL: Logout ===================== -->
+<div class="modal-overlay" id="logoutOverlay">
+    <div class="modal modal-narrow" role="dialog" aria-modal="true">
+        <h2 class="modal-title">Log out?</h2>
+        <p class="modal-subtitle">You'll be returned to the login page.</p>
+        <div class="modal-actions">
+            <button id="cancelLogoutBtn" class="btn-secondary">Cancel</button>
+            <button id="confirmLogoutBtn" class="btn-danger">Log out</button>
+        </div>
     </div>
 </div>
 
