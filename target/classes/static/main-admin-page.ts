@@ -55,6 +55,9 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         sessionStorage.clear();
         window.location.href = "index-login-page.html";
     });
+    logoutOverlay?.addEventListener("click", (e) => {
+        if (e.target === logoutOverlay) logoutOverlay.classList.remove("visible");
+    });
 
     // ===================== TYPES =====================
     type ColumnId = "PRODUCT_BACKLOG" | "TO_DO" | "IN_PROGRESS" | "IN_REVIEW" | "COMPLETED";

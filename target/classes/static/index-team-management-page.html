@@ -53,6 +53,7 @@
             <tr>
                 <th>Name</th>
                 <th>Role</th>
+                <th>Job Title</th>
                 <th>Team</th>
                 <th></th>
             </tr>
@@ -62,6 +63,7 @@
     </main>
 </div>
 
+<!-- ===================== MODAL: Add Member ===================== -->
 <div class="modal-overlay" id="addMemberOverlay">
     <div class="modal" role="dialog" aria-modal="true">
         <button class="modal-close" id="closeAddMemberBtn" aria-label="Close">✕</button>
@@ -71,13 +73,28 @@
             <div class="form-field">
                 <label for="memberUser">Select user</label>
                 <select id="memberUser" name="memberUser" required>
-                    <option value="">Loading...</option>
+                    <option value="">Select a user...</option>
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label for="memberJobTitle">Job Title</label>
+                <select id="memberJobTitle" name="memberJobTitle" required>
+                    <option value="">Select a job title...</option>
+                    <option value="Frontend Developer">Frontend Developer</option>
+                    <option value="Backend Developer">Backend Developer</option>
+                    <option value="QA Tester">QA Tester</option>
+                    <option value="Scrum Master">Scrum Master</option>
+                    <option value="Product Owner">Product Owner</option>
+                    <option value="Git Manager">Git Manager</option>
+                    <option value="Business Analyst">Business Analyst</option>
                 </select>
             </div>
 
             <div class="form-field">
                 <label for="memberTeam">Team</label>
-                <select id="memberTeam" name="memberTeam">
+                <select id="memberTeam" name="memberTeam" required>
+                    <option value="">Select a team...</option>
                     <option value="Team Alpha">Team Alpha</option>
                     <option value="Team Beta">Team Beta</option>
                     <option value="Team Gamma">Team Gamma</option>
@@ -89,6 +106,7 @@
     </div>
 </div>
 
+<!-- ===================== MODAL: Invite Product Owner ===================== -->
 <div class="modal-overlay" id="inviteOverlay">
     <div class="modal" role="dialog" aria-modal="true">
         <button class="modal-close" id="closeInviteBtn" aria-label="Close">✕</button>
@@ -106,6 +124,7 @@
     </div>
 </div>
 
+<!-- ===================== MODAL: Remove Member ===================== -->
 <div class="modal-overlay" id="removeMemberOverlay">
     <div class="modal modal-narrow" role="dialog" aria-modal="true">
         <h2 class="modal-title">Remove <span id="removeMemberName"></span>?</h2>
@@ -118,6 +137,7 @@
     </div>
 </div>
 
+<!-- ===================== MODAL: Logout ===================== -->
 <div class="modal-overlay" id="logoutOverlay">
     <div class="modal modal-narrow" role="dialog" aria-modal="true">
         <h2 class="modal-title">Log out?</h2>
