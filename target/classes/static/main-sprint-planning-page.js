@@ -1,21 +1,21 @@
 "use strict";
 // main-sprint-planning-page.js
-// Merged: A's switch-account modal + B's guard / logout / show-user
+// Merged: logout modal + auth guard + show-user
 
-// ===================== BFCACHE FIX (from B) =====================
+// ===================== BFCACHE FIX =====================
 window.addEventListener('pageshow', (event) => {
     if (event.persisted && sessionStorage.getItem('loggedIn') !== 'true') {
         window.location.href = 'index-login-page.html';
     }
 });
 
-// ===================== AUTH GUARD (from B) =====================
+// ===================== AUTH GUARD =====================
 if (sessionStorage.getItem('loggedIn') !== 'true') {
     window.location.href = 'index-login-page.html';
     throw new Error('Not logged in');
 }
 
-// ===================== SHOW CURRENT USER (from B) =====================
+// ===================== SHOW CURRENT USER =====================
 const nameEl = document.getElementById('signedInName');
 if (nameEl) {
     const name = sessionStorage.getItem('name');
@@ -33,7 +33,7 @@ function requireElement(id) {
     return el;
 }
 
-// ===================== LOGOUT MODAL (from B) =====================
+// ===================== LOGOUT MODAL =====================
 const logoutBtn = requireElement('logoutBtn');
 const logoutOverlay = requireElement('logoutOverlay');
 const cancelLogoutBtn = requireElement('cancelLogoutBtn');
@@ -49,16 +49,13 @@ logoutOverlay.addEventListener('click', (e) => {
     if (e.target === logoutOverlay) logoutOverlay.classList.remove('visible');
 });
 
-// ===================== ELEMENTS (A + A's switch-account) =====================
+// ===================== ELEMENTS =====================
 const startSprintPlanningBtn = requireElement('startSprintPlanningBtn');
 const inviteProductOwnerBtn = requireElement('inviteProductOwnerBtn');
-const switchAccountBtn = requireElement('switchAccountBtn');
 const sprintPlanningOverlay = requireElement('sprintPlanningOverlay');
 const inviteOverlay = requireElement('inviteOverlay');
-const switchAccountOverlay = requireElement('switchAccountOverlay');
 const closeSprintPlanningBtn = requireElement('closeSprintPlanningBtn');
 const closeInviteBtn = requireElement('closeInviteBtn');
-const closeSwitchAccountBtn = requireElement('closeSwitchAccountBtn');
 const sprintPlanningForm = requireElement('sprintPlanningForm');
 const inviteForm = requireElement('inviteForm');
 const sprintNameInput = requireElement('sprintName');
@@ -68,7 +65,6 @@ const taskDateInput = requireElement('taskDate');
 const membersList = requireElement('membersList');
 const ownerEmailInput = requireElement('ownerEmail');
 const pastSprintsBody = requireElement('pastSprintsBody');
-const accountList = requireElement('accountList');
 const toast = requireElement('toast');
 
 // ===================== MODAL OPEN/CLOSE =====================
@@ -83,11 +79,9 @@ startSprintPlanningBtn.addEventListener('click', () => openModal(sprintPlanningO
 closeSprintPlanningBtn.addEventListener('click', () => closeModal(sprintPlanningOverlay));
 inviteProductOwnerBtn.addEventListener('click', () => openModal(inviteOverlay));
 closeInviteBtn.addEventListener('click', () => closeModal(inviteOverlay));
-switchAccountBtn.addEventListener('click', () => openModal(switchAccountOverlay));
-closeSwitchAccountBtn.addEventListener('click', () => closeModal(switchAccountOverlay));
 
 // Close a modal by clicking its dark backdrop (outside the white card)
-[sprintPlanningOverlay, inviteOverlay, switchAccountOverlay].forEach((overlay) => {
+[sprintPlanningOverlay, inviteOverlay].forEach((overlay) => {
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) {
             closeModal(overlay);
@@ -107,15 +101,6 @@ function showToast(message) {
         toast.classList.remove('visible');
     }, 3000);
 }
-
-// ===================== SWITCH ACCOUNT (A) =====================
-accountList.querySelectorAll('.account-row').forEach((row) => {
-    row.addEventListener('click', () => {
-        const name = row.dataset['name'] ?? 'Unknown';
-        closeModal(switchAccountOverlay);
-        showToast(`Switched to ${name}`);
-    });
-});
 
 // ===================== CREATE SPRINT =====================
 function formatDateRange(startDate, weeks) {
