@@ -33,7 +33,7 @@
         </nav>
 
         <div class="sidebar-footer">
-            <div class="signed-in">Signed in as <strong>Admin</strong></div>
+            <div class="signed-in">Signed in as <strong id="signedInName">Admin</strong></div>
             <button id="logoutBtn" class="switch-account-btn">Log out</button>
         </div>
     </aside>
@@ -98,7 +98,6 @@
     </main>
 </div>
 
-<!-- MODAL: Member History -->
 <div class="modal-overlay" id="memberOverlay">
     <div class="modal" role="dialog" aria-modal="true">
         <button class="modal-close" id="closeMemberModalBtn" aria-label="Close">✕</button>
@@ -111,7 +110,6 @@
     </div>
 </div>
 
-<!-- ===================== MODAL: Logout ===================== -->
 <div class="modal-overlay" id="logoutOverlay">
     <div class="modal modal-narrow" role="dialog" aria-modal="true">
         <h2 class="modal-title">Log out?</h2>

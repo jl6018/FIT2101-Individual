@@ -77,12 +77,11 @@ form.addEventListener('submit', async (e) => {
     try {
         const data = await handleLoginReal(userId, password);
 
-        // ===================== SAVE LOGIN STATE =====================
         sessionStorage.setItem('loggedIn', 'true');
         sessionStorage.setItem('role', data.role || '');
         sessionStorage.setItem('email', data.email || '');
         sessionStorage.setItem('name', data.name || '');
-        // ============================================================
+        sessionStorage.setItem('userId', data.id || '');
 
         if (data.role === 'ADMIN') {
             window.location.href = 'index-sprint-board-page.html';

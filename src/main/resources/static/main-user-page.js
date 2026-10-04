@@ -15,12 +15,31 @@ if (sessionStorage.getItem('role') !== 'EMPLOYEE') {
 }
 // ===================== END GUARD =====================
 
-// ===================== LOGOUT =====================
-document.getElementById('logoutBtn')?.addEventListener('click', () => {
-    if (confirm('Log out?')) {
-        sessionStorage.clear();
-        window.location.href = 'index-login-page.html';
+// ===================== SHOW CURRENT USER =====================
+const nameEl = document.getElementById('signedInName');
+if (nameEl) {
+    const name = sessionStorage.getItem('name');
+    const role = sessionStorage.getItem('role');
+    if (name) {
+        nameEl.textContent = role === 'ADMIN' ? `${name} (Admin)` : name;
     }
+}
+// ===================== END SHOW CURRENT USER =====================
+
+// ===================== LOGOUT MODAL =====================
+const logoutBtn = document.getElementById('logoutBtn');
+const logoutOverlay = document.getElementById('logoutOverlay');
+const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+
+logoutBtn?.addEventListener('click', () => logoutOverlay?.classList.add('visible'));
+cancelLogoutBtn?.addEventListener('click', () => logoutOverlay?.classList.remove('visible'));
+confirmLogoutBtn?.addEventListener('click', () => {
+    sessionStorage.clear();
+    window.location.href = 'index-login-page.html';
+});
+logoutOverlay?.addEventListener('click', (e) => {
+    if (e.target === logoutOverlay) logoutOverlay.classList.remove('visible');
 });
 // ===================== END LOGOUT =====================
 
