@@ -501,3 +501,63 @@ body {
 .logout-btn:hover {
     background: #F3F4F6;
 }
+
+/* ===================== LOGOUT MODAL ===================== */
+
+.modal-narrow {
+    max-width: 380px;
+}
+
+.modal-title {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 4px;
+    color: #1a1a1a;
+}
+
+.modal-subtitle {
+    font-size: 13px;
+    color: #6B7280;
+    margin: 0 0 20px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.btn-secondary {
+    flex: 1;
+    padding: 12px 20px;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    background: #fff;
+    color: #111;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.btn-secondary:hover {
+    background: #F3F4F6;
+}
+
+.btn-danger {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 10px;
+    background: #DC2626;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.btn-danger:hover {
+    background: #B91C1C;
+}
