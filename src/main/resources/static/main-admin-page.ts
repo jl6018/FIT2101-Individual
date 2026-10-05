@@ -1,15 +1,6 @@
 // main-admin-page.ts
 // Compile with:
 //   npx tsc main-admin-page.ts --module esnext --target esnext --strict --ignoreConfig
-//
-// Sprint 2 stories covered on this page:
-//   US07 — assign a task to a team or to one or more employees
-//   US09 — admin views every team's board (filter button in the search bar)
-//   US10 — edit a task's name and description
-//   US11 — only the admin can delete a task (delete lives on this page only)
-//   US15 — set a due date on a task
-//   US17 — admin moves a task from In Review to Completed (drag and drop)
-//   US23 — Start Sprint button
 
 // ===================== ADMIN GUARD =====================
 window.addEventListener("pageshow", (event) => {
@@ -59,6 +50,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     type Assignee =
         | { kind: "team"; teamId: string }
+        | { kind: "teams"; teamIds: string[] }
         | { kind: "employees"; employeeIds: string[] };
 
     type Task = {
@@ -73,8 +65,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     };
 
     type Team = { id: string; name: string };
-
-    // Employee carries the team NAME
     type Employee = { id: string; name: string; team: string };
 
     type BackendTask = {
@@ -82,6 +72,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         name: string;
         description?: string | null;
         status?: ColumnId | null;
+        assignedTeams?: string | null;
+        assignedEmployeeIds?: string | null;   // ✅ NEW
     };
 
     type BackendUser = {
@@ -97,14 +89,12 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const USERS_API = "http://localhost:8080/api/users";
 
     // ===================== REFERENCE DATA =====================
-    // Team IDs use the team NAME, so they match what the backend stores
     const TEAMS: Team[] = [
         { id: "Team Alpha", name: "Team Alpha" },
-        { id: "Team Beta", name: "Team Beta" },
+        { id: "Team Beta",  name: "Team Beta" },
         { id: "Team Gamma", name: "Team Gamma" },
     ];
 
-    // Filled from GET /api/users on page load.
     let EMPLOYEES: Employee[] = [];
 
     async function loadEmployeesFromBackend(): Promise<void> {
@@ -177,12 +167,14 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     function teamsOfTask(task: Task): string[] {
         if (!task.assignee) return [];
         if (task.assignee.kind === "team") return [task.assignee.teamId];
+        if (task.assignee.kind === "teams") return task.assignee.teamIds;
         return assignedEmployees(task.assignee).map((employee) => employee.team).filter(Boolean);
     }
 
     function assigneeLabel(assignee: Assignee | null): string {
         if (!assignee) return "Unassigned";
         if (assignee.kind === "team") return teamName(assignee.teamId) || "Team";
+        if (assignee.kind === "teams") return assignee.teamIds.join(", ");
         const names = assignedEmployees(assignee).map((employee) => employee.name);
         return names.length > 0 ? names.join(", ") : "Unassigned";
     }
@@ -218,16 +210,39 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             const res = await fetch(API_BASE);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data: BackendTask[] = await res.json();
-            return data.map((t) => ({
-                id: String(t.id),
-                sprintId: "1",
-                column: (t.status ?? "PRODUCT_BACKLOG") as ColumnId,
-                title: t.name,
-                description: t.description ?? "",
-                assignee: null,
-                dueDate: "",
-                estimateHours: 0,
-            }));
+
+            return data.map((t) => {
+                let assignee: Assignee | null = null;
+
+                // ✅ Prefer employees if any are assigned
+                if (t.assignedEmployeeIds) {
+                    const ids = t.assignedEmployeeIds.split(",").map((s) => s.trim()).filter(Boolean);
+                    if (ids.length > 0) {
+                        assignee = { kind: "employees", employeeIds: ids };
+                    }
+                }
+
+                // ✅ Otherwise fall back to teams
+                if (!assignee && t.assignedTeams) {
+                    const names = t.assignedTeams.split(",").map((s) => s.trim()).filter(Boolean);
+                    if (names.length === 1) {
+                        assignee = { kind: "team", teamId: names[0] };
+                    } else if (names.length > 1) {
+                        assignee = { kind: "teams", teamIds: names };
+                    }
+                }
+
+                return {
+                    id: String(t.id),
+                    sprintId: "1",
+                    column: (t.status ?? "PRODUCT_BACKLOG") as ColumnId,
+                    title: t.name,
+                    description: t.description ?? "",
+                    assignee,
+                    dueDate: "",
+                    estimateHours: 0,
+                };
+            });
         } catch (err) {
             console.error("Failed to load tasks:", err);
             return [];
@@ -240,8 +255,23 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderTeamFilter();
     }
 
+    // ✅ Produce backend payload from assignee
+    function assigneeToBackendPayload(assignee: Assignee | null): { assignedTeams: string | null; assignedEmployeeIds: string | null } {
+        if (!assignee) {
+            return { assignedTeams: null, assignedEmployeeIds: null };
+        }
+        if (assignee.kind === "team") {
+            return { assignedTeams: assignee.teamId, assignedEmployeeIds: null };
+        }
+        if (assignee.kind === "teams") {
+            return { assignedTeams: assignee.teamIds.join(","), assignedEmployeeIds: null };
+        }
+        return { assignedTeams: null, assignedEmployeeIds: assignee.employeeIds.join(",") };
+    }
+
     async function apiCreate(task: Task): Promise<Task | null> {
         try {
+            const payload = assigneeToBackendPayload(task.assignee);
             const res = await fetch(API_BASE, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -249,6 +279,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     name: task.title,
                     description: task.description,
                     status: task.column,
+                    assignedTeams: payload.assignedTeams,
+                    assignedEmployeeIds: payload.assignedEmployeeIds,
                 }),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -262,6 +294,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     async function apiUpdate(task: Task): Promise<boolean> {
         try {
+            const payload = assigneeToBackendPayload(task.assignee);
             const res = await fetch(`${API_BASE}/${task.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
@@ -269,6 +302,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     name: task.title,
                     description: task.description,
                     status: task.column,
+                    assignedTeams: payload.assignedTeams,
+                    assignedEmployeeIds: payload.assignedEmployeeIds,
                 }),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -307,6 +342,11 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         if (!task.assignee) return "";
         if (task.assignee.kind === "team") {
             return `<span class="team-chip">${escapeHtml(teamName(task.assignee.teamId))}</span>`;
+        }
+        if (task.assignee.kind === "teams") {
+            return task.assignee.teamIds
+                .map((t) => `<span class="team-chip">${escapeHtml(t)}</span>`)
+                .join(" ");
         }
         return assignedEmployees(task.assignee)
             .map((employee) =>
@@ -364,9 +404,13 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         const addBtn = target.closest<HTMLElement>("[data-add]");
         if (addBtn) {
             const draftTask = blankTask(currentSprintId, addBtn.dataset["add"] as ColumnId);
-            if (currentTeamId !== "all") {
+
+            if (currentTeamId === "all") {
+                draftTask.assignee = { kind: "teams", teamIds: TEAMS.map((t) => t.name) };
+            } else {
                 draftTask.assignee = { kind: "team", teamId: currentTeamId };
             }
+
             openModal(draftTask);
         }
     });
@@ -524,7 +568,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const estimateInput = requireElement<HTMLInputElement>("estimateInput");
 
     let draft: Task | null = null;
-    let assignKind: "team" | "employees" = "team";
+    let assignKind: "team" | "teams" | "employees" = "team";
 
     function openModal(task: Task): void {
         draft = JSON.parse(JSON.stringify(task)) as Task;
@@ -563,7 +607,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderAssignControls();
     }
 
-    // ✅ Employees are only shown when a team is selected
     function renderAssignControls(): void {
         if (!draft) return;
 
@@ -575,25 +618,22 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         employeeList.hidden = assignKind !== "employees";
 
         const assignee = draft.assignee;
+        const currentTeam = assignee?.kind === "team" ? assignee.teamId : null;
 
-        // Team dropdown — options use team names as values
+        // Always a dropdown with all teams
         assigneeSelect.innerHTML =
             `<option value="">Choose a team…</option>` +
-            TEAMS.map((team) => `<option value="${team.name}">${escapeHtml(team.name)}</option>`).join("");
-        assigneeSelect.value = assignee?.kind === "team" ? assignee.teamId : "";
+            TEAMS.map((t) => `<option value="${t.name}">${escapeHtml(t.name)}</option>`).join("");
+        assigneeSelect.value = currentTeam ?? "";
 
-        // Only show employees whose team matches the selected one.
-        // If no team is selected → show nothing.
-        const selectedTeam = assignee?.kind === "team" ? assignee.teamId : null;
-
-        const visibleEmployees = selectedTeam
-            ? EMPLOYEES.filter((e) => e.team === selectedTeam)
+        const visibleEmployees = currentTeam
+            ? EMPLOYEES.filter((e) => e.team === currentTeam)
             : [];
 
         const ticked = assignee?.kind === "employees" ? assignee.employeeIds : [];
 
         employeeList.innerHTML = visibleEmployees.length === 0
-            ? `<p class="employee-empty">${selectedTeam ? "No employees in this team yet." : "Choose a team first."}</p>`
+            ? `<p class="employee-empty">${currentTeam ? "No employees in this team yet." : "Choose a team first."}</p>`
             : visibleEmployees.map((employee) => `
             <label class="employee-option">
               <input type="checkbox" value="${escapeHtml(employee.id)}" ${ticked.includes(employee.id) ? "checked" : ""} />
@@ -708,7 +748,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         });
     });
 
-    // Re-render (and re-filter) when the team changes
     assigneeSelect.addEventListener("change", () => {
         if (!draft) return;
         draft.assignee = assigneeSelect.value ? { kind: "team", teamId: assigneeSelect.value } : null;

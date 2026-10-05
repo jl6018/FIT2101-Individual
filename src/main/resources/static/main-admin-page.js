@@ -56,7 +56,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         { id: "Team Gamma", name: "Team Gamma" },
     ];
 
-    // Filled from GET /api/users on page load.
     let EMPLOYEES = [];
 
     async function loadEmployeesFromBackend() {
@@ -129,12 +128,14 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     function teamsOfTask(task) {
         if (!task.assignee) return [];
         if (task.assignee.kind === "team") return [task.assignee.teamId];
+        if (task.assignee.kind === "teams") return task.assignee.teamIds;
         return assignedEmployees(task.assignee).map((employee) => employee.team).filter(Boolean);
     }
 
     function assigneeLabel(assignee) {
         if (!assignee) return "Unassigned";
         if (assignee.kind === "team") return teamName(assignee.teamId) || "Team";
+        if (assignee.kind === "teams") return assignee.teamIds.join(", ");
         const names = assignedEmployees(assignee).map((employee) => employee.name);
         return names.length > 0 ? names.join(", ") : "Unassigned";
     }
@@ -164,22 +165,55 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     const board = requireElement("board");
 
+    function assigneeToBackendPayload(assignee) {
+        if (!assignee) {
+            return { assignedTeams: null, assignedEmployeeIds: null };
+        }
+        if (assignee.kind === "team") {
+            return { assignedTeams: assignee.teamId, assignedEmployeeIds: null };
+        }
+        if (assignee.kind === "teams") {
+            return { assignedTeams: assignee.teamIds.join(","), assignedEmployeeIds: null };
+        }
+        return { assignedTeams: null, assignedEmployeeIds: assignee.employeeIds.join(",") };
+    }
+
     // ===================== BACKEND SYNC =====================
     async function fetchTasks() {
         try {
             const res = await fetch(API_BASE);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
-            return data.map((t) => ({
-                id: String(t.id),
-                sprintId: "1",
-                column: t.status ?? "PRODUCT_BACKLOG",
-                title: t.name,
-                description: t.description ?? "",
-                assignee: null,
-                dueDate: "",
-                estimateHours: 0,
-            }));
+            return data.map((t) => {
+                let assignee = null;
+
+                if (t.assignedEmployeeIds) {
+                    const ids = t.assignedEmployeeIds.split(",").map((s) => s.trim()).filter(Boolean);
+                    if (ids.length > 0) {
+                        assignee = { kind: "employees", employeeIds: ids };
+                    }
+                }
+
+                if (!assignee && t.assignedTeams) {
+                    const names = t.assignedTeams.split(",").map((s) => s.trim()).filter(Boolean);
+                    if (names.length === 1) {
+                        assignee = { kind: "team", teamId: names[0] };
+                    } else if (names.length > 1) {
+                        assignee = { kind: "teams", teamIds: names };
+                    }
+                }
+
+                return {
+                    id: String(t.id),
+                    sprintId: "1",
+                    column: t.status ?? "PRODUCT_BACKLOG",
+                    title: t.name,
+                    description: t.description ?? "",
+                    assignee,
+                    dueDate: "",
+                    estimateHours: 0,
+                };
+            });
         } catch (err) {
             console.error("Failed to load tasks:", err);
             return [];
@@ -194,6 +228,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     async function apiCreate(task) {
         try {
+            const payload = assigneeToBackendPayload(task.assignee);
             const res = await fetch(API_BASE, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -201,6 +236,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     name: task.title,
                     description: task.description,
                     status: task.column,
+                    assignedTeams: payload.assignedTeams,
+                    assignedEmployeeIds: payload.assignedEmployeeIds,
                 }),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -214,6 +251,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     async function apiUpdate(task) {
         try {
+            const payload = assigneeToBackendPayload(task.assignee);
             const res = await fetch(`${API_BASE}/${task.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
@@ -221,6 +259,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     name: task.title,
                     description: task.description,
                     status: task.column,
+                    assignedTeams: payload.assignedTeams,
+                    assignedEmployeeIds: payload.assignedEmployeeIds,
                 }),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -259,6 +299,11 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         if (!task.assignee) return "";
         if (task.assignee.kind === "team") {
             return `<span class="team-chip">${escapeHtml(teamName(task.assignee.teamId))}</span>`;
+        }
+        if (task.assignee.kind === "teams") {
+            return task.assignee.teamIds
+                .map((t) => `<span class="team-chip">${escapeHtml(t)}</span>`)
+                .join(" ");
         }
         return assignedEmployees(task.assignee)
             .map((employee) =>
@@ -316,7 +361,9 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         const addBtn = target.closest("[data-add]");
         if (addBtn) {
             const draftTask = blankTask(currentSprintId, addBtn.dataset["add"]);
-            if (currentTeamId !== "all") {
+            if (currentTeamId === "all") {
+                draftTask.assignee = { kind: "teams", teamIds: TEAMS.map((t) => t.name) };
+            } else {
                 draftTask.assignee = { kind: "team", teamId: currentTeamId };
             }
             openModal(draftTask);
@@ -515,7 +562,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderAssignControls();
     }
 
-    // ✅ Employees are ONLY shown when a team is selected
     function renderAssignControls() {
         if (!draft) return;
 
@@ -527,25 +573,22 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         employeeList.hidden = assignKind !== "employees";
 
         const assignee = draft.assignee;
+        const currentTeam = assignee?.kind === "team" ? assignee.teamId : null;
 
-        // Team dropdown — options use team names as values
+        // Always a dropdown with all teams
         assigneeSelect.innerHTML =
             `<option value="">Choose a team…</option>` +
-            TEAMS.map((team) => `<option value="${team.name}">${escapeHtml(team.name)}</option>`).join("");
-        assigneeSelect.value = assignee?.kind === "team" ? assignee.teamId : "";
+            TEAMS.map((t) => `<option value="${t.name}">${escapeHtml(t.name)}</option>`).join("");
+        assigneeSelect.value = currentTeam ?? "";
 
-        // Only show employees whose team matches the selected one.
-        // No team → nothing.
-        const selectedTeam = assignee?.kind === "team" ? assignee.teamId : null;
-
-        const visibleEmployees = selectedTeam
-            ? EMPLOYEES.filter((e) => e.team === selectedTeam)
+        const visibleEmployees = currentTeam
+            ? EMPLOYEES.filter((e) => e.team === currentTeam)
             : [];
 
         const ticked = assignee?.kind === "employees" ? assignee.employeeIds : [];
 
         employeeList.innerHTML = visibleEmployees.length === 0
-            ? `<p class="employee-empty">${selectedTeam ? "No employees in this team yet." : "Choose a team first."}</p>`
+            ? `<p class="employee-empty">${currentTeam ? "No employees in this team yet." : "Choose a team first."}</p>`
             : visibleEmployees.map((employee) => `
             <label class="employee-option">
               <input type="checkbox" value="${escapeHtml(employee.id)}" ${ticked.includes(employee.id) ? "checked" : ""} />
