@@ -193,7 +193,7 @@
                         </div>
                     </div>
 
-                    <!-- ✅ Priority pill + popover -->
+                    <!-- ✅ NEW: Priority pill + popover -->
                     <div class="pill-wrap">
                         <button class="pill" type="button" data-popover="priorityPopover">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -212,51 +212,6 @@
                             </select>
                             <button class="popover-btn popover-btn-quiet" id="priorityClearBtn" type="button">Clear</button>
                         </div>
-                    </div>
-
-                    <!-- ✅ NEW: Log time pill + popover -->
-                    <div class="pill-wrap">
-                        <button class="pill" type="button" data-popover="logTimePopover">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <circle cx="12" cy="13" r="7.5"/>
-                                <path d="M12 9v4l2.5 2M9.5 3h5"/>
-                            </svg>
-                            Log time
-                        </button>
-                        <div class="popover popover-wide" id="logTimePopover">
-                            <span class="popover-label">Log time</span>
-
-                            <div class="form-field">
-                                <label class="popover-label" for="logDateInput">Date</label>
-                                <input type="date" id="logDateInput" />
-                            </div>
-
-                            <div class="form-field">
-                                <label class="popover-label" for="logHoursInput">Hours</label>
-                                <input type="number" id="logHoursInput" min="0.5" max="24" step="0.5" placeholder="0" />
-                            </div>
-
-                            <div class="form-field">
-                                <label class="popover-label" for="logDescriptionInput">Description</label>
-                                <input type="text" id="logDescriptionInput" maxlength="200" placeholder="What did you do?" />
-                            </div>
-
-                            <div class="popover-row">
-                                <button class="popover-btn" id="logTimeSaveBtn" type="button">Save log</button>
-                                <button class="popover-btn popover-btn-quiet" id="logTimeClearBtn" type="button">Clear</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ✅ NEW: Total logged hours on this task -->
-                    <div class="pill-wrap">
-                        <button class="pill" type="button" id="logTimeTotalPill" title="Total logged hours on this task">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 6v6l4 2"/>
-                                <circle cx="12" cy="12" r="9"/>
-                            </svg>
-                            <span id="logTimeTotalLabel">0h</span>
-                        </button>
                     </div>
                 </div>
             </div>

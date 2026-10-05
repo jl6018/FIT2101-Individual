@@ -75,6 +75,7 @@ function closeModal(overlay) { overlay.classList.remove('visible'); }
 
 startSprintPlanningBtn.addEventListener('click', async () => {
     await loadMembers();
+    populateSprintNameOptions();
     openModal(sprintPlanningOverlay);
 });
 closeSprintPlanningBtn.addEventListener('click', () => closeModal(sprintPlanningOverlay));
@@ -145,6 +146,26 @@ async function loadMembers() {
     }
 }
 
+// ===================== POPULATE SPRINT NAME OPTIONS =====================
+function populateSprintNameOptions() {
+    sprintNameInput.innerHTML = `
+        <option value="">Choose a sprint</option>
+        <option value="Sprint 1">Sprint 1</option>
+        <option value="Sprint 2">Sprint 2</option>
+        <option value="Sprint 3">Sprint 3</option>
+    `;
+}
+
+// ===================== POPULATE DURATION OPTIONS =====================
+function populateDurationOptions() {
+    sprintDurationSelect.innerHTML = `
+        <option value="">Choose a duration</option>
+        <option value="1">1 week</option>
+        <option value="2">2 weeks</option>
+        <option value="3">3 weeks</option>
+    `;
+}
+
 // ===================== LOAD SPRINTS =====================
 async function loadSprints() {
     try {
@@ -155,7 +176,7 @@ async function loadSprints() {
         pastSprintsBody.innerHTML = '';
 
         if (sprints.length === 0) {
-            pastSprintsBody.innerHTML = `<tr><td colspan="4">No sprints yet.</td></tr>`;
+            pastSprintsBody.innerHTML = `<tr><td colspan="5">No sprints yet.</td></tr>`;
             return;
         }
 
@@ -173,11 +194,31 @@ async function loadSprints() {
                     <td>${range}</td>
                     <td>${s.memberCount ?? 0}</td>
                     <td>${statusLabel(s.status)}</td>
+                    <td><button class="delete-sprint-btn" type="button">Delete</button></td>
                 `;
+
+                row.querySelector('.delete-sprint-btn')?.addEventListener('click', () => {
+                    void deleteSprintById(s.id, s.name);
+                });
+
                 pastSprintsBody.appendChild(row);
             });
     } catch (err) {
         console.error('Failed to load sprints:', err);
+    }
+}
+
+// ===================== DELETE SPRINT =====================
+async function deleteSprintById(sprintId, sprintName) {
+    if (!confirm(`Delete "${sprintName}"? This cannot be undone.`)) return;
+    try {
+        const res = await fetch(`${SPRINTS_API}/${sprintId}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        showToast(`Deleted ${sprintName}`, 'success');
+        await loadSprints();
+    } catch (err) {
+        const message = err instanceof Error ? err.message : 'Delete failed';
+        showToast('Delete failed: ' + message, 'error');
     }
 }
 
@@ -188,11 +229,17 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
     const sprintName = sprintNameInput.value.trim();
     if (!sprintName) {
         sprintNameInput.focus();
-        showToast('Please enter a sprint name.', 'error');
+        showToast('Please choose a sprint.', 'error');
         return;
     }
 
     const weeks = Number(sprintDurationSelect.value);
+    if (!weeks || weeks < 1 || weeks > 3) {
+        sprintDurationSelect.focus();
+        showToast('Please choose a duration.', 'error');
+        return;
+    }
+
     const checkedMembers = membersList.querySelectorAll('input[type="checkbox"]:checked');
     const memberCount = checkedMembers.length;
 
@@ -219,6 +266,8 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
         closeModal(sprintPlanningOverlay);
         showToast('Sprint created', 'success');
         sprintPlanningForm.reset();
+        populateSprintNameOptions();
+        populateDurationOptions();
         await loadSprints();
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to create sprint';
@@ -245,7 +294,6 @@ inviteForm.addEventListener('submit', async (e) => {
         });
 
         if (!res.ok) {
-            // Backend returns plain text (e.g. "Email already invited")
             const text = await res.text();
             throw new Error(text || 'Failed to send invite');
         }
@@ -260,4 +308,6 @@ inviteForm.addEventListener('submit', async (e) => {
 });
 
 // ===================== INIT =====================
+populateSprintNameOptions();
+populateDurationOptions();
 loadSprints();

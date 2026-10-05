@@ -48,7 +48,14 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     // ===================== CONFIG =====================
     const API_BASE = "http://localhost:8080/api/tasks";
     const USERS_API = "http://localhost:8080/api/users";
-    const TIMELOGS_API = "http://localhost:8080/api/timelogs";   // ✅ NEW
+    const SPRINTS_API = "http://localhost:8080/api/sprints";
+
+    // ✅ NEW — board tab number → sprint name in DB
+    const SPRINT_TAB_NAMES = {
+        "1": "Sprint 1",
+        "2": "Sprint 2",
+        "3": "Sprint 3",
+    };
 
     // ===================== REFERENCE DATA =====================
     const TEAMS = [
@@ -500,6 +507,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     writeSprintSetting(sprintId);
                     renderBoard();
                     renderTeamFilter();
+                    void refreshSprintButton();
                 }
             });
         });
@@ -585,14 +593,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const estimateInput = requireElement("estimateInput");
     const prioritySelect = requireElement("prioritySelect");
 
-    // ✅ NEW — Log time elements
-    const logDateInput = requireElement("logDateInput");
-    const logHoursInput = requireElement("logHoursInput");
-    const logDescriptionInput = requireElement("logDescriptionInput");
-    const logTimeSaveBtn = requireElement("logTimeSaveBtn");
-    const logTimeClearBtn = requireElement("logTimeClearBtn");
-    const logTimeTotalLabel = requireElement("logTimeTotalLabel");
-
     let draft = null;
     let assignKind = "team";
 
@@ -611,17 +611,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         deleteBtn.hidden = draft.id === "";
         setDeleteArmed(false);
 
-        // ✅ Prefill log-time inputs
-        logDateInput.value = new Date().toISOString().split("T")[0];
-        logHoursInput.value = "";
-        logDescriptionInput.value = "";
-
         renderDraft();
         closePopovers();
         overlay.classList.add("visible");
         titleInput.focus();
-
-        void refreshLogTimeTotal(draft.id);
     }
 
     function closeModal() {
@@ -788,83 +781,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderDraft();
     });
 
-    // ----- Log time -----   ✅ NEW
-    async function refreshLogTimeTotal(taskId) {
-        const numericId = Number(taskId);
-        if (!Number.isFinite(numericId) || numericId <= 0) {
-            logTimeTotalLabel.textContent = "0h";
-            return;
-        }
-        try {
-            const res = await fetch(`${TIMELOGS_API}/task/${numericId}`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const logs = await res.json();
-            const total = logs.reduce((sum, log) => sum + log.hours, 0);
-            logTimeTotalLabel.textContent = `${total.toFixed(1)}h`;
-        } catch (err) {
-            console.error("Failed to load time logs:", err);
-            logTimeTotalLabel.textContent = "0h";
-        }
-    }
-
-    logTimeSaveBtn.addEventListener("click", async () => {
-        if (!draft) return;
-
-        const numericId = Number(draft.id);
-        if (!Number.isFinite(numericId) || numericId <= 0) {
-            alert("Save the task first before logging time.");
-            return;
-        }
-
-        const date = logDateInput.value;
-        const hours = Number(logHoursInput.value);
-        const description = logDescriptionInput.value.trim();
-
-        if (!date) { alert("Please choose a date."); return; }
-        if (!Number.isFinite(hours) || hours <= 0 || hours > 24) {
-            alert("Hours must be between 0.5 and 24.");
-            return;
-        }
-
-        const userId = Number(sessionStorage.getItem("userId"));
-        if (!Number.isFinite(userId) || userId <= 0) {
-            alert("Your session has no user ID. Please log in again.");
-            return;
-        }
-
-        const payload = {
-            date,
-            hours,
-            description,
-            task: { id: numericId },
-            user: { id: userId },
-        };
-
-        try {
-            const res = await fetch(TIMELOGS_API, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-            showToast(`Logged ${hours}h`);
-            logHoursInput.value = "";
-            logDescriptionInput.value = "";
-            closePopovers();
-            await refreshLogTimeTotal(draft.id);
-        } catch (err) {
-            console.error("Log time failed:", err);
-            alert("Failed to log time.");
-        }
-    });
-
-    logTimeClearBtn.addEventListener("click", () => {
-        logHoursInput.value = "";
-        logDescriptionInput.value = "";
-        logDateInput.value = new Date().toISOString().split("T")[0];
-    });
-
     // ----- Assignee -----
     document.querySelectorAll("[data-assign-kind]").forEach((segment) => {
         segment.addEventListener("click", () => {
@@ -981,11 +897,94 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     setSidebarCollapsed(readSetting(SIDEBAR_KEY) === "1");
 
-    // ===================== START SPRINT (US23) =====================
+    // ===================== START / END SPRINT (US23) =====================
     const startSprintBtn = document.getElementById("startSprintBtn");
-    startSprintBtn?.addEventListener("click", () => {
-        if (!confirm("Start the sprint now? Time tracking will begin.")) return;
-        showToast("Sprint started");
+    let currentSprintStatus = null;
+    let currentSprintNumericId = null;   // ✅ NEW
+
+    // ✅ NEW — fetch the latest sprint by tab name
+    async function fetchSprintStatus(tabId) {
+        const name = SPRINT_TAB_NAMES[tabId];
+        if (!name) return null;
+        try {
+            const res = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
+            if (res.status === 404) return null;
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        } catch (err) {
+            console.error("Failed to load sprint:", err);
+            return null;
+        }
+    }
+
+    function renderSprintButton(status) {
+        if (!startSprintBtn) return;
+
+        startSprintBtn.classList.remove("is-active", "is-completed", "is-planned");
+
+        if (status === "ACTIVE") {
+            startSprintBtn.textContent = "■ End Sprint";
+            startSprintBtn.classList.add("is-active");
+            startSprintBtn.disabled = false;
+            startSprintBtn.title = "Mark the current sprint as completed";
+        } else if (status === "COMPLETED") {
+            startSprintBtn.textContent = "✓ Sprint Completed";
+            startSprintBtn.classList.add("is-completed");
+            startSprintBtn.disabled = true;
+            startSprintBtn.title = "This sprint is already completed";
+        } else {
+            startSprintBtn.textContent = "▶ Start Sprint";
+            startSprintBtn.classList.add("is-planned");
+            startSprintBtn.disabled = false;
+            startSprintBtn.title = "Start the current sprint";
+        }
+    }
+
+    async function refreshSprintButton() {
+        const sprint = await fetchSprintStatus(currentSprintId);
+        currentSprintStatus = sprint?.status ?? null;
+        currentSprintNumericId = sprint?.id ?? null;
+        renderSprintButton(currentSprintStatus);
+    }
+
+    startSprintBtn?.addEventListener("click", async () => {
+        if (!startSprintBtn || startSprintBtn.disabled) return;
+
+        const numericId = currentSprintNumericId;
+        if (numericId === null || !Number.isFinite(numericId) || numericId <= 0) {
+            alert("No sprint found for this tab. Create one in Sprint Planning first.");
+            return;
+        }
+
+        const starting = currentSprintStatus !== "ACTIVE";
+
+        const confirmMsg = starting
+            ? "Start the sprint now? Time tracking will begin."
+            : "End this sprint? The sprint will be marked as completed.";
+        if (!confirm(confirmMsg)) return;
+
+        startSprintBtn.disabled = true;
+
+        try {
+            const endpoint = starting ? "start" : "complete";
+            const res = await fetch(`${SPRINTS_API}/${numericId}/${endpoint}`, {
+                method: "PUT",
+            });
+
+            if (!res.ok) {
+                const msg = await res.text();
+                throw new Error(msg || `HTTP ${res.status}`);
+            }
+
+            const updated = await res.json();
+            currentSprintStatus = updated.status;
+            renderSprintButton(currentSprintStatus);
+            showToast(starting ? "Sprint started" : "Sprint completed");
+        } catch (err) {
+            console.error("Sprint action failed:", err);
+            alert(`Failed to update sprint status (sprint ${numericId}). Check the console for details.`);
+            await refreshSprintButton();
+        }
     });
 
     // ===================== INIT =====================
@@ -994,6 +993,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         highlightSavedSprintTab();
         initSprintTabs();
         renderTeamFilter();
+        await refreshSprintButton();
         await refreshFromBackend();
     }
     void init();
