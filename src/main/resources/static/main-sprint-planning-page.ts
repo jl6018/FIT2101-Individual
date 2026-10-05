@@ -69,6 +69,12 @@ const ownerEmailInput = requireElement<HTMLInputElement>('ownerEmail');
 const pastSprintsBody = requireElement<HTMLTableSectionElement>('pastSprintsBody');
 const toast = requireElement<HTMLDivElement>('toast');
 
+// ===================== DELETE SPRINT MODAL ELEMENTS =====================
+const deleteSprintOverlay = requireElement<HTMLDivElement>('deleteSprintOverlay');
+const deleteSprintName = requireElement<HTMLElement>('deleteSprintName');
+const cancelDeleteBtn = requireElement<HTMLButtonElement>('cancelDeleteBtn');
+const confirmDeleteBtn = requireElement<HTMLButtonElement>('confirmDeleteBtn');
+
 // ===================== MODAL OPEN/CLOSE =====================
 function openModal(overlay: HTMLDivElement): void { overlay.classList.add('visible'); }
 function closeModal(overlay: HTMLDivElement): void { overlay.classList.remove('visible'); }
@@ -210,7 +216,7 @@ async function loadSprints(): Promise<void> {
                 `;
 
                 row.querySelector('.delete-sprint-btn')?.addEventListener('click', () => {
-                    void deleteSprintById(s.id, s.name);
+                    openDeleteModal(s.id, s.name);
                 });
 
                 pastSprintsBody.appendChild(row);
@@ -220,19 +226,47 @@ async function loadSprints(): Promise<void> {
     }
 }
 
-// ===================== DELETE SPRINT =====================
-async function deleteSprintById(sprintId: number, sprintName: string): Promise<void> {
-    if (!confirm(`Delete "${sprintName}"? This cannot be undone.`)) return;
+// ===================== DELETE SPRINT (custom modal) =====================
+let pendingDeleteId: number | null = null;
+
+function openDeleteModal(sprintId: number, sprintName: string): void {
+    pendingDeleteId = sprintId;
+    deleteSprintName.textContent = sprintName;
+    openModal(deleteSprintOverlay);
+}
+
+cancelDeleteBtn.addEventListener('click', () => {
+    pendingDeleteId = null;
+    closeModal(deleteSprintOverlay);
+});
+
+deleteSprintOverlay.addEventListener('click', (e: MouseEvent) => {
+    if (e.target === deleteSprintOverlay) {
+        pendingDeleteId = null;
+        closeModal(deleteSprintOverlay);
+    }
+});
+
+confirmDeleteBtn.addEventListener('click', async () => {
+    if (pendingDeleteId === null) {
+        closeModal(deleteSprintOverlay);
+        return;
+    }
+    const id = pendingDeleteId;
+    const name = deleteSprintName.textContent ?? 'Sprint';
+    pendingDeleteId = null;
+    closeModal(deleteSprintOverlay);
+
     try {
-        const res = await fetch(`${SPRINTS_API}/${sprintId}`, { method: 'DELETE' });
+        const res = await fetch(`${SPRINTS_API}/${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        showToast(`Deleted ${sprintName}`, 'success');
+        showToast(`Deleted ${name}`, 'success');
         await loadSprints();
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Delete failed';
         showToast('Delete failed: ' + message, 'error');
     }
-}
+});
 
 // ===================== CREATE SPRINT =====================
 sprintPlanningForm.addEventListener('submit', async (e: SubmitEvent) => {

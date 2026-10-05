@@ -193,7 +193,6 @@
                         </div>
                     </div>
 
-                    <!-- ✅ NEW: Priority pill + popover -->
                     <div class="pill-wrap">
                         <button class="pill" type="button" data-popover="priorityPopover">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -241,6 +240,42 @@
         <div class="modal-actions">
             <button id="cancelLogoutBtn" class="btn-secondary" type="button">Cancel</button>
             <button id="confirmLogoutBtn" class="btn-danger" type="button">Log out</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== MODAL: No Sprint Found ===================== -->
+<div class="modal-overlay" id="noSprintOverlay">
+    <div class="modal modal-narrow" role="dialog" aria-modal="true">
+        <h2 class="modal-title">No sprint found</h2>
+        <p class="modal-subtitle">
+            There's no sprint on this tab yet. Create one in Sprint Planning first.
+        </p>
+        <div class="modal-actions">
+            <button id="closeNoSprintBtn" class="btn-primary full-width" type="button">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== MODAL: Generic Confirm ===================== -->
+<div class="modal-overlay" id="confirmOverlay">
+    <div class="modal modal-narrow" role="dialog" aria-modal="true">
+        <h2 class="modal-title" id="confirmTitle">Are you sure?</h2>
+        <p class="modal-subtitle" id="confirmMessage">This action cannot be undone.</p>
+        <div class="modal-actions">
+            <button id="confirmCancelBtn" class="btn-secondary" type="button">Cancel</button>
+            <button id="confirmOkBtn" class="btn-primary" type="button">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== MODAL: Generic Alert ===================== -->
+<div class="modal-overlay" id="alertOverlay">
+    <div class="modal modal-narrow" role="dialog" aria-modal="true">
+        <h2 class="modal-title" id="alertTitle">Notice</h2>
+        <p class="modal-subtitle" id="alertMessage"></p>
+        <div class="modal-actions">
+            <button id="closeAlertBtn" class="btn-primary full-width" type="button">OK</button>
         </div>
     </div>
 </div>
