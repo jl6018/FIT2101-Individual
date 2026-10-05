@@ -2,6 +2,7 @@ package webapplication.controller;
 
 import webapplication.model.Sprint;
 import webapplication.service.SprintService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,6 +21,17 @@ public class SprintController {
     @GetMapping
     public List<Sprint> getAllSprints() {
         return sprintService.getAllSprints();
+    }
+
+    // ✅ NEW — board calls this so tabs reflect the newest sprint with that name
+    // NOTE: must be declared BEFORE /{id} so "latest" isn't parsed as a Long
+    @GetMapping("/latest")
+    public ResponseEntity<?> getLatestByName(@RequestParam String name) {
+        try {
+            return ResponseEntity.ok(sprintService.getLatestByName(name));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        }
     }
 
     @GetMapping("/{id}")

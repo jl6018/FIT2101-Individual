@@ -25,28 +25,26 @@ public class SprintService {
                 .orElseThrow(() -> new RuntimeException("Sprint not found"));
     }
 
+    // ✅ NEW — latest sprint with a given name (used by the board tabs)
+    public Sprint getLatestByName(String name) {
+        return sprintRepository.findTopByNameOrderByIdDesc(name)
+                .orElseThrow(() -> new RuntimeException("No sprint named '" + name + "'"));
+    }
+
     public Sprint createSprint(Sprint sprint) {
-
         sprint.setStatus(SprintStatus.PLANNED);
-
         return sprintRepository.save(sprint);
     }
 
     public Sprint startSprint(Long id) {
-
         Sprint sprint = getSprintById(id);
-
         sprint.setStatus(SprintStatus.ACTIVE);
-
         return sprintRepository.save(sprint);
     }
 
     public Sprint completeSprint(Long id) {
-
         Sprint sprint = getSprintById(id);
-
         sprint.setStatus(SprintStatus.COMPLETED);
-
         return sprintRepository.save(sprint);
     }
 
