@@ -1,3 +1,13 @@
+<!--
+    Admin Board Page — Symph Web Application
+    Provides the main Kanban board for administrators. Includes the sidebar
+    navigation, search and team filter, project header with sprint controls,
+    sprint tabs, and modals for task editing, logout, invites, and
+    generic confirm/alert dialogs.
+
+    @author Lim Jia Li
+    @version 17.0.16
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,11 +15,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Symph — Admin Board</title>
 
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style-admin-page.css"/>
 
+    <!-- Prevent caching so the board always reflects the latest data -->
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -26,6 +38,7 @@
             </button>
         </div>
 
+        <!-- Primary navigation menu -->
         <nav class="nav">
             <a href="index-admin-page.html" class="nav-item active" title="Sprint Board">
                 <span class="dot dot-active"></span> <span class="nav-label">Sprint Board</span>
@@ -41,6 +54,7 @@
             </a>
         </nav>
 
+        <!-- Signed-in user info -->
         <div class="sidebar-footer">
             <div class="signed-in">Signed in as <strong id="signedInName">Admin</strong></div>
         </div>
@@ -56,6 +70,7 @@
                 </svg>
                 <input type="text" id="searchInput" placeholder="Search" aria-label="Search tasks" />
 
+                <!-- Team filter dropdown -->
                 <div class="team-filter">
                     <button id="teamFilterBtn" class="team-filter-btn" type="button" aria-haspopup="true"
                             aria-expanded="false" title="Choose which team's board to view">
@@ -69,6 +84,7 @@
                 </div>
             </div>
 
+            <!-- Notification, avatar, and logout controls -->
             <div class="navbar-icons">
                 <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M3 10v4h3l8 5V5L6 10H3z"/><path d="M17.5 9.5a4 4 0 010 5M20 7a8 8 0 010 10"/>
@@ -90,6 +106,7 @@
                 </h1>
                 <span class="badge">Admin</span>
             </div>
+            <!-- Sprint and share controls -->
             <div class="project-header-right">
                 <button class="start-sprint-btn" id="startSprintBtn" type="button">▶ Start Sprint</button>
                 <button class="share-btn" id="shareBtn" type="button">
@@ -111,6 +128,7 @@
             </div>
         </div>
 
+        <!-- Kanban board columns rendered dynamically -->
         <main class="board" id="board"></main>
     </div>
 </div>
@@ -140,6 +158,7 @@
             </div>
             <p class="modal-error" id="modalError" role="alert"></p>
 
+            <!-- Task metadata toolbar (dates, estimate, members, priority) -->
             <div class="modal-toolbar">
                 <div class="toolbar-group">
                     <div class="pill-wrap">
@@ -209,14 +228,17 @@
                 </div>
             </div>
 
+            <!-- Summary line (dates, estimate, members) -->
             <div class="modal-summary" id="modalSummary"></div>
 
+            <!-- Task description -->
             <section class="modal-section">
                 <h3>Description</h3>
                 <textarea class="modal-description" id="modalDescription" maxlength="2000"
                           placeholder="Add a more detailed description..."></textarea>
             </section>
 
+            <!-- Task actions -->
             <div class="modal-footer">
                 <button class="modal-delete-btn" id="modalDeleteBtn" type="button">Delete task</button>
                 <button class="modal-cancel-btn" id="modalCancelBtn" type="button">Cancel</button>
@@ -281,6 +303,7 @@
         <h2 id="inviteTitle" class="modal-title">Invite Product Owner</h2>
         <p class="modal-subtitle">They'll receive a sign-in link by email.</p>
 
+        <!-- Invite form -->
         <form id="inviteForm">
             <div class="form-field">
                 <label for="ownerEmail">Email address</label>
@@ -292,6 +315,7 @@
     </div>
 </div>
 
+<!-- ===================== TOAST NOTIFICATION ===================== -->
 <div class="toast" id="toast" role="status"></div>
 
 <script src="main-admin-page.js" defer></script>

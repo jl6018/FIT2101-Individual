@@ -1,21 +1,34 @@
+<!--
+    Log Time Page — Symph Web Application
+    Displays a modal for recording work hours against a task, including
+    date, start time, and time spent. The overlay is shown immediately
+    on page load.
+
+    @author Lim Jia Li
+    @version 17.0.16
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Symph — Log Time</title>
     <link rel="stylesheet" href="style-log-time-page.css">
+
+    <!-- Prevent caching so the form always loads fresh -->
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 </head>
 <body>
 
+<!-- ===================== MODAL: Log Time ===================== -->
 <div class="modal-overlay visible" id="logTimeOverlay">
     <div class="modal modal-user" role="dialog" aria-modal="true">
         <button class="modal-close" id="closeLogTimeBtn" aria-label="Close">✕</button>
         <h2 class="modal-title">Log Time</h2>
         <p class="modal-subtitle">Record your start time, time spent, and date.</p>
 
+        <!-- Time logging form -->
         <form id="logTimeForm">
             <div class="form-field">
                 <label for="logDate">Date</label>

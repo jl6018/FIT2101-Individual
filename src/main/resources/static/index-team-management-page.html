@@ -1,3 +1,11 @@
+<!--
+    Team Management Page — Symph Web Application
+    Displays a table of team members and provides modals for adding and
+    removing members, plus logout. Member rows are rendered dynamically.
+
+    @author Lim Jia Li
+    @version 17.0.16
+-->
 <!DOCTYPE html>
 <html lang="en">
 
@@ -6,6 +14,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Symph — Team Management</title>
     <link rel="stylesheet" href="style-team-management-page.css">
+
+    <!-- Prevent caching so the page always reflects the latest data -->
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -14,11 +24,13 @@
 <body>
 
 <div class="app-shell">
+    <!-- ===================== SIDEBAR ===================== -->
     <aside class="sidebar">
         <a class="logo" href="index-admin-page.html">
             <img src="images/symph-logo.png" alt="Symph" />
         </a>
 
+        <!-- Primary navigation menu -->
         <nav class="nav">
             <a href="index-admin-page.html" class="nav-item">
                 <span class="dot"></span> Sprint Board
@@ -34,19 +46,23 @@
             </a>
         </nav>
 
+        <!-- Signed-in user info and logout -->
         <div class="sidebar-footer">
             <div class="signed-in">Signed in as <strong id="signedInName">Admin</strong></div>
             <button id="logoutBtn" class="switch-account-btn">Log out</button>
         </div>
     </aside>
 
+    <!-- ===================== MAIN CONTENT ===================== -->
     <main class="main">
         <h1>Team Management</h1>
 
+        <!-- Action row: add member button -->
         <div class="action-row">
             <button id="addMemberBtn" class="btn-primary">+ Add member</button>
         </div>
 
+        <!-- Members table (rows rendered dynamically) -->
         <table class="members-table">
             <thead>
             <tr>
@@ -68,6 +84,7 @@
         <button class="modal-close" id="closeAddMemberBtn" aria-label="Close">✕</button>
         <h2 class="modal-title">Add Member</h2>
 
+        <!-- Add member form -->
         <form id="addMemberForm">
             <div class="form-field">
                 <label for="memberUser">Select user</label>
@@ -131,6 +148,7 @@
     </div>
 </div>
 
+<!-- ===================== TOAST NOTIFICATION ===================== -->
 <div class="toast" id="toast"></div>
 
 <script src="main-team-management-page.js" type="module" defer></script>
