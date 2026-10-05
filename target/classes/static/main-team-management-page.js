@@ -88,8 +88,11 @@ closeInviteBtn.addEventListener('click', () => closeModal(inviteOverlay));
 
 // ===================== TOAST =====================
 let toastTimeoutId;
-function showToast(message) {
+
+function showToast(message, type = 'success') {
     toast.textContent = message;
+    toast.classList.remove('success', 'error');
+    toast.classList.add(type);
     toast.classList.add('visible');
     if (toastTimeoutId !== undefined) window.clearTimeout(toastTimeoutId);
     toastTimeoutId = window.setTimeout(() => toast.classList.remove('visible'), 3000);
@@ -160,8 +163,8 @@ addMemberForm.addEventListener('submit', async (e) => {
     const jobTitle = memberJobTitleSelect.value;
     const team = memberTeamSelect.value;
 
-    if (!userId) { alert('Please select a user.'); return; }
-    if (!team)   { alert('Please select a team.'); return; }
+    if (!userId) { showToast('Please select a user.', 'error'); return; }
+    if (!team) { showToast('Please select a team.', 'error'); return; }
 
     const user = registeredUsers.find((u) => String(u.id) === userId);
     if (!user) return;
@@ -179,12 +182,12 @@ addMemberForm.addEventListener('submit', async (e) => {
         }
 
         closeModal(addMemberOverlay);
-        showToast(`${user.name} added to ${team}`);
+        showToast(`${user.name} added to ${team}`, 'success');
         addMemberForm.reset();
         await loadTeamMemberships();
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to add member';
-        alert('Add member failed: ' + message);
+        showToast('Add member failed: ' + message, 'error');
     }
 });
 
@@ -193,7 +196,10 @@ inviteForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const email = ownerEmailInput.value.trim();
-    if (!email) { alert('Please enter an email address.'); return; }
+    if (!email) {
+        showToast('Please enter an email address.', 'error');
+        return;
+    }
 
     try {
         const res = await fetch('/api/invites', {
@@ -203,16 +209,17 @@ inviteForm.addEventListener('submit', async (e) => {
         });
 
         if (!res.ok) {
+            // Backend returns plain text (e.g. "Email already invited")
             const text = await res.text();
             throw new Error(text || 'Failed to send invite.');
         }
 
         closeModal(inviteOverlay);
-        showToast(`Invite sent to ${email}`);
+        showToast(`Invite sent to ${email}`, 'success');
         inviteForm.reset();
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to send invite';
-        alert(message);
+        showToast(message, 'error');
     }
 });
 
@@ -262,10 +269,10 @@ confirmRemoveBtn.addEventListener('click', async () => {
         rowPendingRemoval.remove();
         rowPendingRemoval = null;
         closeModal(removeMemberOverlay);
-        showToast(`${name} removed from team`);
+        showToast(`${name} removed from team`, 'success');
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to remove member';
-        alert('Remove failed: ' + message);
+        showToast('Remove failed: ' + message, 'error');
     }
 });
 

@@ -350,15 +350,29 @@ select:focus {
     padding: 12px 20px;
     border-radius: 8px;
     font-size: 14px;
+    font-weight: 500;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
     z-index: 100;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
 .toast.visible {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
+}
+
+/* ✅ Green success toast */
+.toast.success {
+    background: #16A34A;
+    color: #fff;
+}
+
+/* ✅ Red error toast */
+.toast.error {
+    background: #DC2626;
+    color: #fff;
 }
 
 /* ===================== MODAL BUTTONS ===================== */

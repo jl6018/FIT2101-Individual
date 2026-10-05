@@ -1,10 +1,10 @@
-// main-sprint-planning-page.ts
-// Compile with:
-//   tsc main-sprint-planning-page.ts --module esnext --target esnext --strict --ignoreConfig
+"use strict";
+// main-sprint-planning-page.js
+// Compiled from main-sprint-planning-page.ts — do not hand-edit.
 
 // ===================== BFCACHE FIX =====================
 window.addEventListener('pageshow', (event) => {
-    if ((event as PageTransitionEvent).persisted && sessionStorage.getItem('loggedIn') !== 'true') {
+    if (event.persisted && sessionStorage.getItem('loggedIn') !== 'true') {
         window.location.href = 'index-login-page.html';
     }
 });
@@ -25,17 +25,17 @@ if (nameEl) {
     }
 }
 
-function requireElement<T extends HTMLElement>(id: string): T {
+function requireElement(id) {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
-    return el as T;
+    return el;
 }
 
 // ===================== LOGOUT MODAL =====================
-const logoutBtn = requireElement<HTMLButtonElement>('logoutBtn');
-const logoutOverlay = requireElement<HTMLDivElement>('logoutOverlay');
-const cancelLogoutBtn = requireElement<HTMLButtonElement>('cancelLogoutBtn');
-const confirmLogoutBtn = requireElement<HTMLButtonElement>('confirmLogoutBtn');
+const logoutBtn = requireElement('logoutBtn');
+const logoutOverlay = requireElement('logoutOverlay');
+const cancelLogoutBtn = requireElement('cancelLogoutBtn');
+const confirmLogoutBtn = requireElement('confirmLogoutBtn');
 
 logoutBtn.addEventListener('click', () => logoutOverlay.classList.add('visible'));
 cancelLogoutBtn.addEventListener('click', () => logoutOverlay.classList.remove('visible'));
@@ -43,7 +43,7 @@ confirmLogoutBtn.addEventListener('click', () => {
     sessionStorage.clear();
     window.location.href = 'index-login-page.html';
 });
-logoutOverlay.addEventListener('click', (e: MouseEvent) => {
+logoutOverlay.addEventListener('click', (e) => {
     if (e.target === logoutOverlay) logoutOverlay.classList.remove('visible');
 });
 
@@ -52,31 +52,26 @@ const SPRINTS_API = "http://localhost:8080/api/sprints";
 const USERS_API = "http://localhost:8080/api/users";
 
 // ===================== ELEMENTS =====================
-const startSprintPlanningBtn = requireElement<HTMLButtonElement>('startSprintPlanningBtn');
-const inviteProductOwnerBtn = requireElement<HTMLButtonElement>('inviteProductOwnerBtn');
-
-const sprintPlanningOverlay = requireElement<HTMLDivElement>('sprintPlanningOverlay');
-const inviteOverlay = requireElement<HTMLDivElement>('inviteOverlay');
-
-const closeSprintPlanningBtn = requireElement<HTMLButtonElement>('closeSprintPlanningBtn');
-const closeInviteBtn = requireElement<HTMLButtonElement>('closeInviteBtn');
-
-const sprintPlanningForm = requireElement<HTMLFormElement>('sprintPlanningForm');
-const inviteForm = requireElement<HTMLFormElement>('inviteForm');
-
-const sprintNameInput = requireElement<HTMLInputElement>('sprintName');
-const sprintDurationSelect = requireElement<HTMLSelectElement>('sprintDuration');
-const taskDescriptionInput = requireElement<HTMLInputElement>('taskDescription');
-const taskDateInput = requireElement<HTMLInputElement>('taskDate');
-const membersList = requireElement<HTMLDivElement>('membersList');
-
-const ownerEmailInput = requireElement<HTMLInputElement>('ownerEmail');
-const pastSprintsBody = requireElement<HTMLTableSectionElement>('pastSprintsBody');
-const toast = requireElement<HTMLDivElement>('toast');
+const startSprintPlanningBtn = requireElement('startSprintPlanningBtn');
+const inviteProductOwnerBtn = requireElement('inviteProductOwnerBtn');
+const sprintPlanningOverlay = requireElement('sprintPlanningOverlay');
+const inviteOverlay = requireElement('inviteOverlay');
+const closeSprintPlanningBtn = requireElement('closeSprintPlanningBtn');
+const closeInviteBtn = requireElement('closeInviteBtn');
+const sprintPlanningForm = requireElement('sprintPlanningForm');
+const inviteForm = requireElement('inviteForm');
+const sprintNameInput = requireElement('sprintName');
+const sprintDurationSelect = requireElement('sprintDuration');
+const taskDescriptionInput = requireElement('taskDescription');
+const taskDateInput = requireElement('taskDate');
+const membersList = requireElement('membersList');
+const ownerEmailInput = requireElement('ownerEmail');
+const pastSprintsBody = requireElement('pastSprintsBody');
+const toast = requireElement('toast');
 
 // ===================== MODAL OPEN/CLOSE =====================
-function openModal(overlay: HTMLDivElement): void { overlay.classList.add('visible'); }
-function closeModal(overlay: HTMLDivElement): void { overlay.classList.remove('visible'); }
+function openModal(overlay) { overlay.classList.add('visible'); }
+function closeModal(overlay) { overlay.classList.remove('visible'); }
 
 startSprintPlanningBtn.addEventListener('click', async () => {
     await loadMembers();
@@ -87,35 +82,38 @@ inviteProductOwnerBtn.addEventListener('click', () => openModal(inviteOverlay));
 closeInviteBtn.addEventListener('click', () => closeModal(inviteOverlay));
 
 [sprintPlanningOverlay, inviteOverlay].forEach((overlay) => {
-    overlay.addEventListener('click', (e: MouseEvent) => {
+    overlay.addEventListener('click', (e) => {
         if (e.target === overlay) closeModal(overlay);
     });
 });
 
 // ===================== TOAST =====================
-let toastTimeoutId: number | undefined;
-function showToast(message: string): void {
+let toastTimeoutId;
+
+function showToast(message, type = 'success') {
     toast.textContent = message;
+    toast.classList.remove('success', 'error');
+    toast.classList.add(type);
     toast.classList.add('visible');
     if (toastTimeoutId !== undefined) window.clearTimeout(toastTimeoutId);
     toastTimeoutId = window.setTimeout(() => toast.classList.remove('visible'), 3000);
 }
 
 // ===================== HELPERS =====================
-function formatDateRange(startDate: Date, weeks: number): { start: string; end: string; label: string } {
+function formatDateRange(startDate, weeks) {
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + weeks * 7);
-    const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
-    const startLabel = startDate.toLocaleDateString('en-GB', opts);
-    const endLabel = endDate.toLocaleDateString('en-GB', { ...opts, year: 'numeric' });
+    const options = { day: 'numeric', month: 'short' };
+    const startStr = startDate.toLocaleDateString('en-GB', options);
+    const endStr = endDate.toLocaleDateString('en-GB', { ...options, year: 'numeric' });
     return {
         start: startDate.toISOString().split('T')[0],
         end: endDate.toISOString().split('T')[0],
-        label: `${startLabel} - ${endLabel}`,
+        label: `${startStr} - ${endStr}`,
     };
 }
 
-function statusLabel(status: string): string {
+function statusLabel(status) {
     if (status === 'PLANNED') return 'Planned';
     if (status === 'ACTIVE') return 'In progress';
     if (status === 'COMPLETED') return 'Completed';
@@ -123,18 +121,18 @@ function statusLabel(status: string): string {
 }
 
 // ===================== LOAD MEMBERS =====================
-async function loadMembers(): Promise<void> {
+async function loadMembers() {
     try {
         const res = await fetch(USERS_API);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const users: { id: number; name: string; role: string; team?: { name: string } | null }[] = await res.json();
+        const users = await res.json();
 
         const employees = users.filter((u) => u.role === 'EMPLOYEE');
 
         membersList.innerHTML = employees.length === 0
             ? `<p class="muted">No employees registered yet.</p>`
             : employees.map((u) => {
-                const team = u.team?.name ?? 'No team';
+                const team = (u.team && u.team.name) ? u.team.name : 'No team';
                 return `
                 <label class="member-row">
                     <input type="checkbox" name="member" value="${u.id}" checked>
@@ -148,14 +146,11 @@ async function loadMembers(): Promise<void> {
 }
 
 // ===================== LOAD SPRINTS =====================
-async function loadSprints(): Promise<void> {
+async function loadSprints() {
     try {
         const res = await fetch(SPRINTS_API);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const sprints: {
-            id: number; name: string; startDate: string; endDate: string;
-            memberCount: number; status: string;
-        }[] = await res.json();
+        const sprints = await res.json();
 
         pastSprintsBody.innerHTML = '';
 
@@ -167,7 +162,7 @@ async function loadSprints(): Promise<void> {
         sprints
             .sort((a, b) => b.id - a.id)
             .forEach((s) => {
-                const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+                const opts = { day: 'numeric', month: 'short' };
                 const start = new Date(s.startDate);
                 const end = new Date(s.endDate);
                 const range = `${start.toLocaleDateString('en-GB', opts)} - ${end.toLocaleDateString('en-GB', { ...opts, year: 'numeric' })}`;
@@ -187,14 +182,18 @@ async function loadSprints(): Promise<void> {
 }
 
 // ===================== CREATE SPRINT =====================
-sprintPlanningForm.addEventListener('submit', async (e: SubmitEvent) => {
+sprintPlanningForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const sprintName = sprintNameInput.value.trim();
-    if (!sprintName) { sprintNameInput.focus(); return; }
+    if (!sprintName) {
+        sprintNameInput.focus();
+        showToast('Please enter a sprint name.', 'error');
+        return;
+    }
 
     const weeks = Number(sprintDurationSelect.value);
-    const checkedMembers = membersList.querySelectorAll<HTMLInputElement>('input[type="checkbox"]:checked');
+    const checkedMembers = membersList.querySelectorAll('input[type="checkbox"]:checked');
     const memberCount = checkedMembers.length;
 
     const dates = formatDateRange(new Date(), weeks);
@@ -218,21 +217,25 @@ sprintPlanningForm.addEventListener('submit', async (e: SubmitEvent) => {
         }
 
         closeModal(sprintPlanningOverlay);
-        showToast('Sprint created');
+        showToast('Sprint created', 'success');
         sprintPlanningForm.reset();
         await loadSprints();
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to create sprint';
-        alert('Create sprint failed: ' + message);
+        showToast('Create sprint failed: ' + message, 'error');
     }
 });
 
 // ===================== INVITE PRODUCT OWNER =====================
-inviteForm.addEventListener('submit', async (e: SubmitEvent) => {
+inviteForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const email = ownerEmailInput.value.trim();
-    if (!email) { ownerEmailInput.focus(); return; }
+    if (!email) {
+        ownerEmailInput.focus();
+        showToast('Please enter an email address.', 'error');
+        return;
+    }
 
     try {
         const res = await fetch('/api/invites', {
@@ -242,16 +245,17 @@ inviteForm.addEventListener('submit', async (e: SubmitEvent) => {
         });
 
         if (!res.ok) {
+            // Backend returns plain text (e.g. "Email already invited")
             const text = await res.text();
             throw new Error(text || 'Failed to send invite');
         }
 
         closeModal(inviteOverlay);
-        showToast(`Invite sent to ${email}`);
+        showToast(`Invite sent to ${email}`, 'success');
         inviteForm.reset();
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to send invite';
-        alert(message);
+        showToast(message, 'error');
     }
 });
 
