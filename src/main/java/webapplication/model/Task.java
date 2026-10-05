@@ -27,11 +27,13 @@ public class Task {
 
     private LocalDate dueDate;
 
-    // ✅ Teams assigned (comma-separated): "Team Alpha,Team Beta"
+    // ✅ NEW — estimated hours
+    @Column(name = "estimate_hours")
+    private double estimateHours;
+
     @Column(name = "assigned_teams", length = 255)
     private String assignedTeams;
 
-    // ✅ NEW — employees assigned (comma-separated user IDs): "3,5,7"
     @Column(name = "assigned_employee_ids", length = 500)
     private String assignedEmployeeIds;
 
@@ -87,10 +89,13 @@ public class Task {
     public LocalDate getDueDate() { return dueDate; }
     public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
 
+    // ✅ NEW
+    public double getEstimateHours() { return estimateHours; }
+    public void setEstimateHours(double estimateHours) { this.estimateHours = estimateHours; }
+
     public String getAssignedTeams() { return assignedTeams; }
     public void setAssignedTeams(String assignedTeams) { this.assignedTeams = assignedTeams; }
 
-    // ✅ NEW
     public String getAssignedEmployeeIds() { return assignedEmployeeIds; }
     public void setAssignedEmployeeIds(String assignedEmployeeIds) { this.assignedEmployeeIds = assignedEmployeeIds; }
 

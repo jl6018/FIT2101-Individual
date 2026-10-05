@@ -55,6 +55,7 @@ public class TaskService {
         task.setAssignedUser(taskDetails.getAssignedUser());
         task.setAssignedTeams(taskDetails.getAssignedTeams());   // ✅ NEW
         task.setAssignedEmployeeIds(taskDetails.getAssignedEmployeeIds());
+        task.setEstimateHours(taskDetails.getEstimateHours());
         return taskRepository.save(task);
     }
 
