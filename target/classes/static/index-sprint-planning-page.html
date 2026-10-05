@@ -43,15 +43,8 @@
 
         <section class="panel">
             <h2>Start Sprint Planning</h2>
-            <p class="muted">Choose who's involved in the next sprint and add the tasks they'll work on. Sprints
-                can run up to 3 weeks.</p>
+            <p class="muted">Choose who's involved in the next sprint and pick its duration. Sprints can run up to 3 weeks.</p>
             <button id="startSprintPlanningBtn" class="btn-primary">Start Sprint Planning</button>
-        </section>
-
-        <section class="panel">
-            <h2>Invite Product Owner</h2>
-            <p class="muted">Product Owners are invited by email — there's no public sign up.</p>
-            <button id="inviteProductOwnerBtn" class="btn-primary">Invite Product Owner</button>
         </section>
 
         <section class="panel">
@@ -82,12 +75,17 @@
         <p class="modal-subtitle">Sprints can run up to 3 weeks</p>
 
         <form id="sprintPlanningForm">
+            <div class="form-field">
+                <label for="sprintName">Sprint name</label>
+                <select id="sprintName" name="sprintName" required>
+                    <!-- Options filled dynamically -->
+                </select>
+            </div>
+
             <div class="form-row">
                 <div class="form-field">
-                    <label for="sprintName">Sprint name</label>
-                    <select id="sprintName" name="sprintName" required>
-                        <!-- Options filled dynamically -->
-                    </select>
+                    <label for="sprintStartDate">Start date</label>
+                    <input type="date" id="sprintStartDate" name="sprintStartDate" required>
                 </div>
                 <div class="form-field">
                     <label for="sprintDuration">Duration</label>
@@ -101,42 +99,19 @@
             </div>
 
             <div class="form-field">
+                <label for="sprintEndDate">End date (auto-calculated)</label>
+                <input type="date" id="sprintEndDate" name="sprintEndDate" readonly>
+            </div>
+
+            <div class="form-field">
                 <label>Members involved</label>
-                <!-- ✅ Filled dynamically from GET /api/users -->
+                <!-- Filled dynamically from GET /api/users -->
                 <div class="members-list" id="membersList">
                     <p class="muted">Loading members…</p>
                 </div>
             </div>
 
-            <div class="form-field">
-                <label for="taskDescription">Add a task</label>
-                <input type="text" id="taskDescription" name="taskDescription" placeholder="Task description">
-            </div>
-
-            <div class="form-field">
-                <label for="taskDate" class="sr-only">Date</label>
-                <input type="date" id="taskDate" name="taskDate">
-            </div>
-
             <button type="submit" class="btn-primary full-width">Create sprint</button>
-        </form>
-    </div>
-</div>
-
-<!-- ===================== MODAL: Invite Product Owner ===================== -->
-<div class="modal-overlay" id="inviteOverlay">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="inviteTitle">
-        <button class="modal-close" id="closeInviteBtn" aria-label="Close">✕</button>
-        <h2 id="inviteTitle" class="modal-title">Invite Product Owner</h2>
-        <p class="modal-subtitle">They'll receive a sign-in link by email — there's no public sign-up form.</p>
-
-        <form id="inviteForm">
-            <div class="form-field">
-                <label for="ownerEmail">Email address</label>
-                <input type="email" id="ownerEmail" name="ownerEmail" placeholder="owner@company.com" required>
-            </div>
-
-            <button type="submit" class="btn-primary full-width">Send invite</button>
         </form>
     </div>
 </div>
@@ -149,6 +124,20 @@
         <div class="modal-actions">
             <button id="cancelLogoutBtn" class="btn-secondary">Cancel</button>
             <button id="confirmLogoutBtn" class="btn-danger">Log out</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== MODAL: Delete Sprint ===================== -->
+<div class="modal-overlay" id="deleteSprintOverlay">
+    <div class="modal modal-narrow" role="dialog" aria-modal="true" aria-labelledby="deleteSprintTitle">
+        <h2 id="deleteSprintTitle" class="modal-title">Delete sprint?</h2>
+        <p class="modal-subtitle">
+            <strong id="deleteSprintName">Sprint 1</strong> will be permanently removed. This cannot be undone.
+        </p>
+        <div class="modal-actions">
+            <button id="cancelDeleteBtn" class="btn-secondary">Cancel</button>
+            <button id="confirmDeleteBtn" class="btn-danger">Delete</button>
         </div>
     </div>
 </div>

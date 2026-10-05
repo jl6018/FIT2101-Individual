@@ -1,6 +1,5 @@
 "use strict";
-// main-admin-page.js
-// Compiled from main-admin-page.ts — do not hand-edit.
+// main-admin-page.js — compiled from main-admin-page.ts
 
 // ===================== ADMIN GUARD =====================
 window.addEventListener("pageshow", (event) => {
@@ -50,7 +49,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const USERS_API = "http://localhost:8080/api/users";
     const SPRINTS_API = "http://localhost:8080/api/sprints";
 
-    // ✅ NEW — board tab number → sprint name in DB
     const SPRINT_TAB_NAMES = {
         "1": "Sprint 1",
         "2": "Sprint 2",
@@ -206,6 +204,121 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         return { assignedTeams: null, assignedEmployeeIds: assignee.employeeIds.join(",") };
     }
 
+    // ===================== CUSTOM MODALS =====================
+    function showOverlay(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.add("visible");
+    }
+
+    function hideOverlay(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove("visible");
+    }
+
+    // -------- No-Sprint modal --------
+    function showNoSprintModal() {
+        showOverlay("noSprintOverlay");
+    }
+    document.getElementById("closeNoSprintBtn")?.addEventListener("click", () => hideOverlay("noSprintOverlay"));
+    document.getElementById("noSprintOverlay")?.addEventListener("click", (e) => {
+        if (e.target === document.getElementById("noSprintOverlay")) hideOverlay("noSprintOverlay");
+    });
+
+    // -------- Generic Confirm modal --------
+    let confirmResolver = null;
+
+    function showConfirmModal(opts) {
+        return new Promise((resolve) => {
+            confirmResolver = resolve;
+
+            const titleEl = document.getElementById("confirmTitle");
+            const msgEl = document.getElementById("confirmMessage");
+            const okBtn = document.getElementById("confirmOkBtn");
+
+            if (titleEl) titleEl.textContent = opts.title;
+            if (msgEl) msgEl.textContent = opts.message;
+            if (okBtn) {
+                okBtn.textContent = opts.confirmText ?? "OK";
+                okBtn.classList.toggle("btn-danger", opts.danger === true);
+                okBtn.classList.toggle("btn-primary", opts.danger !== true);
+            }
+
+            showOverlay("confirmOverlay");
+        });
+    }
+
+    function closeConfirmModal(result) {
+        hideOverlay("confirmOverlay");
+        if (confirmResolver) {
+            confirmResolver(result);
+            confirmResolver = null;
+        }
+    }
+
+    document.getElementById("confirmOkBtn")?.addEventListener("click", () => closeConfirmModal(true));
+    document.getElementById("confirmCancelBtn")?.addEventListener("click", () => closeConfirmModal(false));
+    document.getElementById("confirmOverlay")?.addEventListener("click", (e) => {
+        if (e.target === document.getElementById("confirmOverlay")) closeConfirmModal(false);
+    });
+
+    // -------- Generic Alert modal --------
+    function showAlertModal(title, message) {
+        const titleEl = document.getElementById("alertTitle");
+        const msgEl = document.getElementById("alertMessage");
+        if (titleEl) titleEl.textContent = title;
+        if (msgEl) msgEl.textContent = message;
+        showOverlay("alertOverlay");
+    }
+
+    document.getElementById("closeAlertBtn")?.addEventListener("click", () => hideOverlay("alertOverlay"));
+    document.getElementById("alertOverlay")?.addEventListener("click", (e) => {
+        if (e.target === document.getElementById("alertOverlay")) hideOverlay("alertOverlay");
+    });
+
+    // -------- Invite Product Owner (Share button) --------
+    const shareBtn = document.getElementById("shareBtn");
+    const inviteOverlay = document.getElementById("inviteOverlay");
+    const closeInviteBtn = document.getElementById("closeInviteBtn");
+    const inviteForm = document.getElementById("inviteForm");
+    const ownerEmailInput = document.getElementById("ownerEmail");
+
+    shareBtn?.addEventListener("click", () => inviteOverlay?.classList.add("visible"));
+    closeInviteBtn?.addEventListener("click", () => inviteOverlay?.classList.remove("visible"));
+    inviteOverlay?.addEventListener("click", (e) => {
+        if (e.target === inviteOverlay) inviteOverlay.classList.remove("visible");
+    });
+
+    inviteForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const email = ownerEmailInput?.value.trim();
+        if (!email) {
+            showToast("Please enter an email address.");
+            return;
+        }
+
+        try {
+            const res = await fetch("/api/invites", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email }),
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                console.error("Invite failed — backend said:", text);
+                throw new Error(text || "Failed to send invite.");
+            }
+
+            inviteOverlay?.classList.remove("visible");
+            showToast(`Invite sent to ${email}`);
+            inviteForm.reset();
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Failed to send invite";
+            showToast(message);
+        }
+    });
+
     // ===================== BACKEND SYNC =====================
     async function fetchTasks() {
         try {
@@ -277,7 +390,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             return await res.json();
         } catch (err) {
             console.error("Create failed:", err);
-            alert("Failed to create task.");
+            showAlertModal("Create failed", "Failed to create task. Please try again.");
             return null;
         }
     }
@@ -287,7 +400,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             const numericId = Number(task.id);
             if (!Number.isFinite(numericId) || numericId <= 0) {
                 console.warn("Skipping update — task has no valid backend ID:", task);
-                alert("Failed to save task: missing task ID.");
+                showAlertModal("Save failed", "This task has no ID yet. Try refreshing the page.");
                 return false;
             }
 
@@ -315,7 +428,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             return true;
         } catch (err) {
             console.error("Update failed:", err);
-            alert("Failed to save task.");
+            showAlertModal("Save failed", "Failed to save task. Please try again.");
             return false;
         }
     }
@@ -330,7 +443,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             return true;
         } catch (err) {
             console.error("Delete failed:", err);
-            alert("Failed to delete task.");
+            showAlertModal("Delete failed", "Failed to delete task. Please try again.");
             return false;
         }
     }
@@ -467,7 +580,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         if (moved) {
             if (!moved.id || moved.id === "" || Number.isNaN(Number(moved.id))) {
                 console.warn("Cannot move — task has no backend ID:", moved);
-                alert("Failed to save task: missing task ID.");
+                showAlertModal("Cannot move", "This task has no ID yet. Refresh the page and try again.");
                 draggedTaskId = null;
                 clearDropMarkers();
                 return;
@@ -900,9 +1013,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     // ===================== START / END SPRINT (US23) =====================
     const startSprintBtn = document.getElementById("startSprintBtn");
     let currentSprintStatus = null;
-    let currentSprintNumericId = null;   // ✅ NEW
+    let currentSprintNumericId = null;
 
-    // ✅ NEW — fetch the latest sprint by tab name
     async function fetchSprintStatus(tabId) {
         const name = SPRINT_TAB_NAMES[tabId];
         if (!name) return null;
@@ -952,7 +1064,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
         const numericId = currentSprintNumericId;
         if (numericId === null || !Number.isFinite(numericId) || numericId <= 0) {
-            alert("No sprint found for this tab. Create one in Sprint Planning first.");
+            showNoSprintModal();
             return;
         }
 
@@ -961,7 +1073,14 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         const confirmMsg = starting
             ? "Start the sprint now? Time tracking will begin."
             : "End this sprint? The sprint will be marked as completed.";
-        if (!confirm(confirmMsg)) return;
+
+        const confirmed = await showConfirmModal({
+            title: starting ? "Start sprint?" : "End sprint?",
+            message: confirmMsg,
+            confirmText: starting ? "Start" : "End",
+            danger: !starting,
+        });
+        if (!confirmed) return;
 
         startSprintBtn.disabled = true;
 
@@ -982,7 +1101,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             showToast(starting ? "Sprint started" : "Sprint completed");
         } catch (err) {
             console.error("Sprint action failed:", err);
-            alert(`Failed to update sprint status (sprint ${numericId}). Check the console for details.`);
+            showAlertModal(
+                "Sprint update failed",
+                `Failed to update sprint status (sprint ${numericId}). Check the console for details.`
+            );
             await refreshSprintButton();
         }
     });

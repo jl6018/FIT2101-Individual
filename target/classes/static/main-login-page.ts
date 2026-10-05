@@ -7,7 +7,7 @@
 // ============================================================
 const DEMO_MODE = false;
 
-// ===================== BFCACHE FIX (from B) =====================
+// ===================== BFCACHE FIX =====================
 window.addEventListener('pageshow', (event) => {
     if ((event as PageTransitionEvent).persisted && sessionStorage.getItem('loggedIn') !== 'true') {
         window.location.href = 'index-login-page.html';
@@ -22,6 +22,7 @@ interface LoginResponse {
     id?: number;
     name?: string;
     email?: string;
+    team?: string;   // ✅ ADD
 }
 
 function requireElement<T extends HTMLElement>(id: string): T {
@@ -53,7 +54,7 @@ dismissError.addEventListener('click', hideError);
 userIdInput.addEventListener('input', hideError);
 passwordInput.addEventListener('input', hideError);
 
-// ===================== DEMO LOGIN (from A) =====================
+// ===================== DEMO LOGIN =====================
 async function handleLoginDemo(userId: string, password: string): Promise<LoginResponse> {
     await new Promise((resolve) => setTimeout(resolve, 400));
 
@@ -67,10 +68,11 @@ async function handleLoginDemo(userId: string, password: string): Promise<LoginR
         name: 'Admin',
         email: 'admin@company.com',
         role: 'ADMIN',
+        team: '',
     };
 }
 
-// ===================== REAL LOGIN (from B) =====================
+// ===================== REAL LOGIN =====================
 async function handleLoginReal(userId: string, password: string): Promise<LoginResponse> {
     const res = await fetch('/api/users/login', {
         method: 'POST',
@@ -117,14 +119,15 @@ form.addEventListener('submit', async (e: SubmitEvent) => {
             localStorage.setItem('authToken', data.token);
         }
 
-        // ===================== SESSION STORAGE (from B) =====================
+        // ===================== SESSION STORAGE =====================
         sessionStorage.setItem('loggedIn', 'true');
         sessionStorage.setItem('role', data.role || '');
         sessionStorage.setItem('email', data.email || '');
         sessionStorage.setItem('name', data.name || '');
         sessionStorage.setItem('userId', String(data.id ?? ''));
+        sessionStorage.setItem('team', data.team || '');   // ✅ ADD
 
-        // ===================== ROLE-BASED REDIRECT (from B) =====================
+        // ===================== ROLE-BASED REDIRECT =====================
         if (data.role === 'ADMIN') {
             window.location.href = 'index-admin-page.html';
         } else {

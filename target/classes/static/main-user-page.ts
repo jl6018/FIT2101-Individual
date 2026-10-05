@@ -41,6 +41,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         status?: ColumnId | null;
         dueDate?: string | null;
         estimateHours?: number | null;
+        sprint?: { id: number } | null;
     };
 
     // ===================== HELPERS =====================
@@ -74,15 +75,27 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
     // ===================== STATE =====================
     let tasks: Task[] = [];
-    let currentSprintId = "1";                     // ✅ NEW
+
+    const savedSprintId = sessionStorage.getItem("currentSprintId");
+    let currentSprintId = savedSprintId && savedSprintId !== "" ? savedSprintId : "1";
+
     const board = requireElement<HTMLElement>("board");
 
+    // ✅ Show name + team in the navbar
     const nameEl = document.getElementById("signedInName");
     if (nameEl) {
         const name = sessionStorage.getItem("name");
         const role = sessionStorage.getItem("role");
-        if (name) {
-            nameEl.textContent = role === "ADMIN" ? `${name} (Admin)` : name;
+        const team = sessionStorage.getItem("team");
+
+        if (role === "ADMIN") {
+            nameEl.textContent = name ? `${name} (Admin)` : "Admin";
+        } else if (name && team) {
+            nameEl.textContent = `${name} (${team})`;
+        } else if (name) {
+            nameEl.textContent = name;
+        } else if (team) {
+            nameEl.textContent = team;
         }
     }
 
@@ -105,11 +118,25 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     // ===================== BACKEND SYNC =====================
     async function fetchTasks(): Promise<Task[]> {
         try {
-            const res = await fetch(`${API_BASE}/sprint/${currentSprintId}`);   // ✅ CHANGED
+            const team = sessionStorage.getItem("team") || "";
+
+            const url = team
+                ? `${API_BASE}/team/${encodeURIComponent(team)}`
+                : `${API_BASE}/sprint/${currentSprintId}`;
+
+            const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data: BackendTask[] = await res.json();
 
-            return data.map((t) => ({
+            // ✅ Keep tasks that match the current sprint OR have no sprint at all
+            const scoped = team
+                ? data.filter((t) => {
+                      const taskSprintId = t.sprint?.id ? String(t.sprint.id) : "";
+                      return taskSprintId === "" || taskSprintId === currentSprintId;
+                  })
+                : data;
+
+            return scoped.map((t) => ({
                 id: String(t.id),
                 column: (t.status ?? "PRODUCT_BACKLOG") as ColumnId,
                 title: t.name,
@@ -165,7 +192,10 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     const closeBtn = requireElement<HTMLButtonElement>("modalCloseBtn");
     const cancelBtn = requireElement<HTMLButtonElement>("modalCancelBtn");
 
+    let activeTaskId: string | null = null;
+
     function openModal(task: Task): void {
+        activeTaskId = task.id;
         modalColumn.value = task.column;
 
         titleInput.value = task.title;
@@ -206,25 +236,37 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (task) openModal(task);
     });
 
-    // ===================== SPRINT TABS (FUNCTIONAL) =====================
-    document.querySelectorAll<HTMLButtonElement>(".sprint-tab").forEach((tab) => {
-        tab.addEventListener("click", () => {
-            document.querySelectorAll(".sprint-tab").forEach((t) => t.classList.remove("active"));
-            tab.classList.add("active");
+    // ===================== SPRINT TABS (FUNCTIONAL + PERSIST) =====================
+    function initSprintTabs(): void {
+        const tabs = document.querySelectorAll<HTMLButtonElement>(".sprint-tab");
 
-            const sprintId = tab.dataset["sprint"];
-            if (!sprintId) return;
-
-            currentSprintId = sprintId;
-            void (async () => {
-                tasks = await fetchTasks();
-                renderBoard();
-            })();
+        tabs.forEach((tab) => {
+            const isActive = tab.dataset["sprint"] === currentSprintId;
+            tab.classList.toggle("active", isActive);
         });
-    });
+
+        tabs.forEach((tab) => {
+            tab.addEventListener("click", () => {
+                tabs.forEach((other) => other.classList.remove("active"));
+                tab.classList.add("active");
+
+                const sprintId = tab.dataset["sprint"];
+                if (!sprintId) return;
+
+                currentSprintId = sprintId;
+                sessionStorage.setItem("currentSprintId", sprintId);
+
+                void (async () => {
+                    tasks = await fetchTasks();
+                    renderBoard();
+                })();
+            });
+        });
+    }
 
     // ===================== INIT =====================
     async function init(): Promise<void> {
+        initSprintTabs();
         tasks = await fetchTasks();
         renderBoard();
     }

@@ -49,18 +49,13 @@ logoutOverlay.addEventListener('click', (e) => {
 
 // ===================== ELEMENTS =====================
 const addMemberBtn = requireElement('addMemberBtn');
-const inviteProductOwnerBtn = requireElement('inviteProductOwnerBtn');
 const addMemberOverlay = requireElement('addMemberOverlay');
-const inviteOverlay = requireElement('inviteOverlay');
 const removeMemberOverlay = requireElement('removeMemberOverlay');
 const closeAddMemberBtn = requireElement('closeAddMemberBtn');
-const closeInviteBtn = requireElement('closeInviteBtn');
 const addMemberForm = requireElement('addMemberForm');
-const inviteForm = requireElement('inviteForm');
 const memberUserSelect = requireElement('memberUser');
 const memberJobTitleSelect = requireElement('memberJobTitle');
 const memberTeamSelect = requireElement('memberTeam');
-const ownerEmailInput = requireElement('ownerEmail');
 const membersBody = requireElement('membersBody');
 const removeMemberName = requireElement('removeMemberName');
 const removeMemberTeam = requireElement('removeMemberTeam');
@@ -77,10 +72,8 @@ function closeModal(overlay) { overlay.classList.remove('visible'); }
 
 addMemberBtn.addEventListener('click', () => openModal(addMemberOverlay));
 closeAddMemberBtn.addEventListener('click', () => closeModal(addMemberOverlay));
-inviteProductOwnerBtn.addEventListener('click', () => openModal(inviteOverlay));
-closeInviteBtn.addEventListener('click', () => closeModal(inviteOverlay));
 
-[addMemberOverlay, inviteOverlay, removeMemberOverlay].forEach((overlay) => {
+[addMemberOverlay, removeMemberOverlay].forEach((overlay) => {
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) closeModal(overlay);
     });
@@ -119,7 +112,7 @@ async function loadMembers() {
     }
 }
 
-// ===================== LOAD TABLE (ONLY ASSIGNED) =====================
+// ===================== LOAD TABLE =====================
 async function loadTeamMemberships() {
     try {
         const res = await fetch('/api/users');
@@ -191,38 +184,6 @@ addMemberForm.addEventListener('submit', async (e) => {
     }
 });
 
-// ===================== INVITE PRODUCT OWNER =====================
-inviteForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const email = ownerEmailInput.value.trim();
-    if (!email) {
-        showToast('Please enter an email address.', 'error');
-        return;
-    }
-
-    try {
-        const res = await fetch('/api/invites', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email }),
-        });
-
-        if (!res.ok) {
-            // Backend returns plain text (e.g. "Email already invited")
-            const text = await res.text();
-            throw new Error(text || 'Failed to send invite.');
-        }
-
-        closeModal(inviteOverlay);
-        showToast(`Invite sent to ${email}`, 'success');
-        inviteForm.reset();
-    } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to send invite';
-        showToast(message, 'error');
-    }
-});
-
 // ===================== REMOVE MEMBER =====================
 membersBody.addEventListener('click', (e) => {
     const target = e.target;
@@ -277,5 +238,5 @@ confirmRemoveBtn.addEventListener('click', async () => {
 });
 
 // ===================== INIT =====================
-loadMembers();
-loadTeamMemberships();
+void loadMembers();
+void loadTeamMemberships();

@@ -92,13 +92,7 @@
             </div>
             <div class="project-header-right">
                 <button class="start-sprint-btn" id="startSprintBtn" type="button">▶ Start Sprint</button>
-                <div class="avatar-stack">
-                    <div class="avatar avatar-teal">T</div>
-                    <div class="avatar avatar-pink">H</div>
-                    <div class="avatar avatar-gray">B</div>
-                    <span class="avatar-more">+2</span>
-                </div>
-                <button class="share-btn" type="button">
+                <button class="share-btn" id="shareBtn" type="button">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <circle cx="10" cy="8" r="4"/><path d="M3 20c0-3.5 3-6 7-6s7 2.5 7 6M19 8v6M16 11h6"/>
                     </svg>
@@ -193,7 +187,6 @@
                         </div>
                     </div>
 
-                    <!-- ✅ NEW: Priority pill + popover -->
                     <div class="pill-wrap">
                         <button class="pill" type="button" data-popover="priorityPopover">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -242,6 +235,60 @@
             <button id="cancelLogoutBtn" class="btn-secondary" type="button">Cancel</button>
             <button id="confirmLogoutBtn" class="btn-danger" type="button">Log out</button>
         </div>
+    </div>
+</div>
+
+<!-- ===================== MODAL: No Sprint Found ===================== -->
+<div class="modal-overlay" id="noSprintOverlay">
+    <div class="modal modal-narrow" role="dialog" aria-modal="true">
+        <h2 class="modal-title">No sprint found</h2>
+        <p class="modal-subtitle">
+            There's no sprint on this tab yet. Create one in Sprint Planning first.
+        </p>
+        <div class="modal-actions">
+            <button id="closeNoSprintBtn" class="btn-primary full-width" type="button">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== MODAL: Generic Confirm ===================== -->
+<div class="modal-overlay" id="confirmOverlay">
+    <div class="modal modal-narrow" role="dialog" aria-modal="true">
+        <h2 class="modal-title" id="confirmTitle">Are you sure?</h2>
+        <p class="modal-subtitle" id="confirmMessage">This action cannot be undone.</p>
+        <div class="modal-actions">
+            <button id="confirmCancelBtn" class="btn-secondary" type="button">Cancel</button>
+            <button id="confirmOkBtn" class="btn-primary" type="button">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== MODAL: Generic Alert ===================== -->
+<div class="modal-overlay" id="alertOverlay">
+    <div class="modal modal-narrow" role="dialog" aria-modal="true">
+        <h2 class="modal-title" id="alertTitle">Notice</h2>
+        <p class="modal-subtitle" id="alertMessage"></p>
+        <div class="modal-actions">
+            <button id="closeAlertBtn" class="btn-primary full-width" type="button">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== MODAL: Invite Product Owner ===================== -->
+<div class="modal-overlay" id="inviteOverlay">
+    <div class="modal invite-modal" role="dialog" aria-modal="true" aria-labelledby="inviteTitle">
+        <button class="modal-close" id="closeInviteBtn" aria-label="Close" type="button">✕</button>
+        <h2 id="inviteTitle" class="modal-title">Invite Product Owner</h2>
+        <p class="modal-subtitle">They'll receive a sign-in link by email.</p>
+
+        <form id="inviteForm">
+            <div class="form-field">
+                <label for="ownerEmail">Email address</label>
+                <input type="email" id="ownerEmail" name="ownerEmail" placeholder="owner@company.com" required>
+            </div>
+
+            <button type="submit" class="btn-primary full-width">Send invite</button>
+        </form>
     </div>
 </div>
 

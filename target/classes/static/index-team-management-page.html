@@ -45,7 +45,6 @@
 
         <div class="action-row">
             <button id="addMemberBtn" class="btn-primary">+ Add member</button>
-            <button id="inviteProductOwnerBtn" class="btn-primary">Invite Product Owner</button>
         </div>
 
         <table class="members-table">
@@ -102,24 +101,6 @@
             </div>
 
             <button type="submit" class="btn-primary full-width">Add member</button>
-        </form>
-    </div>
-</div>
-
-<!-- ===================== MODAL: Invite Product Owner ===================== -->
-<div class="modal-overlay" id="inviteOverlay">
-    <div class="modal" role="dialog" aria-modal="true">
-        <button class="modal-close" id="closeInviteBtn" aria-label="Close">✕</button>
-        <h2 class="modal-title">Invite Product Owner</h2>
-        <p class="modal-subtitle">They'll receive a sign-in link by email.</p>
-
-        <form id="inviteForm">
-            <div class="form-field">
-                <label for="ownerEmail">Email address</label>
-                <input type="email" id="ownerEmail" name="ownerEmail" placeholder="owner@company.com" required>
-            </div>
-
-            <button type="submit" class="btn-primary full-width">Send invite</button>
         </form>
     </div>
 </div>

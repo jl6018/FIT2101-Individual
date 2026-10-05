@@ -53,21 +53,22 @@ const USERS_API = "http://localhost:8080/api/users";
 
 // ===================== ELEMENTS =====================
 const startSprintPlanningBtn = requireElement('startSprintPlanningBtn');
-const inviteProductOwnerBtn = requireElement('inviteProductOwnerBtn');
 const sprintPlanningOverlay = requireElement('sprintPlanningOverlay');
-const inviteOverlay = requireElement('inviteOverlay');
 const closeSprintPlanningBtn = requireElement('closeSprintPlanningBtn');
-const closeInviteBtn = requireElement('closeInviteBtn');
 const sprintPlanningForm = requireElement('sprintPlanningForm');
-const inviteForm = requireElement('inviteForm');
 const sprintNameInput = requireElement('sprintName');
+const sprintStartDateInput = requireElement('sprintStartDate');
 const sprintDurationSelect = requireElement('sprintDuration');
-const taskDescriptionInput = requireElement('taskDescription');
-const taskDateInput = requireElement('taskDate');
+const sprintEndDateInput = requireElement('sprintEndDate');
 const membersList = requireElement('membersList');
-const ownerEmailInput = requireElement('ownerEmail');
 const pastSprintsBody = requireElement('pastSprintsBody');
 const toast = requireElement('toast');
+
+// ===================== DELETE SPRINT MODAL ELEMENTS =====================
+const deleteSprintOverlay = requireElement('deleteSprintOverlay');
+const deleteSprintName = requireElement('deleteSprintName');
+const cancelDeleteBtn = requireElement('cancelDeleteBtn');
+const confirmDeleteBtn = requireElement('confirmDeleteBtn');
 
 // ===================== MODAL OPEN/CLOSE =====================
 function openModal(overlay) { overlay.classList.add('visible'); }
@@ -76,13 +77,16 @@ function closeModal(overlay) { overlay.classList.remove('visible'); }
 startSprintPlanningBtn.addEventListener('click', async () => {
     await loadMembers();
     populateSprintNameOptions();
+    populateDurationOptions();
+
+    sprintStartDateInput.value = new Date().toISOString().split('T')[0];
+    recalculateEndDate();
+
     openModal(sprintPlanningOverlay);
 });
 closeSprintPlanningBtn.addEventListener('click', () => closeModal(sprintPlanningOverlay));
-inviteProductOwnerBtn.addEventListener('click', () => openModal(inviteOverlay));
-closeInviteBtn.addEventListener('click', () => closeModal(inviteOverlay));
 
-[sprintPlanningOverlay, inviteOverlay].forEach((overlay) => {
+[sprintPlanningOverlay].forEach((overlay) => {
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) closeModal(overlay);
     });
@@ -101,25 +105,31 @@ function showToast(message, type = 'success') {
 }
 
 // ===================== HELPERS =====================
-function formatDateRange(startDate, weeks) {
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + weeks * 7);
-    const options = { day: 'numeric', month: 'short' };
-    const startStr = startDate.toLocaleDateString('en-GB', options);
-    const endStr = endDate.toLocaleDateString('en-GB', { ...options, year: 'numeric' });
-    return {
-        start: startDate.toISOString().split('T')[0],
-        end: endDate.toISOString().split('T')[0],
-        label: `${startStr} - ${endStr}`,
-    };
-}
-
 function statusLabel(status) {
     if (status === 'PLANNED') return 'Planned';
     if (status === 'ACTIVE') return 'In progress';
     if (status === 'COMPLETED') return 'Completed';
     return status;
 }
+
+function recalculateEndDate() {
+    const startValue = sprintStartDateInput.value;
+    const weeks = Number(sprintDurationSelect.value);
+
+    if (!startValue || !weeks) {
+        sprintEndDateInput.value = '';
+        return;
+    }
+
+    const start = new Date(startValue + 'T00:00:00');
+    const end = new Date(start);
+    end.setDate(end.getDate() + weeks * 7);
+
+    sprintEndDateInput.value = end.toISOString().split('T')[0];
+}
+
+sprintStartDateInput.addEventListener('change', recalculateEndDate);
+sprintDurationSelect.addEventListener('change', recalculateEndDate);
 
 // ===================== LOAD MEMBERS =====================
 async function loadMembers() {
@@ -198,7 +208,7 @@ async function loadSprints() {
                 `;
 
                 row.querySelector('.delete-sprint-btn')?.addEventListener('click', () => {
-                    void deleteSprintById(s.id, s.name);
+                    openDeleteModal(s.id, s.name);
                 });
 
                 pastSprintsBody.appendChild(row);
@@ -208,19 +218,47 @@ async function loadSprints() {
     }
 }
 
-// ===================== DELETE SPRINT =====================
-async function deleteSprintById(sprintId, sprintName) {
-    if (!confirm(`Delete "${sprintName}"? This cannot be undone.`)) return;
+// ===================== DELETE SPRINT (custom modal) =====================
+let pendingDeleteId = null;
+
+function openDeleteModal(sprintId, sprintName) {
+    pendingDeleteId = sprintId;
+    deleteSprintName.textContent = sprintName;
+    openModal(deleteSprintOverlay);
+}
+
+cancelDeleteBtn.addEventListener('click', () => {
+    pendingDeleteId = null;
+    closeModal(deleteSprintOverlay);
+});
+
+deleteSprintOverlay.addEventListener('click', (e) => {
+    if (e.target === deleteSprintOverlay) {
+        pendingDeleteId = null;
+        closeModal(deleteSprintOverlay);
+    }
+});
+
+confirmDeleteBtn.addEventListener('click', async () => {
+    if (pendingDeleteId === null) {
+        closeModal(deleteSprintOverlay);
+        return;
+    }
+    const id = pendingDeleteId;
+    const name = deleteSprintName.textContent ?? 'Sprint';
+    pendingDeleteId = null;
+    closeModal(deleteSprintOverlay);
+
     try {
-        const res = await fetch(`${SPRINTS_API}/${sprintId}`, { method: 'DELETE' });
+        const res = await fetch(`${SPRINTS_API}/${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        showToast(`Deleted ${sprintName}`, 'success');
+        showToast(`Deleted ${name}`, 'success');
         await loadSprints();
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Delete failed';
         showToast('Delete failed: ' + message, 'error');
     }
-}
+});
 
 // ===================== CREATE SPRINT =====================
 sprintPlanningForm.addEventListener('submit', async (e) => {
@@ -233,6 +271,13 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
         return;
     }
 
+    const startDate = sprintStartDateInput.value;
+    if (!startDate) {
+        sprintStartDateInput.focus();
+        showToast('Please choose a start date.', 'error');
+        return;
+    }
+
     const weeks = Number(sprintDurationSelect.value);
     if (!weeks || weeks < 1 || weeks > 3) {
         sprintDurationSelect.focus();
@@ -240,10 +285,14 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
         return;
     }
 
+    const endDate = sprintEndDateInput.value;
+    if (!endDate) {
+        showToast('Could not calculate end date.', 'error');
+        return;
+    }
+
     const checkedMembers = membersList.querySelectorAll('input[type="checkbox"]:checked');
     const memberCount = checkedMembers.length;
-
-    const dates = formatDateRange(new Date(), weeks);
 
     try {
         const res = await fetch(SPRINTS_API, {
@@ -251,8 +300,8 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 name: sprintName,
-                startDate: dates.start,
-                endDate: dates.end,
+                startDate: startDate,
+                endDate: endDate,
                 memberCount,
                 status: 'PLANNED',
             }),
@@ -268,6 +317,7 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
         sprintPlanningForm.reset();
         populateSprintNameOptions();
         populateDurationOptions();
+        recalculateEndDate();
         await loadSprints();
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to create sprint';
@@ -275,39 +325,7 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
     }
 });
 
-// ===================== INVITE PRODUCT OWNER =====================
-inviteForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const email = ownerEmailInput.value.trim();
-    if (!email) {
-        ownerEmailInput.focus();
-        showToast('Please enter an email address.', 'error');
-        return;
-    }
-
-    try {
-        const res = await fetch('/api/invites', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email }),
-        });
-
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || 'Failed to send invite');
-        }
-
-        closeModal(inviteOverlay);
-        showToast(`Invite sent to ${email}`, 'success');
-        inviteForm.reset();
-    } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to send invite';
-        showToast(message, 'error');
-    }
-});
-
 // ===================== INIT =====================
 populateSprintNameOptions();
 populateDurationOptions();
-loadSprints();
+void loadSprints();
