@@ -18,11 +18,21 @@ public class ProductOwnerInviteController {
         this.inviteService = inviteService;
     }
 
+    /**
+     * POST /api/invites
+     * Body: { "email": "owner@company.com" }
+     * Returns 200 with the saved invite, or 400 with an error message.
+     */
     @PostMapping
     public ResponseEntity<?> invite(@RequestBody ProductOwnerInvite invite) {
         try {
-            return ResponseEntity.ok(inviteService.inviteProductOwner(invite));
+            ProductOwnerInvite saved = inviteService.inviteProductOwner(invite);
+            return ResponseEntity.ok(saved);
+        } catch (IllegalArgumentException e) {
+            // Bad input — 400
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (RuntimeException e) {
+            // Duplicate / business rule — 400 with the message
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -33,12 +43,21 @@ public class ProductOwnerInviteController {
     }
 
     @GetMapping("/{id}")
-    public ProductOwnerInvite getById(@PathVariable Long id) {
-        return inviteService.getInviteById(id);
+    public ResponseEntity<?> getById(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(inviteService.getInviteById(id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) {
-        inviteService.deleteInvite(id);
+    public ResponseEntity<?> delete(@PathVariable Long id) {
+        try {
+            inviteService.deleteInvite(id);
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        }
     }
 }

@@ -15,16 +15,28 @@ public class ProductOwnerInviteService {
         this.inviteRepository = inviteRepository;
     }
 
+    /**
+     * Validates and saves a Product Owner invite.
+     * Throws IllegalArgumentException for invalid input.
+     * Throws RuntimeException for duplicate email.
+     */
     public ProductOwnerInvite inviteProductOwner(ProductOwnerInvite invite) {
-        if (invite.getEmail() == null || invite.getEmail().isBlank()) {
+        if (invite == null || invite.getEmail() == null || invite.getEmail().isBlank()) {
             throw new IllegalArgumentException("Email is required");
         }
-        if (!invite.getEmail().matches("^[\\w.+-]+@[\\w-]+\\.[\\w.-]+$")) {
+
+        // Normalize before checks so "Owner@x.com" and "owner@x.com" are treated the same
+        String email = invite.getEmail().trim().toLowerCase();
+        invite.setEmail(email);
+
+        if (!email.matches("^[\\w.+-]+@[\\w-]+\\.[\\w.-]+$")) {
             throw new IllegalArgumentException("Invalid email format");
         }
-        if (inviteRepository.findByEmail(invite.getEmail()).isPresent()) {
+
+        if (inviteRepository.findByEmail(email).isPresent()) {
             throw new RuntimeException("Email already invited");
         }
+
         return inviteRepository.save(invite);
     }
 
@@ -38,6 +50,9 @@ public class ProductOwnerInviteService {
     }
 
     public void deleteInvite(Long id) {
+        if (!inviteRepository.existsById(id)) {
+            throw new RuntimeException("Invite not found");
+        }
         inviteRepository.deleteById(id);
     }
 }
