@@ -1,3 +1,15 @@
+/**
+ * Admin Board Page Stylesheet — Symph Web Application
+ * Defines the visual layout and styling for the admin Kanban board,
+ * including the sidebar, navbar, project header, sprint tabs, board
+ * columns, task cards, drag-and-drop states, the task modal, priority
+ * badges, and all supporting dialogs (confirm, alert, invite, logout).
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+/* ===================== GLOBAL RESET ===================== */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -10,6 +22,7 @@ body {
     color: #1a1a1a;
 }
 
+/* ===================== SVG DEFAULTS ===================== */
 svg {
     width: 1.1em;
     height: 1.1em;
@@ -105,6 +118,7 @@ textarea {
     transition: width 0.2s ease;
 }
 
+/* ---- Collapsed sidebar state ---- */
 .sidebar-collapsed .sidebar {
     width: 60px;
 }
@@ -128,6 +142,7 @@ textarea {
     transform: rotate(180deg);
 }
 
+/* ---- Navigation ---- */
 .nav {
     display: flex;
     flex-direction: column;
@@ -221,6 +236,7 @@ textarea {
     pointer-events: none;
 }
 
+/* ---- Team filter dropdown ---- */
 .team-filter {
     position: absolute;
     right: 6px;
@@ -486,7 +502,7 @@ textarea {
     min-height: 8px;
 }
 
-/* Drag and drop */
+/* ---- Drag and drop states ---- */
 .card[draggable="true"] {
     cursor: grab;
 }
@@ -697,6 +713,7 @@ textarea {
     margin-bottom: 6px;
 }
 
+/* ---- Modal toolbar and pills ---- */
 .modal-toolbar,
 .toolbar-group {
     display: flex;
@@ -744,6 +761,7 @@ textarea {
     padding: 8px 34px 8px 18px;
 }
 
+/* ---- Popovers ---- */
 .popover {
     display: none;
     position: absolute;
@@ -805,6 +823,7 @@ textarea {
     border: 1px solid #8a8fb5;
 }
 
+/* ---- Segmented control ---- */
 .segmented {
     display: flex;
     background-color: #dddfee;
@@ -953,6 +972,7 @@ textarea {
     transform: translate(-50%, 0);
 }
 
+/* ===================== RESPONSIVE ===================== */
 @media (max-width: 720px) {
     .app-shell { flex-direction: column; }
     .sidebar { position: static; width: 100%; height: auto; }

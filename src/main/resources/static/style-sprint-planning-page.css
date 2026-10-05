@@ -1,3 +1,15 @@
+/**
+ * Sprint Planning Page Stylesheet — Symph Web Application
+ * Defines the visual layout and styling for the Sprint Planning page,
+ * including the sidebar, main content panels, sprint table, modals
+ * (sprint planning, delete sprint, logout), form fields, member checklist,
+ * account switcher, toast notifications, and success/error variants.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+/* ===================== DESIGN TOKENS ===================== */
 :root {
     --lavender: #C9CFFA;
     --lavender-dark: #B4BBF5;
@@ -8,6 +20,7 @@
     --error-text: #C0392B;
 }
 
+/* ===================== GLOBAL RESET ===================== */
 * {
     box-sizing: border-box;
 }
@@ -20,7 +33,6 @@ body {
 }
 
 /* ===================== APP SHELL ===================== */
-
 .app-shell {
     display: flex;
     min-height: 100vh;
@@ -104,7 +116,6 @@ body {
 .switch-account-btn:hover { background: #F3F4F6; }
 
 /* ===================== MAIN CONTENT ===================== */
-
 .main {
     flex-grow: 1;
     padding: 32px 40px;
@@ -149,6 +160,7 @@ h1 {
 .btn-primary:hover { background: #2a2a2a; }
 .btn-primary.full-width { width: 100%; }
 
+/* ===================== SPRINTS TABLE ===================== */
 .sprints-table {
     width: 100%;
     border-collapse: collapse;
@@ -171,7 +183,6 @@ h1 {
 }
 
 /* ===================== MODALS ===================== */
-
 .modal-overlay {
     display: none;
     position: fixed;
@@ -220,6 +231,7 @@ h1 {
     margin: 0 0 20px;
 }
 
+/* ===================== FORM ===================== */
 .form-row {
     display: flex;
     gap: 12px;
@@ -264,6 +276,7 @@ select:focus {
     outline-offset: 1px;
 }
 
+/* ---- Members checklist ---- */
 .members-list {
     display: flex;
     flex-direction: column;
@@ -289,7 +302,6 @@ select:focus {
 }
 
 /* ===================== SWITCH ACCOUNT LIST ===================== */
-
 .account-list {
     list-style: none;
     margin: 0;
@@ -339,7 +351,6 @@ select:focus {
 }
 
 /* ===================== TOAST ===================== */
-
 .toast {
     position: fixed;
     bottom: 24px;
@@ -376,7 +387,6 @@ select:focus {
 }
 
 /* ===================== MODAL BUTTONS ===================== */
-
 .modal-narrow {
     max-width: 380px;
 }
@@ -422,7 +432,6 @@ select:focus {
 }
 
 /* ===================== LOGO IMAGE ===================== */
-
 .logo {
     display: inline-block;
     line-height: 0;
@@ -435,7 +444,6 @@ select:focus {
 }
 
 /* ===================== DELETE SPRINT BUTTON ===================== */
-
 .delete-sprint-btn {
     padding: 6px 14px;
     border: none;
