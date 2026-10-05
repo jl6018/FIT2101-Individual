@@ -19,6 +19,13 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+/**
+ * Unit tests for UserController.
+ * Tests creating, retrieving, and listing users.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
 @WebMvcTest(controllers = UserController.class)
 @ContextConfiguration(classes = Application.class)
 class UserControllerTest {
@@ -32,6 +39,9 @@ class UserControllerTest {
     @MockitoBean
     private UserService userService;
 
+    /**
+     * Tests that creating a user returns 200 OK with the correct details.
+     */
     @Test
     void testCreateUser() throws Exception {
         User user = new User();
@@ -51,6 +61,9 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.email").value("john@example.com"));
     }
 
+    /**
+     * Tests that retrieving a user by ID returns 200 OK with the correct details.
+     */
     @Test
     void testGetUserById() throws Exception {
         User user = new User();
@@ -65,6 +78,9 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.name").value("John"));
     }
 
+    /**
+     * Tests that retrieving all users returns the correct count.
+     */
     @Test
     void testGetAllUsers() throws Exception {
         User user1 = new User(); user1.setId(1L); user1.setName("John");

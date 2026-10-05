@@ -19,6 +19,13 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+/**
+ * Unit tests for TeamController.
+ * Tests creating, retrieving, and listing teams.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
 @WebMvcTest(controllers = TeamController.class)
 @ContextConfiguration(classes = Application.class)
 class TeamControllerTest {
@@ -32,6 +39,9 @@ class TeamControllerTest {
     @MockitoBean
     private TeamService teamService;
 
+    /**
+     * Tests that creating a team returns 200 OK with the correct name.
+     */
     @Test
     void testCreateTeam() throws Exception {
         Team team = new Team();
@@ -47,6 +57,9 @@ class TeamControllerTest {
                 .andExpect(jsonPath("$.name").value("Alpha"));
     }
 
+    /**
+     * Tests that retrieving a team by ID returns 200 OK with the correct details.
+     */
     @Test
     void testGetTeamById() throws Exception {
         Team team = new Team();
@@ -61,6 +74,9 @@ class TeamControllerTest {
                 .andExpect(jsonPath("$.name").value("Alpha"));
     }
 
+    /**
+     * Tests that retrieving all teams returns the correct count.
+     */
     @Test
     void testGetAllTeams() throws Exception {
         Team t1 = new Team(); t1.setId(1L); t1.setName("Alpha");

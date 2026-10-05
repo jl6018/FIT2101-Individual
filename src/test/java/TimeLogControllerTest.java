@@ -20,6 +20,13 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+/**
+ * Unit tests for TimeLogController.
+ * Tests logging hours and retrieving time logs by user and task.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
 @WebMvcTest(controllers = TimeLogController.class)
 @ContextConfiguration(classes = Application.class)
 class TimeLogControllerTest {
@@ -33,6 +40,9 @@ class TimeLogControllerTest {
     @MockitoBean
     private TimeLogService timeLogService;
 
+    /**
+     * Tests that logging hours returns 200 OK with the saved values.
+     */
     @Test
     void testLogHours() throws Exception {
         TimeLog log = new TimeLog();
@@ -51,6 +61,9 @@ class TimeLogControllerTest {
                 .andExpect(jsonPath("$.hours").value(8.5));
     }
 
+    /**
+     * Tests that retrieving logs by user returns the correct count.
+     */
     @Test
     void testGetLogsByUser() throws Exception {
         TimeLog log1 = new TimeLog(); log1.setId(1L); log1.setHours(4.0);
@@ -63,6 +76,9 @@ class TimeLogControllerTest {
                 .andExpect(jsonPath("$.length()").value(2));
     }
 
+    /**
+     * Tests that retrieving logs by task returns the correct count.
+     */
     @Test
     void testGetLogsByTask() throws Exception {
         TimeLog log = new TimeLog(); log.setId(1L); log.setHours(8.0);

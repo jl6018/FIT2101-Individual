@@ -19,6 +19,13 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+/**
+ * Unit tests for ProjectController.
+ * Tests creating, retrieving, and listing projects.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
 @WebMvcTest(controllers = ProjectController.class)
 @ContextConfiguration(classes = Application.class)
 class ProjectControllerTest {
@@ -32,6 +39,9 @@ class ProjectControllerTest {
     @MockitoBean
     private ProjectService projectService;
 
+    /**
+     * Tests that creating a project returns 200 OK with the correct name.
+     */
     @Test
     void testCreateProject() throws Exception {
         Project project = new Project();
@@ -47,6 +57,9 @@ class ProjectControllerTest {
                 .andExpect(jsonPath("$.name").value("Symph"));
     }
 
+    /**
+     * Tests that retrieving a project by ID returns 200 OK with the correct ID.
+     */
     @Test
     void testGetProjectById() throws Exception {
         Project project = new Project();
@@ -60,6 +73,9 @@ class ProjectControllerTest {
                 .andExpect(jsonPath("$.id").value(1L));
     }
 
+    /**
+     * Tests that retrieving all projects returns the correct count.
+     */
     @Test
     void testGetAllProjects() throws Exception {
         Project p1 = new Project(); p1.setId(1L); p1.setName("Symph");

@@ -17,6 +17,13 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Unit tests for SprintService.
+ * Tests sprint creation, status transitions, retrieval, and deletion.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
 @SpringBootTest(classes = Application.class)
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:h2:mem:sprintdb",
@@ -39,6 +46,9 @@ class SprintServiceTest {
     private Project testProject;
     private Sprint testSprint;
 
+    /**
+     * Sets up fresh test data before each test.
+     */
     @BeforeEach
     void setUp() {
         sprintRepository.deleteAll();
@@ -52,10 +62,13 @@ class SprintServiceTest {
         testSprint.setName("Sprint 1");
         testSprint.setStartDate(LocalDate.now());
         testSprint.setEndDate(LocalDate.now().plusDays(14));
-        testSprint.setStatus(null); // Status will be set to PLANNED by the service
+        testSprint.setStatus(null);
         testSprint.setProject(testProject);
     }
 
+    /**
+     * Tests that creating a sprint saves it with a PLANNED status.
+     */
     @Test
     void testCreateSprint_Success() {
         Sprint created = sprintService.createSprint(testSprint);
@@ -63,10 +76,12 @@ class SprintServiceTest {
         assertNotNull(created.getId());
         assertEquals("Sprint 1", created.getName());
         assertEquals(testProject.getId(), created.getProject().getId());
-        // The service forces the status to PLANNED
         assertEquals(SprintStatus.PLANNED, created.getStatus());
     }
 
+    /**
+     * Tests that starting a sprint transitions its status to ACTIVE.
+     */
     @Test
     void testStartSprint_Success() {
         Sprint saved = sprintService.createSprint(testSprint);
@@ -76,16 +91,22 @@ class SprintServiceTest {
         assertEquals(SprintStatus.ACTIVE, started.getStatus());
     }
 
+    /**
+     * Tests that completing a sprint transitions its status to COMPLETED.
+     */
     @Test
     void testCompleteSprint_Success() {
         Sprint saved = sprintService.createSprint(testSprint);
-        sprintService.startSprint(saved.getId()); // Start it first
+        sprintService.startSprint(saved.getId());
 
         Sprint completed = sprintService.completeSprint(saved.getId());
 
         assertEquals(SprintStatus.COMPLETED, completed.getStatus());
     }
 
+    /**
+     * Tests that retrieving all sprints returns the correct count.
+     */
     @Test
     void testGetAllSprints_Success() {
         sprintService.createSprint(testSprint);
@@ -101,6 +122,9 @@ class SprintServiceTest {
         assertEquals(2, sprints.size());
     }
 
+    /**
+     * Tests that retrieving a sprint by ID returns the correct sprint.
+     */
     @Test
     void testGetSprintById_Success() {
         Sprint saved = sprintService.createSprint(testSprint);
@@ -112,6 +136,9 @@ class SprintServiceTest {
         assertEquals("Sprint 1", found.getName());
     }
 
+    /**
+     * Tests that retrieving a non-existent sprint throws an exception.
+     */
     @Test
     void testGetSprintById_NotFound_ThrowsException() {
         assertThrows(RuntimeException.class, () -> {
@@ -119,6 +146,9 @@ class SprintServiceTest {
         });
     }
 
+    /**
+     * Tests that deleting a sprint removes it from the database.
+     */
     @Test
     void testDeleteSprint_Success() {
         Sprint saved = sprintService.createSprint(testSprint);

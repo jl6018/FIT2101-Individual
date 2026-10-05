@@ -19,6 +19,13 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+/**
+ * Unit tests for TaskController.
+ * Tests creating, retrieving, and listing tasks.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
 @WebMvcTest(controllers = TaskController.class)
 @ContextConfiguration(classes = Application.class)
 class TaskControllerTest {
@@ -32,6 +39,9 @@ class TaskControllerTest {
     @MockitoBean
     private TaskService taskService;
 
+    /**
+     * Tests that creating a task returns 200 OK with the correct name.
+     */
     @Test
     void testCreateTask() throws Exception {
         Task task = new Task();
@@ -47,6 +57,9 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.name").value("Implement API"));
     }
 
+    /**
+     * Tests that retrieving a task by ID returns 200 OK with the correct ID.
+     */
     @Test
     void testGetTaskById() throws Exception {
         Task task = new Task();
@@ -60,6 +73,9 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.id").value(1L));
     }
 
+    /**
+     * Tests that retrieving all tasks returns the correct count.
+     */
     @Test
     void testGetAllTasks() throws Exception {
         Task t1 = new Task(); t1.setId(1L); t1.setName("Implement API");

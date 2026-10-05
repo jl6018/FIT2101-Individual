@@ -14,6 +14,13 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Unit tests for TaskService.
+ * Tests task creation, progress validation, status filtering, and deletion.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
 @SpringBootTest(classes = Application.class)
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:h2:mem:taskdb",
@@ -48,6 +55,9 @@ class TaskServiceTest {
     private Sprint testSprint;
     private Task testTask;
 
+    /**
+     * Sets up fresh test data before each test.
+     */
     @BeforeEach
     void setUp() {
         taskRepository.deleteAll();
@@ -60,7 +70,7 @@ class TaskServiceTest {
         testUser.setName("Task Assignee");
         testUser.setEmail("assignee@example.com");
         testUser.setPassword("password123");
-        testUser.setRole("EMPLOYEE");     // ✅ valid
+        testUser.setRole("EMPLOYEE");
         testUser = userRepository.save(testUser);
 
         Team testTeam = new Team();
@@ -89,6 +99,9 @@ class TaskServiceTest {
         testTask.setAssignedUser(testUser);
     }
 
+    /**
+     * Tests that creating a task saves it with the correct details.
+     */
     @Test
     void testCreateTask_Success() {
         Task created = taskService.createTask(testTask);
@@ -102,6 +115,9 @@ class TaskServiceTest {
         assertEquals(testUser.getId(), created.getAssignedUser().getId());
     }
 
+    /**
+     * Tests that creating a task with a null status defaults to PRODUCT_BACKLOG.
+     */
     @Test
     void testCreateTask_NullStatus_SetsDefault() {
         Task task = new Task();
@@ -118,6 +134,9 @@ class TaskServiceTest {
         assertEquals(TaskStatus.PRODUCT_BACKLOG, created.getStatus());
     }
 
+    /**
+     * Tests that creating a task with negative progress sets it to zero.
+     */
     @Test
     void testCreateTask_NegativeProgress_SetsToZero() {
         Task task = new Task();
@@ -134,6 +153,9 @@ class TaskServiceTest {
         assertEquals(0, created.getProgress());
     }
 
+    /**
+     * Tests that creating a task with progress over 100 sets it to 100.
+     */
     @Test
     void testCreateTask_ProgressOver100_SetsTo100() {
         Task task = new Task();
@@ -150,6 +172,9 @@ class TaskServiceTest {
         assertEquals(100, created.getProgress());
     }
 
+    /**
+     * Tests that retrieving all tasks returns the correct count.
+     */
     @Test
     void testGetAllTasks_Success() {
         taskService.createTask(testTask);
@@ -170,6 +195,9 @@ class TaskServiceTest {
         assertEquals(2, tasks.size());
     }
 
+    /**
+     * Tests that retrieving a task by ID returns the correct task.
+     */
     @Test
     void testGetTaskById_Success() {
         Task saved = taskService.createTask(testTask);
@@ -181,6 +209,9 @@ class TaskServiceTest {
         assertEquals("Implement User Registration", found.getName());
     }
 
+    /**
+     * Tests that retrieving a non-existent task throws an exception.
+     */
     @Test
     void testGetTaskById_NotFound_ThrowsException() {
         assertThrows(RuntimeException.class, () -> {
@@ -188,6 +219,9 @@ class TaskServiceTest {
         });
     }
 
+    /**
+     * Tests that updating a task saves the new details.
+     */
     @Test
     void testUpdateTask_Success() {
         Task saved = taskService.createTask(testTask);
@@ -210,6 +244,9 @@ class TaskServiceTest {
         assertEquals(50, updated.getProgress());
     }
 
+    /**
+     * Tests that updating a task's progress saves the new value.
+     */
     @Test
     void testUpdateProgress_Success() {
         Task saved = taskService.createTask(testTask);
@@ -219,6 +256,9 @@ class TaskServiceTest {
         assertEquals(75, updated.getProgress());
     }
 
+    /**
+     * Tests that updating progress with a negative value throws an exception.
+     */
     @Test
     void testUpdateProgress_Negative_ThrowsException() {
         Task saved = taskService.createTask(testTask);
@@ -228,6 +268,9 @@ class TaskServiceTest {
         });
     }
 
+    /**
+     * Tests that updating progress over 100 throws an exception.
+     */
     @Test
     void testUpdateProgress_Over100_ThrowsException() {
         Task saved = taskService.createTask(testTask);
@@ -237,6 +280,9 @@ class TaskServiceTest {
         });
     }
 
+    /**
+     * Tests that retrieving tasks by status returns the correct groups.
+     */
     @Test
     void testGetTasksByStatus_Success() {
         taskService.createTask(testTask);
@@ -258,6 +304,9 @@ class TaskServiceTest {
         assertEquals(1, inProgressTasks.size());
     }
 
+    /**
+     * Tests that retrieving tasks by sprint returns the correct count.
+     */
     @Test
     void testGetTasksBySprint_Success() {
         taskService.createTask(testTask);
@@ -277,6 +326,9 @@ class TaskServiceTest {
         assertEquals(2, tasks.size());
     }
 
+    /**
+     * Tests that deleting a task removes it from the database.
+     */
     @Test
     void testDeleteTask_Success() {
         Task saved = taskService.createTask(testTask);
@@ -288,6 +340,9 @@ class TaskServiceTest {
         });
     }
 
+    /**
+     * Tests that retrieving tasks for a non-existent sprint returns an empty list.
+     */
     @Test
     void testGetTasksBySprint_NotFound_ReturnsEmpty() {
         List<Task> tasks = taskService.getTasksBySprint(999L);

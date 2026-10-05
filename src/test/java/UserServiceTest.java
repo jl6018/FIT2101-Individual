@@ -13,6 +13,13 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Unit tests for UserService.
+ * Tests user creation, retrieval, update, deletion, and email lookup.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
 @SpringBootTest(classes = Application.class)
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:h2:mem:userdb",
@@ -32,6 +39,9 @@ class UserServiceTest {
 
     private User testUser;
 
+    /**
+     * Sets up fresh test data before each test.
+     */
     @BeforeEach
     void setUp() {
         userRepository.deleteAll();
@@ -43,6 +53,9 @@ class UserServiceTest {
         testUser.setRole("EMPLOYEE");
     }
 
+    /**
+     * Tests that creating a user saves it with the correct details.
+     */
     @Test
     void testCreateUser_Success() {
         User created = userService.createUser(testUser);
@@ -53,6 +66,9 @@ class UserServiceTest {
         assertEquals("EMPLOYEE", created.getRole());
     }
 
+    /**
+     * Tests that retrieving all users returns the correct count.
+     */
     @Test
     void testGetAllUsers_Success() {
         userService.createUser(testUser);
@@ -70,6 +86,9 @@ class UserServiceTest {
         assertEquals(2, users.size());
     }
 
+    /**
+     * Tests that retrieving a user by ID returns the correct user.
+     */
     @Test
     void testGetUserById_Success() {
         User saved = userService.createUser(testUser);
@@ -81,6 +100,9 @@ class UserServiceTest {
         assertEquals("test@example.com", found.getEmail());
     }
 
+    /**
+     * Tests that retrieving a non-existent user throws an exception.
+     */
     @Test
     void testGetUserById_NotFound_ThrowsException() {
         assertThrows(RuntimeException.class, () -> {
@@ -88,6 +110,9 @@ class UserServiceTest {
         });
     }
 
+    /**
+     * Tests that updating a user saves the new name, email, and role.
+     */
     @Test
     void testUpdateUser_Success() {
         User saved = userService.createUser(testUser);
@@ -105,6 +130,9 @@ class UserServiceTest {
         assertEquals("ADMIN", updated.getRole());
     }
 
+    /**
+     * Tests that deleting a user removes it from the database.
+     */
     @Test
     void testDeleteUser_Success() {
         User saved = userService.createUser(testUser);
@@ -116,6 +144,9 @@ class UserServiceTest {
         });
     }
 
+    /**
+     * Tests that finding a user by email returns the correct user.
+     */
     @Test
     void testFindUserByEmail_Success() {
         User saved = userService.createUser(testUser);

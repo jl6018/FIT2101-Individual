@@ -19,6 +19,13 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+/**
+ * Unit tests for SprintController.
+ * Tests creating, retrieving, and listing sprints.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
 @WebMvcTest(controllers = SprintController.class)
 @ContextConfiguration(classes = Application.class)
 class SprintControllerTest {
@@ -32,6 +39,9 @@ class SprintControllerTest {
     @MockitoBean
     private SprintService sprintService;
 
+    /**
+     * Tests that creating a sprint returns 200 OK with the correct name.
+     */
     @Test
     void testCreateSprint() throws Exception {
         Sprint sprint = new Sprint();
@@ -47,6 +57,9 @@ class SprintControllerTest {
                 .andExpect(jsonPath("$.name").value("Sprint 1"));
     }
 
+    /**
+     * Tests that retrieving a sprint by ID returns 200 OK with the correct ID.
+     */
     @Test
     void testGetSprintById() throws Exception {
         Sprint sprint = new Sprint();
@@ -60,6 +73,9 @@ class SprintControllerTest {
                 .andExpect(jsonPath("$.id").value(1L));
     }
 
+    /**
+     * Tests that retrieving all sprints returns the correct count.
+     */
     @Test
     void testGetAllSprints() throws Exception {
         Sprint s1 = new Sprint(); s1.setId(1L); s1.setName("Sprint 1");

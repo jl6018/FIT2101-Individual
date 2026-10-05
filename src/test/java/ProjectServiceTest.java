@@ -17,6 +17,13 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Unit tests for ProjectService.
+ * Tests project creation, retrieval, update, and deletion.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
 @SpringBootTest(classes = Application.class)
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:h2:mem:projectdb",
@@ -44,6 +51,9 @@ class ProjectServiceTest {
     private Team testTeam;
     private Project testProject;
 
+    /**
+     * Sets up fresh test data before each test.
+     */
     @BeforeEach
     void setUp() {
         projectRepository.deleteAll();
@@ -67,6 +77,9 @@ class ProjectServiceTest {
         testProject.setTeam(testTeam);
     }
 
+    /**
+     * Tests that creating a project saves it with the correct details.
+     */
     @Test
     void testCreateProject_Success() {
         Project created = projectService.createProject(testProject);
@@ -77,6 +90,9 @@ class ProjectServiceTest {
         assertEquals(testTeam.getId(), created.getTeam().getId());
     }
 
+    /**
+     * Tests that retrieving all projects returns the correct count.
+     */
     @Test
     void testGetAllProjects_Success() {
         projectService.createProject(testProject);
@@ -93,6 +109,9 @@ class ProjectServiceTest {
         assertEquals(2, projects.size());
     }
 
+    /**
+     * Tests that retrieving a project by ID returns the correct project.
+     */
     @Test
     void testGetProjectById_Success() {
         Project saved = projectService.createProject(testProject);
@@ -104,6 +123,9 @@ class ProjectServiceTest {
         assertEquals("Symph Development", found.getName());
     }
 
+    /**
+     * Tests that retrieving a non-existent project throws an exception.
+     */
     @Test
     void testGetProjectById_NotFound_ThrowsException() {
         assertThrows(RuntimeException.class, () -> {
@@ -111,6 +133,9 @@ class ProjectServiceTest {
         });
     }
 
+    /**
+     * Tests that updating a project saves the new name and description.
+     */
     @Test
     void testUpdateProject_Success() {
         Project saved = projectService.createProject(testProject);
@@ -126,6 +151,9 @@ class ProjectServiceTest {
         assertEquals("Updated description", updated.getDescription());
     }
 
+    /**
+     * Tests that deleting a project removes it from the database.
+     */
     @Test
     void testDeleteProject_Success() {
         Project saved = projectService.createProject(testProject);
@@ -137,6 +165,9 @@ class ProjectServiceTest {
         });
     }
 
+    /**
+     * Tests that creating a project without a team saves successfully with a null team.
+     */
     @Test
     void testCreateProject_WithoutTeam_Success() {
         Project noTeamProject = new Project();

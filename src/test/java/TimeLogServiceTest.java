@@ -12,6 +12,13 @@ import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Unit tests for TimeLogService.
+ * Tests logging hours and calculating total hours within a date range.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
 @SpringBootTest(classes = Application.class)
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:h2:mem:timelogdb",
@@ -46,6 +53,9 @@ class TimeLogServiceTest {
     private User testUser;
     private Task testTask;
 
+    /**
+     * Sets up fresh test data before each test.
+     */
     @BeforeEach
     void setUp() {
         timeLogRepository.deleteAll();
@@ -69,6 +79,9 @@ class TimeLogServiceTest {
         testTask = taskRepository.save(task);
     }
 
+    /**
+     * Tests that logging hours saves the entry with an assigned ID.
+     */
     @Test
     void testLogHours() {
         TimeLog log = new TimeLog(LocalDate.now(), 8.0, "Worked on API", testTask, testUser);
@@ -79,6 +92,9 @@ class TimeLogServiceTest {
         assertEquals(8.0, saved.getHours());
     }
 
+    /**
+     * Tests that calculating total hours for a user in a date range sums correctly.
+     */
     @Test
     void testGetTotalHoursForUserInRange() {
         timeLogService.logHours(new TimeLog(LocalDate.now().minusDays(1), 4.0, "Work", testTask, testUser));

@@ -12,6 +12,13 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Unit tests for TeamService.
+ * Tests team creation, retrieval, update, and deletion.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
 @SpringBootTest(classes = Application.class)
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:h2:mem:teamdb",
@@ -30,6 +37,9 @@ class TeamServiceTest {
 
     private Team testTeam;
 
+    /**
+     * Sets up fresh test data before each test.
+     */
     @BeforeEach
     void setUp() {
         teamRepository.deleteAll();
@@ -37,6 +47,9 @@ class TeamServiceTest {
         testTeam.setName("Team Alpha");
     }
 
+    /**
+     * Tests that creating a team saves it with the correct name.
+     */
     @Test
     void testCreateTeam_Success() {
         Team created = teamService.createTeam(testTeam);
@@ -44,6 +57,9 @@ class TeamServiceTest {
         assertEquals("Team Alpha", created.getName());
     }
 
+    /**
+     * Tests that retrieving all teams returns the correct count.
+     */
     @Test
     void testGetAllTeams_Success() {
         teamService.createTeam(testTeam);
@@ -55,6 +71,9 @@ class TeamServiceTest {
         assertEquals(2, teams.size());
     }
 
+    /**
+     * Tests that retrieving a team by ID returns the correct team.
+     */
     @Test
     void testGetTeamById_Success() {
         Team saved = teamService.createTeam(testTeam);
@@ -62,11 +81,17 @@ class TeamServiceTest {
         assertEquals(saved.getId(), found.getId());
     }
 
+    /**
+     * Tests that retrieving a non-existent team throws an exception.
+     */
     @Test
     void testGetTeamById_NotFound_ThrowsException() {
         assertThrows(RuntimeException.class, () -> teamService.getTeamById(999L));
     }
 
+    /**
+     * Tests that updating a team saves the new name.
+     */
     @Test
     void testUpdateTeam_Success() {
         Team saved = teamService.createTeam(testTeam);
@@ -75,6 +100,9 @@ class TeamServiceTest {
         assertEquals("Updated Team", updated.getName());
     }
 
+    /**
+     * Tests that deleting a team removes it from the database.
+     */
     @Test
     void testDeleteTeam_Success() {
         Team saved = teamService.createTeam(testTeam);
