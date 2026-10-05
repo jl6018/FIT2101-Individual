@@ -73,18 +73,9 @@ public class TaskController {
         return taskService.getTasksBySprint(sprintId);
     }
 
-    // ✅ US11 — Restrict task deletion to admin
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteTask(
-            @PathVariable Long id,
-            @RequestHeader(value = "X-Role", required = false) String role) {
-
-        if (!"ADMIN".equals(role)) {
-            return ResponseEntity.status(403).body("Only admins can delete tasks");
-        }
-
+    public void deleteTask(@PathVariable Long id) {
         taskService.deleteTask(id);
-        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/board")
@@ -114,6 +105,7 @@ public class TaskController {
         }
     }
 
+    // ✅ NEW — tasks belonging to a specific team
     @GetMapping("/team/{teamName}")
     public List<Task> getTasksByTeam(@PathVariable String teamName) {
         return taskService.getTasksByTeam(teamName);
