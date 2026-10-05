@@ -2,7 +2,7 @@
 // main-login-page.js
 // Merged: A's DEMO_MODE + B's sessionStorage handling + role-based redirect
 
-// ===================== BFCACHE FIX (from B) =====================
+// ===================== BFCACHE FIX =====================
 window.addEventListener('pageshow', (event) => {
     if (event.persisted && sessionStorage.getItem('loggedIn') !== 'true') {
         window.location.href = 'index-login-page.html';
@@ -44,7 +44,7 @@ dismissError.addEventListener('click', hideError);
 userIdInput.addEventListener('input', hideError);
 passwordInput.addEventListener('input', hideError);
 
-// ===================== DEMO LOGIN (from A) =====================
+// ===================== DEMO LOGIN =====================
 async function handleLoginDemo(userId, password) {
     await new Promise((resolve) => setTimeout(resolve, 400));
 
@@ -58,10 +58,11 @@ async function handleLoginDemo(userId, password) {
         name: 'Admin',
         email: 'admin@company.com',
         role: 'ADMIN',
+        team: '',
     };
 }
 
-// ===================== REAL LOGIN (from B) =====================
+// ===================== REAL LOGIN =====================
 async function handleLoginReal(userId, password) {
     const res = await fetch('/api/users/login', {
         method: 'POST',
@@ -84,7 +85,7 @@ async function handleLoginReal(userId, password) {
     return data;
 }
 
-// ===================== SUBMIT (from B) =====================
+// ===================== SUBMIT =====================
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -105,14 +106,19 @@ form.addEventListener('submit', async (e) => {
             ? await handleLoginDemo(userId, password)
             : await handleLoginReal(userId, password);
 
-        // Store session (from B)
+        if (data.token) {
+            localStorage.setItem('authToken', data.token);
+        }
+
+        // Store session
         sessionStorage.setItem('loggedIn', 'true');
         sessionStorage.setItem('role', data.role || '');
         sessionStorage.setItem('email', data.email || '');
         sessionStorage.setItem('name', data.name || '');
-        sessionStorage.setItem('userId', data.id || '');
+        sessionStorage.setItem('userId', String(data.id ?? ''));
+        sessionStorage.setItem('team', data.team || '');   // ✅ ADD
 
-        // Role-based redirect (from B) — but ADMIN goes to the admin board
+        // Role-based redirect
         if (data.role === 'ADMIN') {
             window.location.href = 'index-admin-page.html';
         } else {

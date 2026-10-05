@@ -53,16 +53,27 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
     // ===================== STATE =====================
     let tasks = [];
-    let currentSprintId = "1";                     // ✅ NEW
+
+    const savedSprintId = sessionStorage.getItem("currentSprintId");
+    let currentSprintId = savedSprintId && savedSprintId !== "" ? savedSprintId : "1";
+
     const board = requireElement("board");
 
-    // Show current user
+    // ✅ Show name + team in the navbar
     const nameEl = document.getElementById("signedInName");
     if (nameEl) {
         const name = sessionStorage.getItem("name");
         const role = sessionStorage.getItem("role");
-        if (name) {
-            nameEl.textContent = role === "ADMIN" ? `${name} (Admin)` : name;
+        const team = sessionStorage.getItem("team");
+
+        if (role === "ADMIN") {
+            nameEl.textContent = name ? `${name} (Admin)` : "Admin";
+        } else if (name && team) {
+            nameEl.textContent = `${name} (${team})`;
+        } else if (name) {
+            nameEl.textContent = name;
+        } else if (team) {
+            nameEl.textContent = team;
         }
     }
 
@@ -85,11 +96,25 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     // ===================== BACKEND SYNC =====================
     async function fetchTasks() {
         try {
-            const res = await fetch(`${API_BASE}/sprint/${currentSprintId}`);   // ✅ CHANGED
+            const team = sessionStorage.getItem("team") || "";
+
+            const url = team
+                ? `${API_BASE}/team/${encodeURIComponent(team)}`
+                : `${API_BASE}/sprint/${currentSprintId}`;
+
+            const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
 
-            return data.map((t) => ({
+            // ✅ Keep tasks that match the current sprint OR have no sprint at all
+            const scoped = team
+                ? data.filter((t) => {
+                      const taskSprintId = t.sprint?.id ? String(t.sprint.id) : "";
+                      return taskSprintId === "" || taskSprintId === currentSprintId;
+                  })
+                : data;
+
+            return scoped.map((t) => ({
                 id: String(t.id),
                 column: t.status ?? "PRODUCT_BACKLOG",
                 title: t.name,
@@ -177,7 +202,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         });
     }
 
-    // ===================== BOARD CLICK (OPEN MODAL) =====================
+    // ===================== BOARD CLICK =====================
     board.addEventListener("click", (event) => {
         const target = event.target;
         const card = target.closest("[data-task]");
@@ -188,25 +213,37 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (task) openModal(task);
     });
 
-    // ===================== SPRINT TABS (FUNCTIONAL) =====================
-    document.querySelectorAll(".sprint-tab").forEach((tab) => {
-        tab.addEventListener("click", () => {
-            document.querySelectorAll(".sprint-tab").forEach((t) => t.classList.remove("active"));
-            tab.classList.add("active");
+    // ===================== SPRINT TABS (FUNCTIONAL + PERSIST) =====================
+    function initSprintTabs() {
+        const tabs = document.querySelectorAll(".sprint-tab");
 
-            const sprintId = tab.dataset["sprint"];
-            if (!sprintId) return;
-
-            currentSprintId = sprintId;
-            void (async () => {
-                tasks = await fetchTasks();
-                renderBoard();
-            })();
+        tabs.forEach((tab) => {
+            const isActive = tab.dataset["sprint"] === currentSprintId;
+            tab.classList.toggle("active", isActive);
         });
-    });
+
+        tabs.forEach((tab) => {
+            tab.addEventListener("click", () => {
+                tabs.forEach((other) => other.classList.remove("active"));
+                tab.classList.add("active");
+
+                const sprintId = tab.dataset["sprint"];
+                if (!sprintId) return;
+
+                currentSprintId = sprintId;
+                sessionStorage.setItem("currentSprintId", sprintId);
+
+                void (async () => {
+                    tasks = await fetchTasks();
+                    renderBoard();
+                })();
+            });
+        });
+    }
 
     // ===================== INIT =====================
     async function init() {
+        initSprintTabs();
         tasks = await fetchTasks();
         renderBoard();
     }
