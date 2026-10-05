@@ -1,6 +1,6 @@
 "use strict";
 // main-sprint-planning-page.js
-// Merged: logout modal + auth guard + show-user
+// Compiled from main-sprint-planning-page.ts — do not hand-edit.
 
 // ===================== BFCACHE FIX =====================
 window.addEventListener('pageshow', (event) => {
@@ -27,9 +27,7 @@ if (nameEl) {
 
 function requireElement(id) {
     const el = document.getElementById(id);
-    if (!el) {
-        throw new Error(`Missing element: ${id}`);
-    }
+    if (!el) throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
     return el;
 }
 
@@ -48,6 +46,10 @@ confirmLogoutBtn.addEventListener('click', () => {
 logoutOverlay.addEventListener('click', (e) => {
     if (e.target === logoutOverlay) logoutOverlay.classList.remove('visible');
 });
+
+// ===================== CONFIG =====================
+const SPRINTS_API = "http://localhost:8080/api/sprints";
+const USERS_API = "http://localhost:8080/api/users";
 
 // ===================== ELEMENTS =====================
 const startSprintPlanningBtn = requireElement('startSprintPlanningBtn');
@@ -75,17 +77,17 @@ function closeModal(overlay) {
     overlay.classList.remove('visible');
 }
 
-startSprintPlanningBtn.addEventListener('click', () => openModal(sprintPlanningOverlay));
+startSprintPlanningBtn.addEventListener('click', async () => {
+    await loadMembers();
+    openModal(sprintPlanningOverlay);
+});
 closeSprintPlanningBtn.addEventListener('click', () => closeModal(sprintPlanningOverlay));
 inviteProductOwnerBtn.addEventListener('click', () => openModal(inviteOverlay));
 closeInviteBtn.addEventListener('click', () => closeModal(inviteOverlay));
 
-// Close a modal by clicking its dark backdrop (outside the white card)
 [sprintPlanningOverlay, inviteOverlay].forEach((overlay) => {
     overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
-            closeModal(overlay);
-        }
+        if (e.target === overlay) closeModal(overlay);
     });
 });
 
@@ -94,25 +96,96 @@ let toastTimeoutId;
 function showToast(message) {
     toast.textContent = message;
     toast.classList.add('visible');
-    if (toastTimeoutId !== undefined) {
-        window.clearTimeout(toastTimeoutId);
-    }
+    if (toastTimeoutId !== undefined) window.clearTimeout(toastTimeoutId);
     toastTimeoutId = window.setTimeout(() => {
         toast.classList.remove('visible');
     }, 3000);
 }
 
-// ===================== CREATE SPRINT =====================
+// ===================== HELPERS =====================
 function formatDateRange(startDate, weeks) {
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + weeks * 7);
     const options = { day: 'numeric', month: 'short' };
     const startStr = startDate.toLocaleDateString('en-GB', options);
     const endStr = endDate.toLocaleDateString('en-GB', { ...options, year: 'numeric' });
-    return `${startStr} - ${endStr}`;
+    return {
+        start: startDate.toISOString().split('T')[0],
+        end: endDate.toISOString().split('T')[0],
+        label: `${startStr} - ${endStr}`,
+    };
 }
 
-sprintPlanningForm.addEventListener('submit', (e) => {
+function statusLabel(status) {
+    if (status === 'PLANNED') return 'Planned';
+    if (status === 'ACTIVE') return 'In progress';
+    if (status === 'COMPLETED') return 'Completed';
+    return status;
+}
+
+// ===================== LOAD MEMBERS =====================
+async function loadMembers() {
+    try {
+        const res = await fetch(USERS_API);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const users = await res.json();
+
+        const employees = users.filter((u) => u.role === 'EMPLOYEE');
+
+        membersList.innerHTML = employees.length === 0
+            ? `<p class="muted">No employees registered yet.</p>`
+            : employees.map((u) => {
+                const team = (u.team && u.team.name) ? u.team.name : 'No team';
+                return `
+                <label class="member-row">
+                    <input type="checkbox" name="member" value="${u.id}" checked>
+                    <span>${u.name} — ${team}</span>
+                </label>`;
+            }).join('');
+    } catch (err) {
+        console.error('Failed to load members:', err);
+        membersList.innerHTML = `<p class="muted">Could not load members.</p>`;
+    }
+}
+
+// ===================== LOAD SPRINTS =====================
+async function loadSprints() {
+    try {
+        const res = await fetch(SPRINTS_API);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const sprints = await res.json();
+
+        pastSprintsBody.innerHTML = '';
+
+        if (sprints.length === 0) {
+            pastSprintsBody.innerHTML = `<tr><td colspan="4">No sprints yet.</td></tr>`;
+            return;
+        }
+
+        sprints
+            .sort((a, b) => b.id - a.id)
+            .forEach((s) => {
+                const opts = { day: 'numeric', month: 'short' };
+                const start = new Date(s.startDate);
+                const end = new Date(s.endDate);
+                const range = `${start.toLocaleDateString('en-GB', opts)} - ${end.toLocaleDateString('en-GB', { ...opts, year: 'numeric' })}`;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${s.name}</td>
+                    <td>${range}</td>
+                    <td>${s.memberCount ?? 0}</td>
+                    <td>${statusLabel(s.status)}</td>
+                `;
+                pastSprintsBody.appendChild(row);
+            });
+    } catch (err) {
+        console.error('Failed to load sprints:', err);
+    }
+}
+
+// ===================== CREATE SPRINT =====================
+sprintPlanningForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const sprintName = sprintNameInput.value.trim();
@@ -124,33 +197,67 @@ sprintPlanningForm.addEventListener('submit', (e) => {
     const weeks = Number(sprintDurationSelect.value);
     const checkedMembers = membersList.querySelectorAll('input[type="checkbox"]:checked');
     const memberCount = checkedMembers.length;
-    const dateRange = formatDateRange(new Date(), weeks);
 
-    const row = document.createElement('tr');
-    row.innerHTML = `
-    <td>${sprintName}</td>
-    <td>${dateRange}</td>
-    <td>${memberCount}</td>
-    <td>In progress</td>
-  `;
-    pastSprintsBody.prepend(row);
+    const dates = formatDateRange(new Date(), weeks);
 
-    closeModal(sprintPlanningOverlay);
-    showToast('Sprint created');
-    sprintPlanningForm.reset();
-    taskDescriptionInput.value = '';
-    taskDateInput.value = '';
+    try {
+        const res = await fetch(SPRINTS_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: sprintName,
+                startDate: dates.start,
+                endDate: dates.end,
+                memberCount,
+                status: 'PLANNED',
+            }),
+        });
+
+        if (!res.ok) {
+            const msg = await res.text();
+            throw new Error(msg || 'Failed to create sprint');
+        }
+
+        closeModal(sprintPlanningOverlay);
+        showToast('Sprint created');
+        sprintPlanningForm.reset();
+        await loadSprints();
+    } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to create sprint';
+        alert('Create sprint failed: ' + message);
+    }
 });
 
 // ===================== INVITE PRODUCT OWNER =====================
-inviteForm.addEventListener('submit', (e) => {
+inviteForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+
     const email = ownerEmailInput.value.trim();
     if (!email) {
         ownerEmailInput.focus();
         return;
     }
-    closeModal(inviteOverlay);
-    showToast(`Invite sent to ${email}`);
-    inviteForm.reset();
+
+    try {
+        const res = await fetch('/api/invites', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || 'Failed to send invite');
+        }
+
+        closeModal(inviteOverlay);
+        showToast(`Invite sent to ${email}`);
+        inviteForm.reset();
+    } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to send invite';
+        alert(message);
+    }
 });
+
+// ===================== INIT =====================
+loadSprints();

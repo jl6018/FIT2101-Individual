@@ -14,7 +14,6 @@
 <body>
 
 <div class="app-shell">
-    <!-- SIDEBAR -->
     <aside class="sidebar">
         <a class="logo" href="index-admin-page.html"><img src="images/symph-logo.png" alt="Symph" /></a>
 
@@ -35,12 +34,10 @@
 
         <div class="sidebar-footer">
             <div class="signed-in">Signed in as <strong id="signedInName">Admin</strong></div>
-            <!-- B: Log out button -->
             <button id="logoutBtn" class="switch-account-btn">Log out</button>
         </div>
     </aside>
 
-    <!-- MAIN CONTENT -->
     <main class="main">
         <h1>Sprint Planning</h1>
 
@@ -69,18 +66,7 @@
                 </tr>
                 </thead>
                 <tbody id="pastSprintsBody">
-                <tr>
-                    <td>Sprint 2</td>
-                    <td>5 - 19 Sep 2026</td>
-                    <td>6</td>
-                    <td>In progress</td>
-                </tr>
-                <tr>
-                    <td>Sprint 1</td>
-                    <td>30 Aug - 5 Sep 2026</td>
-                    <td>5</td>
-                    <td>Completed</td>
-                </tr>
+                <!-- Filled dynamically from GET /api/sprints -->
                 </tbody>
             </table>
         </section>
@@ -112,31 +98,9 @@
 
             <div class="form-field">
                 <label>Members involved</label>
+                <!-- ✅ Filled dynamically from GET /api/users -->
                 <div class="members-list" id="membersList">
-                    <label class="member-row">
-                        <input type="checkbox" name="member" value="Priya Nair" checked>
-                        <span>Priya Nair — Team Alpha</span>
-                    </label>
-                    <label class="member-row">
-                        <input type="checkbox" name="member" value="Daniel Wu" checked>
-                        <span>Daniel Wu — Team Alpha</span>
-                    </label>
-                    <label class="member-row">
-                        <input type="checkbox" name="member" value="Farah Idris" checked>
-                        <span>Farah Idris — Team Beta</span>
-                    </label>
-                    <label class="member-row">
-                        <input type="checkbox" name="member" value="Aiden Cole" checked>
-                        <span>Aiden Cole — Team Beta</span>
-                    </label>
-                    <label class="member-row">
-                        <input type="checkbox" name="member" value="Mei Ling Tan" checked>
-                        <span>Mei Ling Tan — Team Gamma</span>
-                    </label>
-                    <label class="member-row">
-                        <input type="checkbox" name="member" value="Sam Okafor" checked>
-                        <span>Sam Okafor — Team Gamma</span>
-                    </label>
+                    <p class="muted">Loading members…</p>
                 </div>
             </div>
 
@@ -173,7 +137,7 @@
     </div>
 </div>
 
-<!-- ===================== MODAL: Logout (B) ===================== -->
+<!-- ===================== MODAL: Logout ===================== -->
 <div class="modal-overlay" id="logoutOverlay">
     <div class="modal modal-narrow" role="dialog" aria-modal="true">
         <h2 class="modal-title">Log out?</h2>
@@ -185,7 +149,7 @@
     </div>
 </div>
 
-<!-- ===================== TOAST NOTIFICATION ===================== -->
+<!-- ===================== TOAST ===================== -->
 <div class="toast" id="toast"></div>
 
 <script src="main-sprint-planning-page.js" type="module" defer></script>

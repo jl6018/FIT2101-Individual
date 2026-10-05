@@ -1,22 +1,8 @@
 // main-admin-page.ts
 // Compile with:
 //   npx tsc main-admin-page.ts --module esnext --target esnext --strict --ignoreConfig
-// The compiled main-admin-page.js is loaded as a plain <script>, so the page
-// also works when the HTML file is opened directly (file://), not only when
-// it is served by Spring Boot. Everything lives inside one function so no
-// names leak into the global scope.
-//
-// Sprint 2 stories covered on this page:
-//   US07 — assign a task to a team or to one or more employees
-//   US09 — admin views every team's board (filter button in the search bar)
-//   US10 — edit a task's name and description
-//   US11 — only the admin can delete a task (delete lives on this page only)
-//   US15 — set a due date on a task
-//   US17 — admin moves a task from In Review to Completed (drag and drop)
-//   US23 — Start Sprint button
-// US21 (remove team member) lives on the Team Management page.
 
-// ===================== ADMIN GUARD (from B) =====================
+// ===================== ADMIN GUARD =====================
 window.addEventListener("pageshow", (event) => {
     if ((event as PageTransitionEvent).persisted && sessionStorage.getItem("loggedIn") !== "true") {
         window.location.href = "index-login-page.html";
@@ -33,7 +19,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 }
 
 (() => {
-    // ===================== SHOW CURRENT USER (from B) =====================
+    // ===================== SHOW CURRENT USER =====================
     const nameEl = document.getElementById("signedInName");
     if (nameEl) {
         const name = sessionStorage.getItem("name");
@@ -43,7 +29,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
     }
 
-    // ===================== LOGOUT MODAL (from B) =====================
+    // ===================== LOGOUT MODAL =====================
     const logoutBtn = document.getElementById("logoutBtn");
     const logoutOverlay = document.getElementById("logoutOverlay");
     const cancelLogoutBtn = document.getElementById("cancelLogoutBtn");
@@ -64,6 +50,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     type Assignee =
         | { kind: "team"; teamId: string }
+        | { kind: "teams"; teamIds: string[] }
         | { kind: "employees"; employeeIds: string[] };
 
     type Task = {
@@ -78,45 +65,56 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     };
 
     type Team = { id: string; name: string };
-    type Employee = { id: string; name: string; teamId: string };
+    type Employee = { id: string; name: string; team: string };
+
+    type BackendTask = {
+        id: number;
+        name: string;
+        description?: string | null;
+        status?: ColumnId | null;
+        assignedTeams?: string | null;
+        assignedEmployeeIds?: string | null;   // ✅ NEW
+    };
+
+    type BackendUser = {
+        id: number;
+        name: string;
+        email: string;
+        role: string;
+        team?: { name: string } | null;
+    };
+
+    // ===================== CONFIG =====================
+    const API_BASE = "http://localhost:8080/api/tasks";
+    const USERS_API = "http://localhost:8080/api/users";
 
     // ===================== REFERENCE DATA =====================
     const TEAMS: Team[] = [
-        { id: "alpha", name: "Team Alpha" },
-        { id: "beta", name: "Team Beta" },
-        { id: "gamma", name: "Team Gamma" },
+        { id: "Team Alpha", name: "Team Alpha" },
+        { id: "Team Beta",  name: "Team Beta" },
+        { id: "Team Gamma", name: "Team Gamma" },
     ];
 
-    const MEMBERS_KEY = "symph.members.v1";
+    let EMPLOYEES: Employee[] = [];
 
-    const DEFAULT_EMPLOYEES: Employee[] = [
-        { id: "Priya Nair", name: "Priya Nair", teamId: "alpha" },
-        { id: "Daniel Wu", name: "Daniel Wu", teamId: "alpha" },
-        { id: "Farah Idris", name: "Farah Idris", teamId: "beta" },
-        { id: "Aiden Cole", name: "Aiden Cole", teamId: "beta" },
-        { id: "Mei Ling Tan", name: "Mei Ling Tan", teamId: "gamma" },
-        { id: "Sam Okafor", name: "Sam Okafor", teamId: "gamma" },
-    ];
-
-    function loadEmployees(): Employee[] {
+    async function loadEmployeesFromBackend(): Promise<void> {
         try {
-            const parsed: unknown = JSON.parse(window.localStorage.getItem(MEMBERS_KEY) ?? "");
-            if (Array.isArray(parsed)) {
-                return (parsed as { name?: unknown; team?: unknown }[])
-                    .filter((member) => typeof member.name === "string" && typeof member.team === "string")
-                    .map((member) => ({
-                        id: member.name as string,
-                        name: member.name as string,
-                        teamId: TEAMS.find((team) => team.name === member.team)?.id ?? "",
-                    }));
-            }
-        } catch {
-            // Team Management has not saved a list yet — use the starter members.
-        }
-        return DEFAULT_EMPLOYEES;
-    }
+            const res = await fetch(USERS_API);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const users: BackendUser[] = await res.json();
 
-    const EMPLOYEES: Employee[] = loadEmployees();
+            EMPLOYEES = users
+                .filter((u) => u.role === "EMPLOYEE")
+                .map((u) => ({
+                    id: String(u.id),
+                    name: u.name,
+                    team: u.team?.name ?? "",
+                }));
+        } catch (err) {
+            console.error("Failed to load employees:", err);
+            EMPLOYEES = [];
+        }
+    }
 
     const COLUMNS: { id: ColumnId; name: string }[] = [
         { id: "PRODUCT_BACKLOG", name: "Product Backlog" },
@@ -130,88 +128,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         return { id: "", sprintId, column, title: "", description: "", assignee: null, dueDate: "", estimateHours: 0 };
     }
 
-    function seedTasks(): Task[] {
-        const make = (id: string, sprintId: string, column: ColumnId, title: string, extra: Partial<Task> = {}): Task => ({
-            ...blankTask(sprintId, column),
-            id,
-            title,
-            ...extra,
-        });
-
-        return [
-            make("t1", "1", "PRODUCT_BACKLOG", "Set Up Login", { assignee: { kind: "team", teamId: "alpha" } }),
-            make("t2", "1", "PRODUCT_BACKLOG", "TEXT"),
-            make("t3", "1", "TO_DO", "US01 - Set Up Login", {
-                assignee: { kind: "employees", employeeIds: ["Priya Nair", "Daniel Wu"] },
-                dueDate: "2026-10-05",
-                estimateHours: 6,
-            }),
-            make("t4", "1", "TO_DO", "TEXT"),
-            make("t5", "1", "IN_PROGRESS", "Set Up Login", { assignee: { kind: "employees", employeeIds: ["Aiden Cole"] } }),
-            make("t6", "1", "IN_REVIEW", "Set Up Login", { assignee: { kind: "team", teamId: "gamma" } }),
-            make("t7", "1", "COMPLETED", "TEXT"),
-            make("t8", "2", "PRODUCT_BACKLOG", "Design Dashboard", { assignee: { kind: "team", teamId: "beta" } }),
-            make("t9", "2", "TO_DO", "Design Dashboard"),
-        ];
-    }
-
-    // ===================== STORE =====================
-    const STORAGE_KEY = "symph.adminBoard.tasks.v5";
-
-    function readSetting(key: string): string {
-        try {
-            return window.localStorage.getItem(key) ?? "";
-        } catch {
-            return "";
-        }
-    }
-
-    function writeSetting(key: string, value: string): void {
-        try {
-            window.localStorage.setItem(key, value);
-        } catch {
-            // Still works for this visit; it just won't be remembered.
-        }
-    }
-
-    function loadTasks(): Task[] {
-        try {
-            const parsed: unknown = JSON.parse(readSetting(STORAGE_KEY));
-            if (Array.isArray(parsed)) return parsed as Task[];
-        } catch {
-            // Nothing saved yet, or it is unreadable — use the starter board.
-        }
-        return seedTasks();
-    }
-
-    function saveTasks(): void {
-        writeSetting(STORAGE_KEY, JSON.stringify(tasks));
-    }
-
-    function dropRemovedEmployees(list: Task[]): boolean {
-        let changed = false;
-        list.forEach((task) => {
-            if (task.assignee?.kind !== "employees") return;
-            const stillHere = task.assignee.employeeIds.filter((id) => EMPLOYEES.some((employee) => employee.id === id));
-            if (stillHere.length === task.assignee.employeeIds.length) return;
-            task.assignee = stillHere.length > 0 ? { kind: "employees", employeeIds: stillHere } : null;
-            changed = true;
-        });
-        return changed;
-    }
-
-    let tasks: Task[] = loadTasks();
-    if (dropRemovedEmployees(tasks)) saveTasks();
-    let currentSprintId = "1";
-    let currentTeamId = "all";
-    let searchTerm = "";
-
     // ===================== HELPERS =====================
     function requireElement<T extends HTMLElement>(id: string): T {
         const el = document.getElementById(id);
-        if (!el) {
-            throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
-        }
+        if (!el) throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
         return el as T;
     }
 
@@ -225,16 +145,12 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     }
 
     function initials(name: string): string {
-        return name
-            .split(/\s+/)
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((part) => part.charAt(0).toUpperCase())
-            .join("");
+        return name.split(/\s+/).filter(Boolean).slice(0, 2)
+            .map((part) => part.charAt(0).toUpperCase()).join("");
     }
 
     function teamName(teamId: string): string {
-        return TEAMS.find((team) => team.id === teamId)?.name ?? "Unknown team";
+        return TEAMS.find((team) => team.id === teamId)?.name ?? "";
     }
 
     function findEmployee(employeeId: string): Employee | undefined {
@@ -251,12 +167,14 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     function teamsOfTask(task: Task): string[] {
         if (!task.assignee) return [];
         if (task.assignee.kind === "team") return [task.assignee.teamId];
-        return assignedEmployees(task.assignee).map((employee) => employee.teamId);
+        if (task.assignee.kind === "teams") return task.assignee.teamIds;
+        return assignedEmployees(task.assignee).map((employee) => employee.team).filter(Boolean);
     }
 
     function assigneeLabel(assignee: Assignee | null): string {
         if (!assignee) return "Unassigned";
-        if (assignee.kind === "team") return teamName(assignee.teamId);
+        if (assignee.kind === "team") return teamName(assignee.teamId) || "Team";
+        if (assignee.kind === "teams") return assignee.teamIds.join(", ");
         const names = assignedEmployees(assignee).map((employee) => employee.name);
         return names.length > 0 ? names.join(", ") : "Unassigned";
     }
@@ -270,9 +188,146 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
     }
 
-    // ===================== BOARD =====================
+    function readSetting(key: string): string {
+        try { return window.localStorage.getItem(key) ?? ""; } catch { return ""; }
+    }
+
+    function writeSetting(key: string, value: string): void {
+        try { window.localStorage.setItem(key, value); } catch { /* ignore */ }
+    }
+
+    // ===================== STATE =====================
+    let tasks: Task[] = [];
+    let currentSprintId = "1";
+    let currentTeamId = "all";
+    let searchTerm = "";
+
     const board = requireElement<HTMLElement>("board");
 
+    // ===================== BACKEND SYNC =====================
+    async function fetchTasks(): Promise<Task[]> {
+        try {
+            const res = await fetch(API_BASE);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data: BackendTask[] = await res.json();
+
+            return data.map((t) => {
+                let assignee: Assignee | null = null;
+
+                // ✅ Prefer employees if any are assigned
+                if (t.assignedEmployeeIds) {
+                    const ids = t.assignedEmployeeIds.split(",").map((s) => s.trim()).filter(Boolean);
+                    if (ids.length > 0) {
+                        assignee = { kind: "employees", employeeIds: ids };
+                    }
+                }
+
+                // ✅ Otherwise fall back to teams
+                if (!assignee && t.assignedTeams) {
+                    const names = t.assignedTeams.split(",").map((s) => s.trim()).filter(Boolean);
+                    if (names.length === 1) {
+                        assignee = { kind: "team", teamId: names[0] };
+                    } else if (names.length > 1) {
+                        assignee = { kind: "teams", teamIds: names };
+                    }
+                }
+
+                return {
+                    id: String(t.id),
+                    sprintId: "1",
+                    column: (t.status ?? "PRODUCT_BACKLOG") as ColumnId,
+                    title: t.name,
+                    description: t.description ?? "",
+                    assignee,
+                    dueDate: "",
+                    estimateHours: 0,
+                };
+            });
+        } catch (err) {
+            console.error("Failed to load tasks:", err);
+            return [];
+        }
+    }
+
+    async function refreshFromBackend(): Promise<void> {
+        tasks = await fetchTasks();
+        renderBoard();
+        renderTeamFilter();
+    }
+
+    // ✅ Produce backend payload from assignee
+    function assigneeToBackendPayload(assignee: Assignee | null): { assignedTeams: string | null; assignedEmployeeIds: string | null } {
+        if (!assignee) {
+            return { assignedTeams: null, assignedEmployeeIds: null };
+        }
+        if (assignee.kind === "team") {
+            return { assignedTeams: assignee.teamId, assignedEmployeeIds: null };
+        }
+        if (assignee.kind === "teams") {
+            return { assignedTeams: assignee.teamIds.join(","), assignedEmployeeIds: null };
+        }
+        return { assignedTeams: null, assignedEmployeeIds: assignee.employeeIds.join(",") };
+    }
+
+    async function apiCreate(task: Task): Promise<Task | null> {
+        try {
+            const payload = assigneeToBackendPayload(task.assignee);
+            const res = await fetch(API_BASE, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: task.title,
+                    description: task.description,
+                    status: task.column,
+                    assignedTeams: payload.assignedTeams,
+                    assignedEmployeeIds: payload.assignedEmployeeIds,
+                }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json() as Task;
+        } catch (err) {
+            console.error("Create failed:", err);
+            alert("Failed to create task.");
+            return null;
+        }
+    }
+
+    async function apiUpdate(task: Task): Promise<boolean> {
+        try {
+            const payload = assigneeToBackendPayload(task.assignee);
+            const res = await fetch(`${API_BASE}/${task.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: task.title,
+                    description: task.description,
+                    status: task.column,
+                    assignedTeams: payload.assignedTeams,
+                    assignedEmployeeIds: payload.assignedEmployeeIds,
+                }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return true;
+        } catch (err) {
+            console.error("Update failed:", err);
+            alert("Failed to save task.");
+            return false;
+        }
+    }
+
+    async function apiDelete(id: string): Promise<boolean> {
+        try {
+            const res = await fetch(`${API_BASE}/${id}`, { method: "DELETE" });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return true;
+        } catch (err) {
+            console.error("Delete failed:", err);
+            alert("Failed to delete task.");
+            return false;
+        }
+    }
+
+    // ===================== RENDER =====================
     function visibleTasks(): Task[] {
         const term = searchTerm.toLowerCase();
         return tasks.filter((task) => {
@@ -288,10 +343,14 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         if (task.assignee.kind === "team") {
             return `<span class="team-chip">${escapeHtml(teamName(task.assignee.teamId))}</span>`;
         }
+        if (task.assignee.kind === "teams") {
+            return task.assignee.teamIds
+                .map((t) => `<span class="team-chip">${escapeHtml(t)}</span>`)
+                .join(" ");
+        }
         return assignedEmployees(task.assignee)
-            .map(
-                (employee) =>
-                    `<div class="avatar avatar-small avatar-purple" title="${escapeHtml(employee.name)} · ${escapeHtml(teamName(employee.teamId))}">${escapeHtml(initials(employee.name))}</div>`,
+            .map((employee) =>
+                `<div class="avatar avatar-small avatar-purple" title="${escapeHtml(employee.name)} · ${escapeHtml(employee.team)}">${escapeHtml(initials(employee.name))}</div>`
             )
             .join("");
     }
@@ -302,15 +361,12 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     function renderCard(task: Task): string {
         const badges = [
             task.dueDate ? `<span class="date-badge" title="Due date">${CLOCK_ICON} ${formatDateBadge(task.dueDate)}</span>` : "",
-            task.estimateHours > 0
-                ? `<span class="date-badge" title="Estimate">Est. ${formatEstimate(task.estimateHours)}</span>`
-                : "",
+            task.estimateHours > 0 ? `<span class="date-badge" title="Estimate">Est. ${formatEstimate(task.estimateHours)}</span>` : "",
         ].join("");
         const assigneeHtml = renderAssignee(task);
-        const footerHtml =
-            badges || assigneeHtml
-                ? `<div class="card-footer-row"><div class="card-badges">${badges}</div><div class="tag-avatars">${assigneeHtml}</div></div>`
-                : "";
+        const footerHtml = badges || assigneeHtml
+            ? `<div class="card-footer-row"><div class="card-badges">${badges}</div><div class="tag-avatars">${assigneeHtml}</div></div>`
+            : "";
 
         return `
       <div class="card${footerHtml ? " card-detailed" : ""}" draggable="true" data-task="${task.id}">
@@ -324,7 +380,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     function renderBoard(): void {
         const shown = visibleTasks();
-
         board.innerHTML = COLUMNS.map((column) => {
             const cards = shown.filter((task) => task.column === column.id);
             return `
@@ -341,7 +396,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
         const editBtn = target.closest<HTMLElement>("[data-edit]");
         if (editBtn) {
-            const task = tasks.find((candidate) => candidate.id === editBtn.dataset["edit"]);
+            const task = tasks.find((t) => t.id === editBtn.dataset["edit"]);
             if (task) openModal(task);
             return;
         }
@@ -349,14 +404,18 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         const addBtn = target.closest<HTMLElement>("[data-add]");
         if (addBtn) {
             const draftTask = blankTask(currentSprintId, addBtn.dataset["add"] as ColumnId);
-            if (currentTeamId !== "all") {
+
+            if (currentTeamId === "all") {
+                draftTask.assignee = { kind: "teams", teamIds: TEAMS.map((t) => t.name) };
+            } else {
                 draftTask.assignee = { kind: "team", teamId: currentTeamId };
             }
+
             openModal(draftTask);
         }
     });
 
-    // ===================== DRAG AND DROP (US17) =====================
+    // ===================== DRAG AND DROP =====================
     let draggedTaskId: string | null = null;
 
     function clearDropMarkers(): void {
@@ -367,12 +426,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     function cardAfterPointer(column: HTMLElement, pointerY: number): HTMLElement | null {
         const cards = Array.from(column.querySelectorAll<HTMLElement>(".card:not(.dragging)"));
-        return (
-            cards.find((card) => {
-                const box = card.getBoundingClientRect();
-                return pointerY < box.top + box.height / 2;
-            }) ?? null
-        );
+        return cards.find((card) => {
+            const box = card.getBoundingClientRect();
+            return pointerY < box.top + box.height / 2;
+        }) ?? null;
     }
 
     board.addEventListener("dragstart", (event: DragEvent) => {
@@ -388,38 +445,31 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         const column = (event.target as HTMLElement).closest<HTMLElement>(".column");
         if (!column || !draggedTaskId) return;
         event.preventDefault();
-
         clearDropMarkers();
         column.classList.add("drop-target");
         cardAfterPointer(column, event.clientY)?.classList.add("drop-before");
     });
 
-    board.addEventListener("drop", (event: DragEvent) => {
+    board.addEventListener("drop", async (event: DragEvent) => {
         const column = (event.target as HTMLElement).closest<HTMLElement>(".column");
         if (!column || !draggedTaskId) return;
         event.preventDefault();
 
-        const moved = tasks.find((task) => task.id === draggedTaskId);
-        const beforeId = cardAfterPointer(column, event.clientY)?.dataset["task"];
+        const moved = tasks.find((t) => t.id === draggedTaskId);
         if (moved) {
-            const from = COLUMNS.find((candidate) => candidate.id === moved.column)?.name ?? "";
+            const from = COLUMNS.find((c) => c.id === moved.column)?.name ?? "";
             moved.column = column.dataset["column"] as ColumnId;
 
-            tasks = tasks.filter((task) => task !== moved);
-            const beforeIndex = beforeId ? tasks.findIndex((task) => task.id === beforeId) : -1;
-            if (beforeIndex >= 0) {
-                tasks.splice(beforeIndex, 0, moved);
-            } else {
-                tasks.push(moved);
+            const ok = await apiUpdate(moved);
+            if (ok) {
+                const to = COLUMNS.find((c) => c.id === moved.column)?.name ?? "";
+                if (from !== to) showToast(`Moved to ${to}`);
+                await refreshFromBackend();
             }
-
-            saveTasks();
-            const to = COLUMNS.find((candidate) => candidate.id === moved.column)?.name ?? "";
-            if (from !== to) showToast(`Moved to ${to}`);
         }
 
         draggedTaskId = null;
-        renderBoard();
+        clearDropMarkers();
     });
 
     board.addEventListener("dragend", () => {
@@ -431,12 +481,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     // ===================== SPRINT TABS + SEARCH =====================
     function initSprintTabs(): void {
         const tabs = document.querySelectorAll<HTMLButtonElement>(".sprint-tab");
-
         tabs.forEach((tab) => {
             tab.addEventListener("click", () => {
                 tabs.forEach((other) => other.classList.remove("active"));
                 tab.classList.add("active");
-
                 const sprintId = tab.dataset["sprint"];
                 if (sprintId) {
                     currentSprintId = sprintId;
@@ -452,35 +500,33 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderBoard();
     });
 
-    // ===================== TEAM FILTER (US09) =====================
+    // ===================== TEAM FILTER =====================
     const teamFilterBtn = requireElement<HTMLButtonElement>("teamFilterBtn");
     const teamFilterMenu = requireElement<HTMLDivElement>("teamFilterMenu");
     const teamFilterLabel = requireElement<HTMLSpanElement>("teamFilterLabel");
 
     function renderTeamFilter(): void {
-        const inSprint = tasks.filter((task) => task.sprintId === currentSprintId);
+        const inSprint = tasks.filter((t) => t.sprintId === currentSprintId);
         const options = [
             { id: "all", name: "All teams", count: inSprint.length },
             ...TEAMS.map((team) => ({
                 id: team.id,
                 name: team.name,
-                count: inSprint.filter((task) => teamsOfTask(task).includes(team.id)).length,
+                count: inSprint.filter((t) => teamsOfTask(t).includes(team.id)).length,
             })),
         ];
 
         teamFilterMenu.innerHTML =
             `<span class="popover-label">View board for</span>` +
-            options
-                .map((option) => {
-                    const active = option.id === currentTeamId;
-                    return `
+            options.map((option) => {
+                const active = option.id === currentTeamId;
+                return `
             <button type="button" class="filter-option${active ? " active" : ""}" data-team="${option.id}" role="menuitemradio" aria-checked="${active}">
               <span>${escapeHtml(option.name)}</span><span class="filter-count">${option.count}</span>
             </button>`;
-                })
-                .join("");
+            }).join("");
 
-        teamFilterLabel.textContent = currentTeamId === "all" ? "All teams" : teamName(currentTeamId);
+        teamFilterLabel.textContent = currentTeamId === "all" ? "All teams" : (teamName(currentTeamId) || "All teams");
         teamFilterBtn.classList.toggle("filtered", currentTeamId !== "all");
     }
 
@@ -507,7 +553,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     document.addEventListener("click", () => setTeamFilterOpen(false));
 
-    // ===================== TASK MODAL (US07, US10, US11, US15) =====================
+    // ===================== TASK MODAL =====================
     const overlay = requireElement<HTMLDivElement>("taskModalOverlay");
     const columnSelect = requireElement<HTMLSelectElement>("modalColumn");
     const titleInput = requireElement<HTMLInputElement>("modalTitle");
@@ -522,7 +568,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const estimateInput = requireElement<HTMLInputElement>("estimateInput");
 
     let draft: Task | null = null;
-    let assignKind: "team" | "employees" = "team";
+    let assignKind: "team" | "teams" | "employees" = "team";
 
     function openModal(task: Task): void {
         draft = JSON.parse(JSON.stringify(task)) as Task;
@@ -552,14 +598,12 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     function renderDraft(): void {
         if (!draft) return;
-
         const chips: string[] = [
             `<span class="summary-chip"><b>Assigned to</b> ${escapeHtml(assigneeLabel(draft.assignee))}</span>`,
             `<span class="summary-chip"><b>Due</b> ${draft.dueDate ? formatDateBadge(draft.dueDate) : "No due date"}</span>`,
             `<span class="summary-chip"><b>Estimate</b> ${draft.estimateHours > 0 ? formatEstimate(draft.estimateHours) : "Not set"}</span>`,
         ];
         summary.innerHTML = chips.join("");
-
         renderAssignControls();
     }
 
@@ -574,27 +618,31 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         employeeList.hidden = assignKind !== "employees";
 
         const assignee = draft.assignee;
+        const currentTeam = assignee?.kind === "team" ? assignee.teamId : null;
 
+        // Always a dropdown with all teams
         assigneeSelect.innerHTML =
             `<option value="">Choose a team…</option>` +
-            TEAMS.map((team) => `<option value="${team.id}">${escapeHtml(team.name)}</option>`).join("");
-        assigneeSelect.value = assignee?.kind === "team" ? assignee.teamId : "";
+            TEAMS.map((t) => `<option value="${t.name}">${escapeHtml(t.name)}</option>`).join("");
+        assigneeSelect.value = currentTeam ?? "";
+
+        const visibleEmployees = currentTeam
+            ? EMPLOYEES.filter((e) => e.team === currentTeam)
+            : [];
 
         const ticked = assignee?.kind === "employees" ? assignee.employeeIds : [];
-        employeeList.innerHTML =
-            EMPLOYEES.length === 0
-                ? `<p class="employee-empty">No employees yet. Add them on Team Management.</p>`
-                : EMPLOYEES.map(
-                      (employee) => `
+
+        employeeList.innerHTML = visibleEmployees.length === 0
+            ? `<p class="employee-empty">${currentTeam ? "No employees in this team yet." : "Choose a team first."}</p>`
+            : visibleEmployees.map((employee) => `
             <label class="employee-option">
               <input type="checkbox" value="${escapeHtml(employee.id)}" ${ticked.includes(employee.id) ? "checked" : ""} />
               <span>${escapeHtml(employee.name)}</span>
-              <span class="employee-team">${escapeHtml(teamName(employee.teamId))}</span>
-            </label>`,
-                  ).join("");
+              <span class="employee-team">${escapeHtml(employee.team)}</span>
+            </label>`).join("");
     }
 
-    function saveModal(): void {
+    async function saveModal(): Promise<void> {
         if (!draft) return;
 
         const title = titleInput.value.trim();
@@ -609,22 +657,15 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         draft.column = columnSelect.value as ColumnId;
 
         const isNew = draft.id === "";
-        if (isNew) {
-            draft.id = `t${Date.now()}`;
-            tasks.push(draft);
-        } else {
-            const saved = draft;
-            tasks = tasks.map((task) => (task.id === saved.id ? saved : task));
-        }
+        const ok = isNew ? (await apiCreate(draft)) !== null : await apiUpdate(draft);
+        if (!ok) return;
 
-        saveTasks();
         closeModal();
-        renderBoard();
-        renderTeamFilter();
+        await refreshFromBackend();
         showToast(isNew ? "Task created" : "Changes saved");
     }
 
-    // ----- Delete (US11) -----
+    // ----- Delete -----
     let deleteArmed = false;
 
     function setDeleteArmed(armed: boolean): void {
@@ -633,18 +674,15 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         deleteBtn.classList.toggle("armed", armed);
     }
 
-    deleteBtn.addEventListener("click", () => {
+    deleteBtn.addEventListener("click", async () => {
         if (!draft) return;
-        if (!deleteArmed) {
-            setDeleteArmed(true);
-            return;
-        }
-        const removedId = draft.id;
-        tasks = tasks.filter((task) => task.id !== removedId);
-        saveTasks();
+        if (!deleteArmed) { setDeleteArmed(true); return; }
+
+        const ok = await apiDelete(draft.id);
+        if (!ok) return;
+
         closeModal();
-        renderBoard();
-        renderTeamFilter();
+        await refreshFromBackend();
         showToast("Task deleted");
     });
 
@@ -652,7 +690,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     // ----- Popovers -----
     function closePopovers(): void {
-        overlay.querySelectorAll<HTMLElement>(".popover.visible").forEach((popover) => popover.classList.remove("visible"));
+        overlay.querySelectorAll<HTMLElement>(".popover.visible").forEach((p) => p.classList.remove("visible"));
     }
 
     document.querySelectorAll<HTMLButtonElement>("[data-popover]").forEach((button) => {
@@ -673,7 +711,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         popover.addEventListener("click", (event: MouseEvent) => event.stopPropagation());
     });
 
-    // ----- Due date (US15) -----
+    // ----- Due date -----
     dueDateInput.addEventListener("change", () => {
         if (!draft) return;
         draft.dueDate = dueDateInput.value;
@@ -702,7 +740,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderDraft();
     });
 
-    // ----- Assignee (US07) -----
+    // ----- Assignee -----
     document.querySelectorAll<HTMLButtonElement>("[data-assign-kind]").forEach((segment) => {
         segment.addEventListener("click", () => {
             assignKind = segment.dataset["assignKind"] === "employees" ? "employees" : "team";
@@ -713,16 +751,15 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     assigneeSelect.addEventListener("change", () => {
         if (!draft) return;
         draft.assignee = assigneeSelect.value ? { kind: "team", teamId: assigneeSelect.value } : null;
-        renderDraft();
+        renderAssignControls();
     });
 
     employeeList.addEventListener("change", () => {
         if (!draft) return;
-        const employeeIds = Array.from(employeeList.querySelectorAll<HTMLInputElement>("input:checked")).map(
-            (box) => box.value,
-        );
+        const employeeIds = Array.from(employeeList.querySelectorAll<HTMLInputElement>("input:checked")).map((box) => box.value);
         draft.assignee = employeeIds.length > 0 ? { kind: "employees", employeeIds } : null;
-        summary.querySelector(".summary-chip")!.innerHTML = `<b>Assigned to</b> ${escapeHtml(assigneeLabel(draft.assignee))}`;
+        const chip = summary.querySelector(".summary-chip");
+        if (chip) chip.innerHTML = `<b>Assigned to</b> ${escapeHtml(assigneeLabel(draft.assignee))}`;
     });
 
     requireElement<HTMLButtonElement>("unassignBtn").addEventListener("click", () => {
@@ -732,31 +769,25 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     });
 
     // ----- Open / close wiring -----
-    saveBtn.addEventListener("click", saveModal);
+    saveBtn.addEventListener("click", () => { void saveModal(); });
     titleInput.addEventListener("input", () => (errorText.textContent = ""));
     titleInput.addEventListener("keydown", (event: KeyboardEvent) => {
-        if (event.key === "Enter") saveModal();
+        if (event.key === "Enter") void saveModal();
     });
     requireElement<HTMLButtonElement>("modalCloseBtn").addEventListener("click", closeModal);
     requireElement<HTMLButtonElement>("modalCancelBtn").addEventListener("click", closeModal);
 
     overlay.addEventListener("click", (event: MouseEvent) => {
-        if (event.target === overlay) {
-            closeModal();
-        } else {
-            closePopovers();
-        }
+        if (event.target === overlay) closeModal();
+        else closePopovers();
     });
 
     document.addEventListener("keydown", (event: KeyboardEvent) => {
         if (event.key !== "Escape") return;
         setTeamFilterOpen(false);
         if (!overlay.classList.contains("visible")) return;
-        if (overlay.querySelector(".popover.visible")) {
-            closePopovers();
-        } else {
-            closeModal();
-        }
+        if (overlay.querySelector(".popover.visible")) closePopovers();
+        else closeModal();
     });
 
     // ===================== TOAST =====================
@@ -766,13 +797,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     function showToast(message: string): void {
         toast.textContent = message;
         toast.classList.add("visible");
-
-        if (toastTimeoutId !== undefined) {
-            window.clearTimeout(toastTimeoutId);
-        }
-        toastTimeoutId = window.setTimeout(() => {
-            toast.classList.remove("visible");
-        }, 3000);
+        if (toastTimeoutId !== undefined) window.clearTimeout(toastTimeoutId);
+        toastTimeoutId = window.setTimeout(() => toast.classList.remove("visible"), 3000);
     }
 
     // ===================== PROJECT NAME =====================
@@ -802,12 +828,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     projectNameInput.addEventListener("input", fitProjectName);
     projectNameInput.addEventListener("blur", commitProjectName);
     projectNameInput.addEventListener("keydown", (event: KeyboardEvent) => {
-        if (event.key === "Enter") {
-            projectNameInput.blur();
-        } else if (event.key === "Escape") {
-            projectNameInput.value = projectName;
-            projectNameInput.blur();
-        }
+        if (event.key === "Enter") projectNameInput.blur();
+        else if (event.key === "Escape") { projectNameInput.value = projectName; projectNameInput.blur(); }
     });
 
     projectNameInput.value = projectName;
@@ -834,16 +856,19 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     setSidebarCollapsed(readSetting(SIDEBAR_KEY) === "1");
 
-    // ===================== START SPRINT (from B / US23) =====================
+    // ===================== START SPRINT (US23) =====================
     const startSprintBtn = document.getElementById("startSprintBtn");
     startSprintBtn?.addEventListener("click", () => {
         if (!confirm("Start the sprint now? Time tracking will begin.")) return;
-        // TODO: POST /api/sprints/:id/start
         showToast("Sprint started");
     });
 
-    // ===================== START =====================
-    initSprintTabs();
-    renderTeamFilter();
-    renderBoard();
+    // ===================== INIT =====================
+    async function init(): Promise<void> {
+        await loadEmployeesFromBackend();
+        initSprintTabs();
+        renderTeamFilter();
+        await refreshFromBackend();
+    }
+    void init();
 })();

@@ -1,8 +1,6 @@
 "use strict";
 // main-team-management-page.js
-// Merged: B's auth guard + logout + backend-driven table + user dropdown
-//       + A's remove-member modal + toast + UI
-//       + Job Title column
+// Compiled from main-team-management-page.ts — do not hand-edit.
 
 // ===================== BFCACHE FIX =====================
 window.addEventListener('pageshow', (event) => {
@@ -29,9 +27,7 @@ if (nameEl) {
 
 function requireElement(id) {
     const el = document.getElementById(id);
-    if (!el) {
-        throw new Error(`Missing element: ${id}`);
-    }
+    if (!el) throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
     return el;
 }
 
@@ -62,7 +58,7 @@ const closeInviteBtn = requireElement('closeInviteBtn');
 const addMemberForm = requireElement('addMemberForm');
 const inviteForm = requireElement('inviteForm');
 const memberUserSelect = requireElement('memberUser');
-const memberJobTitleSelect = requireElement('memberJobTitle'); // ← NEW
+const memberJobTitleSelect = requireElement('memberJobTitle');
 const memberTeamSelect = requireElement('memberTeam');
 const ownerEmailInput = requireElement('ownerEmail');
 const membersBody = requireElement('membersBody');
@@ -96,12 +92,10 @@ function showToast(message) {
     toast.textContent = message;
     toast.classList.add('visible');
     if (toastTimeoutId !== undefined) window.clearTimeout(toastTimeoutId);
-    toastTimeoutId = window.setTimeout(() => {
-        toast.classList.remove('visible');
-    }, 3000);
+    toastTimeoutId = window.setTimeout(() => toast.classList.remove('visible'), 3000);
 }
 
-// ===================== LOAD USERS + MEMBERSHIPS =====================
+// ===================== LOAD USERS =====================
 async function loadMembers() {
     try {
         const res = await fetch('/api/users');
@@ -113,7 +107,7 @@ async function loadMembers() {
         memberUserSelect.innerHTML = '<option value="">Select a user...</option>';
         registeredUsers.forEach((user) => {
             const option = document.createElement('option');
-            option.value = user.id;
+            option.value = String(user.id);
             option.textContent = `${user.name} (${user.email}) — ${user.role}`;
             memberUserSelect.appendChild(option);
         });
@@ -122,32 +116,37 @@ async function loadMembers() {
     }
 }
 
+// ===================== LOAD TABLE (ONLY ASSIGNED) =====================
 async function loadTeamMemberships() {
     try {
-        const res = await fetch('/api/teams');
+        const res = await fetch('/api/users');
         if (!res.ok) return;
 
-        const teams = await res.json();
+        const users = await res.json();
         membersBody.innerHTML = '';
 
-        teams.forEach((team) => {
-            (team.members || []).forEach((user) => {
+        users
+            .filter((u) => u.role === 'EMPLOYEE' && u.team != null)
+            .forEach((u) => {
+                const teamName = u.team.name;
+                const jobTitle = u.jobTitle ?? '—';
+
                 const row = document.createElement('tr');
-                row.dataset.id = user.id;
-                row.dataset.name = user.name;
-                row.dataset.role = user.role;
-                row.dataset.jobTitle = user.jobTitle ?? '—'; // fallback if missing
-                row.dataset.team = team.name;
+                row.dataset.id = String(u.id);
+                row.dataset.name = u.name;
+                row.dataset.role = u.role;
+                row.dataset.jobTitle = jobTitle;
+                row.dataset.team = teamName;
+
                 row.innerHTML = `
-                    <td>${user.name}</td>
-                    <td>${user.role}</td>
-                    <td>${user.jobTitle ?? '—'}</td>
-                    <td>${team.name}</td>
+                    <td>${u.name}</td>
+                    <td>${u.role}</td>
+                    <td>${jobTitle}</td>
+                    <td>${teamName}</td>
                     <td><button class="remove-btn">Remove</button></td>
                 `;
                 membersBody.appendChild(row);
             });
-        });
     } catch (err) {
         console.error('Failed to load team memberships:', err);
     }
@@ -158,19 +157,20 @@ addMemberForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const userId = memberUserSelect.value;
-    const jobTitle = memberJobTitleSelect.value;   // ← NEW
+    const jobTitle = memberJobTitleSelect.value;
     const team = memberTeamSelect.value;
 
     if (!userId) { alert('Please select a user.'); return; }
+    if (!team)   { alert('Please select a team.'); return; }
 
-    const user = registeredUsers.find((u) => u.id == userId);
+    const user = registeredUsers.find((u) => String(u.id) === userId);
     if (!user) return;
 
     try {
         const res = await fetch(`/api/teams/by-name/${encodeURIComponent(team)}/members/${userId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ jobTitle }),
+            body: JSON.stringify({ jobTitle: jobTitle || null }),
         });
 
         if (!res.ok) {
@@ -178,32 +178,10 @@ addMemberForm.addEventListener('submit', async (e) => {
             throw new Error(msg || 'Failed to add member');
         }
 
-        const existingRow = membersBody.querySelector(`tr[data-id="${userId}"]`);
-        if (existingRow) {
-            existingRow.dataset.jobTitle = jobTitle;
-            existingRow.dataset.team = team;
-            existingRow.cells[2].textContent = jobTitle;   // Job Title cell
-            existingRow.cells[3].textContent = team;       // Team cell
-        } else {
-            const row = document.createElement('tr');
-            row.dataset.id = user.id;
-            row.dataset.name = user.name;
-            row.dataset.role = user.role;
-            row.dataset.jobTitle = jobTitle;
-            row.dataset.team = team;
-            row.innerHTML = `
-                <td>${user.name}</td>
-                <td>${user.role}</td>
-                <td>${jobTitle}</td>
-                <td>${team}</td>
-                <td><button class="remove-btn">Remove</button></td>
-            `;
-            membersBody.appendChild(row);
-        }
-
         closeModal(addMemberOverlay);
         showToast(`${user.name} added to ${team}`);
         addMemberForm.reset();
+        await loadTeamMemberships();
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to add member';
         alert('Add member failed: ' + message);
@@ -226,9 +204,6 @@ inviteForm.addEventListener('submit', async (e) => {
 
         if (!res.ok) {
             const text = await res.text();
-            if (text.toLowerCase().includes('already')) throw new Error('Email already invited.');
-            if (text.toLowerCase().includes('invalid')) throw new Error('Invalid email address.');
-            if (text.toLowerCase().includes('required')) throw new Error('Email is required.');
             throw new Error(text || 'Failed to send invite.');
         }
 
@@ -276,15 +251,12 @@ confirmRemoveBtn.addEventListener('click', async () => {
             const teams = await teamsRes.json();
             const team = teams.find((t) => t.name === teamName);
 
-            if (team) {
-                const delRes = await fetch(`/api/teams/${team.id}/members/${userId}`, {
-                    method: 'DELETE',
-                });
-                if (!delRes.ok) {
-                    const msg = await delRes.text();
-                    throw new Error(msg || 'Failed to remove member');
-                }
-            }
+            if (!team) throw new Error('Team not found');
+
+            const delRes = await fetch(`/api/teams/${team.id}/members/${userId}`, {
+                method: 'DELETE',
+            });
+            if (!delRes.ok) throw new Error(await delRes.text());
         }
 
         rowPendingRemoval.remove();
