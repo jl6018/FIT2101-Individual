@@ -70,12 +70,8 @@ const pastSprintsBody = requireElement('pastSprintsBody');
 const toast = requireElement('toast');
 
 // ===================== MODAL OPEN/CLOSE =====================
-function openModal(overlay) {
-    overlay.classList.add('visible');
-}
-function closeModal(overlay) {
-    overlay.classList.remove('visible');
-}
+function openModal(overlay) { overlay.classList.add('visible'); }
+function closeModal(overlay) { overlay.classList.remove('visible'); }
 
 startSprintPlanningBtn.addEventListener('click', async () => {
     await loadMembers();
@@ -93,13 +89,14 @@ closeInviteBtn.addEventListener('click', () => closeModal(inviteOverlay));
 
 // ===================== TOAST =====================
 let toastTimeoutId;
-function showToast(message) {
+
+function showToast(message, type = 'success') {
     toast.textContent = message;
+    toast.classList.remove('success', 'error');
+    toast.classList.add(type);
     toast.classList.add('visible');
     if (toastTimeoutId !== undefined) window.clearTimeout(toastTimeoutId);
-    toastTimeoutId = window.setTimeout(() => {
-        toast.classList.remove('visible');
-    }, 3000);
+    toastTimeoutId = window.setTimeout(() => toast.classList.remove('visible'), 3000);
 }
 
 // ===================== HELPERS =====================
@@ -191,6 +188,7 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
     const sprintName = sprintNameInput.value.trim();
     if (!sprintName) {
         sprintNameInput.focus();
+        showToast('Please enter a sprint name.', 'error');
         return;
     }
 
@@ -219,12 +217,12 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
         }
 
         closeModal(sprintPlanningOverlay);
-        showToast('Sprint created');
+        showToast('Sprint created', 'success');
         sprintPlanningForm.reset();
         await loadSprints();
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to create sprint';
-        alert('Create sprint failed: ' + message);
+        showToast('Create sprint failed: ' + message, 'error');
     }
 });
 
@@ -235,6 +233,7 @@ inviteForm.addEventListener('submit', async (e) => {
     const email = ownerEmailInput.value.trim();
     if (!email) {
         ownerEmailInput.focus();
+        showToast('Please enter an email address.', 'error');
         return;
     }
 
@@ -246,16 +245,17 @@ inviteForm.addEventListener('submit', async (e) => {
         });
 
         if (!res.ok) {
+            // Backend returns plain text (e.g. "Email already invited")
             const text = await res.text();
             throw new Error(text || 'Failed to send invite');
         }
 
         closeModal(inviteOverlay);
-        showToast(`Invite sent to ${email}`);
+        showToast(`Invite sent to ${email}`, 'success');
         inviteForm.reset();
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to send invite';
-        alert(message);
+        showToast(message, 'error');
     }
 });
 
