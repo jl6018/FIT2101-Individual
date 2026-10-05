@@ -48,7 +48,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     // ===================== CONFIG =====================
     const API_BASE = "http://localhost:8080/api/tasks";
     const USERS_API = "http://localhost:8080/api/users";
-    const SPRINTS_API = "http://localhost:8080/api/sprints";
+    const TIMELOGS_API = "http://localhost:8080/api/timelogs";   // ✅ NEW
 
     // ===================== REFERENCE DATA =====================
     const TEAMS = [
@@ -96,7 +96,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             assignee: null,
             dueDate: "",
             estimateHours: 0,
-            priority: null,
+            priority: "",
         };
     }
 
@@ -168,13 +168,19 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         try { window.localStorage.setItem(key, value); } catch { /* ignore */ }
     }
 
+    const SPRINT_KEY = "symph.currentSprint";
+
+    function readSprintSetting() {
+        return readSetting(SPRINT_KEY) || "1";
+    }
+
+    function writeSprintSetting(sprintId) {
+        writeSetting(SPRINT_KEY, sprintId);
+    }
+
     // ===================== STATE =====================
     let tasks = [];
-
-    // ✅ Restore last selected sprint across page navigation
-    const savedSprintId = sessionStorage.getItem("currentSprintId");
-    let currentSprintId = savedSprintId && savedSprintId !== "" ? savedSprintId : "1";
-
+    let currentSprintId = readSprintSetting();
     let currentTeamId = "all";
     let searchTerm = "";
 
@@ -196,7 +202,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     // ===================== BACKEND SYNC =====================
     async function fetchTasks() {
         try {
-            const res = await fetch(`${API_BASE}/sprint/${currentSprintId}`);
+            const res = await fetch(API_BASE);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             return data.map((t) => {
@@ -220,14 +226,14 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
                 return {
                     id: String(t.id),
-                    sprintId: currentSprintId,
+                    sprintId: "1",
                     column: t.status ?? "PRODUCT_BACKLOG",
                     title: t.name,
                     description: t.description ?? "",
                     assignee,
                     dueDate: t.dueDate ?? "",
                     estimateHours: t.estimateHours ?? 0,
-                    priority: t.priority ?? null,
+                    priority: t.priority ?? "",
                 };
             });
         } catch (err) {
@@ -312,12 +318,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             const numericId = Number(id);
             if (!Number.isFinite(numericId) || numericId <= 0) return false;
 
-            const role = sessionStorage.getItem("role") || "EMPLOYEE";
-
-            const res = await fetch(`${API_BASE}/${numericId}`, {
-                method: "DELETE",
-                headers: { "X-Role": role },
-            });
+            const res = await fetch(`${API_BASE}/${numericId}`, { method: "DELETE" });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             return true;
         } catch (err) {
@@ -359,10 +360,13 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const CLOCK_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>`;
 
     function renderCard(task) {
+        const priorityBadge = task.priority
+            ? `<span class="priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>`
+            : "";
         const badges = [
+            priorityBadge,
             task.dueDate ? `<span class="date-badge" title="Due date">${CLOCK_ICON} ${formatDateBadge(task.dueDate)}</span>` : "",
             task.estimateHours > 0 ? `<span class="date-badge" title="Estimate">Est. ${formatEstimate(task.estimateHours)}</span>` : "",
-            task.priority ? `<span class="date-badge priority-${task.priority.toLowerCase()}" title="Priority">${task.priority}</span>` : "",
         ].join("");
         const assigneeHtml = renderAssignee(task);
         const footerHtml = badges || assigneeHtml
@@ -486,13 +490,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     // ===================== SPRINT TABS + SEARCH =====================
     function initSprintTabs() {
         const tabs = document.querySelectorAll(".sprint-tab");
-
-        // ✅ Restore the previously-selected tab on page load
-        tabs.forEach((tab) => {
-            const isActive = tab.dataset["sprint"] === currentSprintId;
-            tab.classList.toggle("active", isActive);
-        });
-
         tabs.forEach((tab) => {
             tab.addEventListener("click", () => {
                 tabs.forEach((other) => other.classList.remove("active"));
@@ -500,10 +497,18 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                 const sprintId = tab.dataset["sprint"];
                 if (sprintId) {
                     currentSprintId = sprintId;
-                    sessionStorage.setItem("currentSprintId", sprintId);   // ✅ persist
-                    void refreshFromBackend();
+                    writeSprintSetting(sprintId);
+                    renderBoard();
+                    renderTeamFilter();
                 }
             });
+        });
+    }
+
+    function highlightSavedSprintTab() {
+        const tabs = document.querySelectorAll(".sprint-tab");
+        tabs.forEach((tab) => {
+            tab.classList.toggle("active", tab.dataset["sprint"] === currentSprintId);
         });
     }
 
@@ -580,6 +585,14 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const estimateInput = requireElement("estimateInput");
     const prioritySelect = requireElement("prioritySelect");
 
+    // ✅ NEW — Log time elements
+    const logDateInput = requireElement("logDateInput");
+    const logHoursInput = requireElement("logHoursInput");
+    const logDescriptionInput = requireElement("logDescriptionInput");
+    const logTimeSaveBtn = requireElement("logTimeSaveBtn");
+    const logTimeClearBtn = requireElement("logTimeClearBtn");
+    const logTimeTotalLabel = requireElement("logTimeTotalLabel");
+
     let draft = null;
     let assignKind = "team";
 
@@ -592,16 +605,23 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         descriptionBox.value = draft.description;
         dueDateInput.value = draft.dueDate;
         estimateInput.value = draft.estimateHours > 0 ? String(draft.estimateHours) : "";
-        prioritySelect.value = draft.priority ?? "";
+        prioritySelect.value = draft.priority;
         errorText.textContent = "";
         saveBtn.textContent = draft.id ? "Save" : "Create task";
         deleteBtn.hidden = draft.id === "";
         setDeleteArmed(false);
 
+        // ✅ Prefill log-time inputs
+        logDateInput.value = new Date().toISOString().split("T")[0];
+        logHoursInput.value = "";
+        logDescriptionInput.value = "";
+
         renderDraft();
         closePopovers();
         overlay.classList.add("visible");
         titleInput.focus();
+
+        void refreshLogTimeTotal(draft.id);
     }
 
     function closeModal() {
@@ -616,7 +636,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             `<span class="summary-chip"><b>Assigned to</b> ${escapeHtml(assigneeLabel(draft.assignee))}</span>`,
             `<span class="summary-chip"><b>Due</b> ${draft.dueDate ? formatDateBadge(draft.dueDate) : "No due date"}</span>`,
             `<span class="summary-chip"><b>Estimate</b> ${draft.estimateHours > 0 ? formatEstimate(draft.estimateHours) : "Not set"}</span>`,
-            `<span class="summary-chip"><b>Priority</b> ${draft.priority ?? "None"}</span>`,
+            `<span class="summary-chip"><b>Priority</b> ${draft.priority || "None"}</span>`,
         ];
         summary.innerHTML = chips.join("");
         renderAssignControls();
@@ -757,9 +777,92 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     // ----- Priority -----
     prioritySelect.addEventListener("change", () => {
         if (!draft) return;
-        const value = prioritySelect.value;
-        draft.priority = value === "" ? null : value;
+        draft.priority = prioritySelect.value;
         renderDraft();
+    });
+
+    requireElement("priorityClearBtn").addEventListener("click", () => {
+        if (!draft) return;
+        draft.priority = "";
+        prioritySelect.value = "";
+        renderDraft();
+    });
+
+    // ----- Log time -----   ✅ NEW
+    async function refreshLogTimeTotal(taskId) {
+        const numericId = Number(taskId);
+        if (!Number.isFinite(numericId) || numericId <= 0) {
+            logTimeTotalLabel.textContent = "0h";
+            return;
+        }
+        try {
+            const res = await fetch(`${TIMELOGS_API}/task/${numericId}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const logs = await res.json();
+            const total = logs.reduce((sum, log) => sum + log.hours, 0);
+            logTimeTotalLabel.textContent = `${total.toFixed(1)}h`;
+        } catch (err) {
+            console.error("Failed to load time logs:", err);
+            logTimeTotalLabel.textContent = "0h";
+        }
+    }
+
+    logTimeSaveBtn.addEventListener("click", async () => {
+        if (!draft) return;
+
+        const numericId = Number(draft.id);
+        if (!Number.isFinite(numericId) || numericId <= 0) {
+            alert("Save the task first before logging time.");
+            return;
+        }
+
+        const date = logDateInput.value;
+        const hours = Number(logHoursInput.value);
+        const description = logDescriptionInput.value.trim();
+
+        if (!date) { alert("Please choose a date."); return; }
+        if (!Number.isFinite(hours) || hours <= 0 || hours > 24) {
+            alert("Hours must be between 0.5 and 24.");
+            return;
+        }
+
+        const userId = Number(sessionStorage.getItem("userId"));
+        if (!Number.isFinite(userId) || userId <= 0) {
+            alert("Your session has no user ID. Please log in again.");
+            return;
+        }
+
+        const payload = {
+            date,
+            hours,
+            description,
+            task: { id: numericId },
+            user: { id: userId },
+        };
+
+        try {
+            const res = await fetch(TIMELOGS_API, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            showToast(`Logged ${hours}h`);
+            logHoursInput.value = "";
+            logDescriptionInput.value = "";
+            closePopovers();
+            await refreshLogTimeTotal(draft.id);
+        } catch (err) {
+            console.error("Log time failed:", err);
+            alert("Failed to log time.");
+        }
+    });
+
+    logTimeClearBtn.addEventListener("click", () => {
+        logHoursInput.value = "";
+        logDescriptionInput.value = "";
+        logDateInput.value = new Date().toISOString().split("T")[0];
     });
 
     // ----- Assignee -----
@@ -880,63 +983,15 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     // ===================== START SPRINT (US23) =====================
     const startSprintBtn = document.getElementById("startSprintBtn");
-    startSprintBtn?.addEventListener("click", async () => {
+    startSprintBtn?.addEventListener("click", () => {
         if (!confirm("Start the sprint now? Time tracking will begin.")) return;
-
-        const sprintId = Number(currentSprintId);
-        if (!Number.isFinite(sprintId) || sprintId <= 0) {
-            showToast("No sprint selected");
-            return;
-        }
-
-        try {
-            const res = await fetch(`${SPRINTS_API}/${sprintId}/start`, {
-                method: "PUT",
-            });
-
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || `HTTP ${res.status}`);
-            }
-
-            showToast("Sprint started");
-        } catch (err) {
-            console.error("Start sprint failed:", err);
-            showToast("Failed to start sprint");
-        }
-    });
-
-    // ===================== COMPLETE SPRINT =====================
-    const completeSprintBtn = document.getElementById("completeSprintBtn");
-    completeSprintBtn?.addEventListener("click", async () => {
-        if (!confirm("Complete this sprint? This cannot be undone.")) return;
-
-        const sprintId = Number(currentSprintId);
-        if (!Number.isFinite(sprintId) || sprintId <= 0) {
-            showToast("No sprint selected");
-            return;
-        }
-
-        try {
-            const res = await fetch(`${SPRINTS_API}/${sprintId}/complete`, {
-                method: "PUT",
-            });
-
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || `HTTP ${res.status}`);
-            }
-
-            showToast("Sprint completed");
-        } catch (err) {
-            console.error("Complete sprint failed:", err);
-            showToast("Failed to complete sprint");
-        }
+        showToast("Sprint started");
     });
 
     // ===================== INIT =====================
     async function init() {
         await loadEmployeesFromBackend();
+        highlightSavedSprintTab();
         initSprintTabs();
         renderTeamFilter();
         await refreshFromBackend();
