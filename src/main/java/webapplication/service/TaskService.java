@@ -53,6 +53,8 @@ public class TaskService {
         task.setDueDate(taskDetails.getDueDate());
         task.setSprint(taskDetails.getSprint());
         task.setAssignedUser(taskDetails.getAssignedUser());
+        task.setAssignedTeams(taskDetails.getAssignedTeams());   // ✅ NEW
+        task.setAssignedEmployeeIds(taskDetails.getAssignedEmployeeIds());
         return taskRepository.save(task);
     }
 
