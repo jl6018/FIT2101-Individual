@@ -10,9 +10,6 @@
 //   US15 — set a due date on a task
 //   US17 — admin moves a task from In Review to Completed (drag and drop)
 //   US23 — Start Sprint button
-//
-// The employee list is fetched from GET /api/users, so whoever registers in
-// the system appears on the admin board without any hardcoding.
 
 // ===================== ADMIN GUARD =====================
 window.addEventListener("pageshow", (event) => {
@@ -76,7 +73,9 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     };
 
     type Team = { id: string; name: string };
-    type Employee = { id: string; name: string; teamId: string };
+
+    // Employee carries the team NAME
+    type Employee = { id: string; name: string; team: string };
 
     type BackendTask = {
         id: number;
@@ -90,6 +89,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         name: string;
         email: string;
         role: string;
+        team?: { name: string } | null;
     };
 
     // ===================== CONFIG =====================
@@ -97,10 +97,11 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const USERS_API = "http://localhost:8080/api/users";
 
     // ===================== REFERENCE DATA =====================
+    // Team IDs use the team NAME, so they match what the backend stores
     const TEAMS: Team[] = [
-        { id: "alpha", name: "Team Alpha" },
-        { id: "beta", name: "Team Beta" },
-        { id: "gamma", name: "Team Gamma" },
+        { id: "Team Alpha", name: "Team Alpha" },
+        { id: "Team Beta", name: "Team Beta" },
+        { id: "Team Gamma", name: "Team Gamma" },
     ];
 
     // Filled from GET /api/users on page load.
@@ -117,7 +118,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                 .map((u) => ({
                     id: String(u.id),
                     name: u.name,
-                    teamId: "", // Team is not part of User yet — placeholder
+                    team: u.team?.name ?? "",
                 }));
         } catch (err) {
             console.error("Failed to load employees:", err);
@@ -176,7 +177,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     function teamsOfTask(task: Task): string[] {
         if (!task.assignee) return [];
         if (task.assignee.kind === "team") return [task.assignee.teamId];
-        return assignedEmployees(task.assignee).map((employee) => employee.teamId).filter(Boolean);
+        return assignedEmployees(task.assignee).map((employee) => employee.team).filter(Boolean);
     }
 
     function assigneeLabel(assignee: Assignee | null): string {
@@ -309,7 +310,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
         return assignedEmployees(task.assignee)
             .map((employee) =>
-                `<div class="avatar avatar-small avatar-purple" title="${escapeHtml(employee.name)}">${escapeHtml(initials(employee.name))}</div>`
+                `<div class="avatar avatar-small avatar-purple" title="${escapeHtml(employee.name)} · ${escapeHtml(employee.team)}">${escapeHtml(initials(employee.name))}</div>`
             )
             .join("");
     }
@@ -562,6 +563,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderAssignControls();
     }
 
+    // ✅ Employees are only shown when a team is selected
     function renderAssignControls(): void {
         if (!draft) return;
 
@@ -574,18 +576,29 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
         const assignee = draft.assignee;
 
+        // Team dropdown — options use team names as values
         assigneeSelect.innerHTML =
             `<option value="">Choose a team…</option>` +
-            TEAMS.map((team) => `<option value="${team.id}">${escapeHtml(team.name)}</option>`).join("");
+            TEAMS.map((team) => `<option value="${team.name}">${escapeHtml(team.name)}</option>`).join("");
         assigneeSelect.value = assignee?.kind === "team" ? assignee.teamId : "";
 
+        // Only show employees whose team matches the selected one.
+        // If no team is selected → show nothing.
+        const selectedTeam = assignee?.kind === "team" ? assignee.teamId : null;
+
+        const visibleEmployees = selectedTeam
+            ? EMPLOYEES.filter((e) => e.team === selectedTeam)
+            : [];
+
         const ticked = assignee?.kind === "employees" ? assignee.employeeIds : [];
-        employeeList.innerHTML = EMPLOYEES.length === 0
-            ? `<p class="employee-empty">No employees yet. Add them on Team Management.</p>`
-            : EMPLOYEES.map((employee) => `
+
+        employeeList.innerHTML = visibleEmployees.length === 0
+            ? `<p class="employee-empty">${selectedTeam ? "No employees in this team yet." : "Choose a team first."}</p>`
+            : visibleEmployees.map((employee) => `
             <label class="employee-option">
               <input type="checkbox" value="${escapeHtml(employee.id)}" ${ticked.includes(employee.id) ? "checked" : ""} />
               <span>${escapeHtml(employee.name)}</span>
+              <span class="employee-team">${escapeHtml(employee.team)}</span>
             </label>`).join("");
     }
 
@@ -612,7 +625,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         showToast(isNew ? "Task created" : "Changes saved");
     }
 
-    // ----- Delete (US11) -----
+    // ----- Delete -----
     let deleteArmed = false;
 
     function setDeleteArmed(armed: boolean): void {
@@ -695,10 +708,11 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         });
     });
 
+    // Re-render (and re-filter) when the team changes
     assigneeSelect.addEventListener("change", () => {
         if (!draft) return;
         draft.assignee = assigneeSelect.value ? { kind: "team", teamId: assigneeSelect.value } : null;
-        renderDraft();
+        renderAssignControls();
     });
 
     employeeList.addEventListener("change", () => {
