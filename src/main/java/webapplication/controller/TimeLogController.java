@@ -2,6 +2,7 @@ package webapplication.controller;
 
 import webapplication.model.TimeLog;
 import webapplication.service.TimeLogService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -18,15 +19,22 @@ public class TimeLogController {
         this.timeLogService = timeLogService;
     }
 
-    // ✅ NEW — handles GET /api/timelogs (for Reports page)
     @GetMapping
     public List<TimeLog> getAllTimeLogs() {
         return timeLogService.getAllTimeLogs();
     }
 
+    // ✅ US24 — Error-handled
     @PostMapping
-    public TimeLog logHours(@RequestBody TimeLog timeLog) {
-        return timeLogService.logHours(timeLog);
+    public ResponseEntity<?> logHours(@RequestBody TimeLog timeLog) {
+        try {
+            TimeLog saved = timeLogService.logHours(timeLog);
+            return ResponseEntity.ok(saved);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(500).body(e.getMessage());
+        }
     }
 
     @GetMapping("/user/{userId}")
