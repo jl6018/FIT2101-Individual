@@ -320,9 +320,6 @@ textarea {
 }
 
 .avatar-dark { background-color: #000; }
-.avatar-teal { background-color: #6fb7c4; }
-.avatar-pink { background-color: #e86fc0; }
-.avatar-gray { background-color: #d9d9d9; }
 .avatar-purple { background-color: #5b3db0; }
 
 /* ===== Project header ===== */
@@ -396,20 +393,6 @@ textarea {
     display: flex;
     align-items: center;
     gap: 16px;
-}
-
-.avatar-stack {
-    display: flex;
-    align-items: center;
-}
-
-.avatar-stack .avatar + .avatar {
-    margin-left: -8px;
-}
-
-.avatar-more {
-    margin-left: 8px;
-    font-size: 0.95rem;
 }
 
 .share-btn {
@@ -1049,15 +1032,8 @@ textarea {
     font-size: 0.8rem;
 }
 
-/* ============================================================
-   APPENDED FROM B — classes A doesn't have but the merged
-   HTML/JS relies on:
-   .logout-btn, .start-sprint-btn, .back-btn,
-   .modal-narrow, .modal-actions, .btn-secondary, .btn-danger,
-   .modal-title (used in logout dialog)
-   ============================================================ */
+/* ===== Logout / Start Sprint / Confirm buttons ===== */
 
-/* Logout button (used in navbar) */
 .logout-btn {
     background: white;
     border: none;
@@ -1074,7 +1050,6 @@ textarea {
     background: #F3F4F6;
 }
 
-/* Start Sprint button (used in project header) */
 .start-sprint-btn {
     background: #22C55E;
     color: white;
@@ -1090,189 +1065,6 @@ textarea {
 .start-sprint-btn:hover {
     background: #16A34A;
 }
-
-/* Admin team switcher dropdown (B-only — safe to keep even if unused) */
-.admin-team-switcher {
-    padding: 8px 14px;
-    border-radius: 20px;
-    border: none;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    background: white;
-    font-family: inherit;
-}
-
-/* Narrow modal — used by logout confirmation dialog */
-.modal-narrow {
-    max-width: 380px;
-}
-
-/* Action row inside the logout modal */
-.modal-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 8px;
-}
-
-/* Cancel button (secondary style) */
-.btn-secondary {
-    flex: 1;
-    padding: 12px 20px;
-    border: 1px solid #E5E7EB;
-    border-radius: 10px;
-    background: #fff;
-    color: #111;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: inherit;
-}
-
-.btn-secondary:hover {
-    background: #F3F4F6;
-}
-
-/* Confirm/Delete button (danger style) */
-.btn-danger {
-    flex: 1;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 10px;
-    background: #DC2626;
-    color: #fff;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: inherit;
-}
-
-.btn-danger:hover {
-    background: #B91C1C;
-}
-
-/* Logout modal title + subtitle (B uses these inside the logout overlay) */
-.modal-title {
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 22px;
-    font-weight: 700;
-    margin: 0 0 4px;
-    color: #1a1a1a;
-}
-
-.modal-subtitle {
-    font-size: 13px;
-    color: #6B7280;
-    margin: 0 0 20px;
-}
-
-/* ===================== LOGOUT MODAL (polished) ===================== */
-
-/* Narrow modal for the logout confirmation */
-.modal-narrow {
-    max-width: 420px;
-    background-color: #ffffff;
-    border-radius: 20px;
-    padding: 32px 32px 28px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-    text-align: center;
-}
-
-/* Title (sans-serif, bolder, tighter) */
-.modal-narrow .modal-title {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-size: 22px;
-    font-weight: 700;
-    color: #111111;
-    margin: 0 0 8px;
-    letter-spacing: -0.3px;
-}
-
-/* Subtitle (bigger, softer) */
-.modal-narrow .modal-subtitle {
-    font-size: 14px;
-    color: #6B7280;
-    margin: 0 0 24px;
-    line-height: 1.5;
-}
-
-/* Button row */
-.modal-narrow .modal-actions {
-    display: flex;
-    gap: 12px;
-    margin-top: 8px;
-}
-
-/* Cancel button */
-.modal-narrow .btn-secondary {
-    flex: 1;
-    padding: 12px 20px;
-    border: 1px solid #E5E7EB;
-    border-radius: 12px;
-    background: #FFFFFF;
-    color: #111111;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
-}
-
-.modal-narrow .btn-secondary:hover {
-    background: #F9FAFB;
-    border-color: #D1D5DB;
-}
-
-/* Log out button (danger) */
-.modal-narrow .btn-danger {
-    flex: 1;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 12px;
-    background: #DC2626;
-    color: #FFFFFF;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s, transform 0.05s;
-}
-
-.modal-narrow .btn-danger:hover {
-    background: #B91C1C;
-}
-
-.modal-narrow .btn-danger:active {
-    transform: scale(0.98);
-}
-
-/* Optional: warning icon at top */
-.modal-narrow::before {
-    content: "⚠️";
-    display: block;
-    font-size: 36px;
-    line-height: 1;
-    margin-bottom: 16px;
-}
-
-/* ===================== PRIORITY BADGE (US19) ===================== */
-
-.priority-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 3px 10px;
-    border-radius: 10px;
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #fff;
-}
-
-.priority-low    { background-color: #6b7280; }
-.priority-medium { background-color: #2e7d32; }
-.priority-high   { background-color: #e07b1c; }
-.priority-urgent { background-color: #d33; }
-
-/* ===================== START / END SPRINT BUTTON STATES ===================== */
 
 .start-sprint-btn:disabled {
     cursor: not-allowed;
@@ -1300,10 +1092,87 @@ textarea {
     background: #16A34A;
 }
 
-/* ===================== GENERIC MODAL STYLES ===================== */
+/* ===== Narrow modal (Confirm / Alert / No-Sprint / Logout) ===== */
+
 .modal-narrow {
     max-width: 420px;
+    background-color: #ffffff;
+    border-radius: 20px;
+    padding: 32px 32px 28px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    text-align: center;
 }
+
+.modal-narrow .modal-title {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #111111;
+    margin: 0 0 8px;
+    letter-spacing: -0.3px;
+}
+
+.modal-narrow .modal-subtitle {
+    font-size: 14px;
+    color: #6B7280;
+    margin: 0 0 24px;
+    line-height: 1.5;
+}
+
+.modal-narrow .modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.modal-narrow .btn-secondary {
+    flex: 1;
+    padding: 12px 20px;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    background: #FFFFFF;
+    color: #111111;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.modal-narrow .btn-secondary:hover {
+    background: #F9FAFB;
+    border-color: #D1D5DB;
+}
+
+.modal-narrow .btn-danger {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 12px;
+    background: #DC2626;
+    color: #FFFFFF;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.05s;
+}
+
+.modal-narrow .btn-danger:hover {
+    background: #B91C1C;
+}
+
+.modal-narrow .btn-danger:active {
+    transform: scale(0.98);
+}
+
+.modal-narrow::before {
+    content: "⚠️";
+    display: block;
+    font-size: 36px;
+    line-height: 1;
+    margin-bottom: 16px;
+}
+
+/* ===== Generic modal + buttons ===== */
 
 .modal-title {
     font-family: Georgia, "Times New Roman", serif;
@@ -1368,45 +1237,76 @@ textarea {
 }
 .btn-danger:hover { background: #B91C1C; }
 
-/* ===================== INVITE MODAL STYLES ===================== */
-#inviteOverlay .modal {
-    background-color: #f4f5fd;
-    max-width: 440px;
-    border-radius: 16px;
-    padding: 28px;
+/* ===== Priority badges ===== */
+
+.priority-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #fff;
 }
 
-#inviteOverlay .modal-close {
+.priority-low    { background-color: #6b7280; }
+.priority-medium { background-color: #2e7d32; }
+.priority-high   { background-color: #e07b1c; }
+.priority-urgent { background-color: #d33; }
+
+/* ===================== INVITE PRODUCT OWNER MODAL ===================== */
+/* Plain white card, left-aligned form, no ⚠️ icon, matches the original
+   Team Management invite look. */
+
+.invite-modal {
+    background-color: #ffffff;
+    border-radius: 16px;
+    max-width: 460px;
+    width: 100%;
+    padding: 28px;
+    text-align: left;
+    position: relative;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.invite-modal .modal-close {
     position: absolute;
-    top: 20px;
-    right: 20px;
+    top: 16px;
+    right: 18px;
     background: none;
     border: none;
     font-size: 16px;
     color: #6B7280;
     cursor: pointer;
+    font-family: inherit;
 }
 
-#inviteOverlay .modal-title {
+.invite-modal .modal-close:hover {
+    color: #111;
+}
+
+.invite-modal .modal-title {
     font-family: Georgia, "Times New Roman", serif;
     font-size: 22px;
     font-weight: 700;
-    margin: 0 0 6px;
     color: #1a1a1a;
+    margin: 0 0 6px;
 }
 
-#inviteOverlay .modal-subtitle {
+.invite-modal .modal-subtitle {
     font-size: 13px;
     color: #4B5563;
     margin: 0 0 20px;
     line-height: 1.5;
 }
 
-#inviteOverlay .form-field {
+.invite-modal .form-field {
     margin-bottom: 16px;
 }
 
-#inviteOverlay label {
+.invite-modal label {
     display: block;
     font-size: 13px;
     font-weight: 600;
@@ -1414,23 +1314,24 @@ textarea {
     margin-bottom: 6px;
 }
 
-#inviteOverlay input[type="email"] {
+.invite-modal input[type="email"] {
     width: 100%;
     padding: 10px 12px;
     border-radius: 8px;
     border: 1px solid #E5E7EB;
     font-size: 14px;
     background: #fff;
+    color: #111;
     font-family: inherit;
     box-sizing: border-box;
 }
 
-#inviteOverlay input[type="email"]:focus {
+.invite-modal input[type="email"]:focus {
     outline: 2px solid #6366F1;
     outline-offset: 1px;
 }
 
-#inviteOverlay .btn-primary {
+.invite-modal .btn-primary {
     padding: 12px 20px;
     border: none;
     border-radius: 10px;
@@ -1442,10 +1343,10 @@ textarea {
     font-family: inherit;
 }
 
-#inviteOverlay .btn-primary:hover {
+.invite-modal .btn-primary:hover {
     background: #2a2a2a;
 }
 
-#inviteOverlay .btn-primary.full-width {
+.invite-modal .btn-primary.full-width {
     width: 100%;
 }

@@ -92,12 +92,6 @@
             </div>
             <div class="project-header-right">
                 <button class="start-sprint-btn" id="startSprintBtn" type="button">▶ Start Sprint</button>
-                <div class="avatar-stack">
-                    <div class="avatar avatar-teal">T</div>
-                    <div class="avatar avatar-pink">H</div>
-                    <div class="avatar avatar-gray">B</div>
-                    <span class="avatar-more">+2</span>
-                </div>
                 <button class="share-btn" id="shareBtn" type="button">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <circle cx="10" cy="8" r="4"/><path d="M3 20c0-3.5 3-6 7-6s7 2.5 7 6M19 8v6M16 11h6"/>
@@ -282,10 +276,10 @@
 
 <!-- ===================== MODAL: Invite Product Owner ===================== -->
 <div class="modal-overlay" id="inviteOverlay">
-    <div class="modal modal-narrow" role="dialog" aria-modal="true" aria-labelledby="inviteTitle">
+    <div class="modal invite-modal" role="dialog" aria-modal="true" aria-labelledby="inviteTitle">
         <button class="modal-close" id="closeInviteBtn" aria-label="Close" type="button">✕</button>
         <h2 id="inviteTitle" class="modal-title">Invite Product Owner</h2>
-        <p class="modal-subtitle">They'll receive a sign-in link by email — there's no public sign-up form.</p>
+        <p class="modal-subtitle">They'll receive a sign-in link by email.</p>
 
         <form id="inviteForm">
             <div class="form-field">

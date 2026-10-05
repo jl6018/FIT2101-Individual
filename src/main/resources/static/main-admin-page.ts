@@ -351,7 +351,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         if (e.target === document.getElementById("alertOverlay")) hideOverlay("alertOverlay");
     });
 
-    // -------- Invite Product Owner modal --------
+    // -------- Invite Product Owner (Share button) --------
+    // Same behaviour as the Team Management version — same endpoint, same toasts.
     const shareBtn = document.getElementById("shareBtn");
     const inviteOverlay = document.getElementById("inviteOverlay");
     const closeInviteBtn = document.getElementById("closeInviteBtn");
@@ -368,7 +369,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         e.preventDefault();
 
         const email = ownerEmailInput?.value.trim();
-        if (!email) return;
+        if (!email) {
+            showToast("Please enter an email address.");
+            return;
+        }
 
         try {
             const res = await fetch("/api/invites", {
@@ -379,7 +383,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
             if (!res.ok) {
                 const text = await res.text();
-                throw new Error(text || "Failed to send invite");
+                console.error("Invite failed — backend said:", text);
+                throw new Error(text || "Failed to send invite.");
             }
 
             inviteOverlay?.classList.remove("visible");
@@ -387,7 +392,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             inviteForm.reset();
         } catch (err) {
             const message = err instanceof Error ? err.message : "Failed to send invite";
-            showAlertModal("Invite failed", message);
+            showToast(message);
         }
     });
 
@@ -909,7 +914,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         showToast(isNew ? "Task created" : "Changes saved");
     }
 
-    // ----- Delete (with custom confirm modal) -----
+    // ----- Delete -----
     let deleteArmed = false;
 
     function setDeleteArmed(armed: boolean): void {
