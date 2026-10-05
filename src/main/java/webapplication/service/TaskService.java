@@ -30,7 +30,8 @@ public class TaskService {
     }
 
     public List<Task> getAllTasks() {
-        return taskRepository.findAll();
+        // ✅ Returned in the order the cards were arranged on the board
+        return taskRepository.findAllByOrderByPositionAscIdAsc();
     }
 
     public Task getTaskById(Long id) {
@@ -57,10 +58,22 @@ public class TaskService {
             task.setSprint(null);
         }
 
+        // ✅ NEW — if the client did not supply a position, drop the card at the
+        // bottom of its column (max existing position + 1).
+        if (task.getPosition() == null || task.getPosition() <= 0) {
+            int maxPos = taskRepository.findAllByOrderByPositionAscIdAsc().stream()
+                    .filter(t -> t.getStatus() == task.getStatus())
+                    .map(Task::getPosition)
+                    .filter(p -> p != null)
+                    .mapToInt(Integer::intValue)
+                    .max()
+                    .orElse(0);
+            task.setPosition(maxPos + 1);
+        }
+
         return taskRepository.save(task);
     }
 
-    // ✅ NULL-SAFE update — prevents 500 errors when frontend sends partial data
     public Task updateTask(Long id, Task taskDetails) {
         Task task = getTaskById(id);
 
@@ -71,7 +84,6 @@ public class TaskService {
         if (taskDetails.getProgress() != 0) task.setProgress(taskDetails.getProgress());
         if (taskDetails.getDueDate() != null) task.setDueDate(taskDetails.getDueDate());
 
-        // ✅ Resolve sprint from DB instead of passing a detached entity
         if (taskDetails.getSprint() != null && taskDetails.getSprint().getId() != null) {
             Sprint sprint = sprintRepository.findById(taskDetails.getSprint().getId())
                     .orElse(null);
@@ -82,6 +94,9 @@ public class TaskService {
         if (taskDetails.getAssignedTeams() != null) task.setAssignedTeams(taskDetails.getAssignedTeams());
         if (taskDetails.getAssignedEmployeeIds() != null) task.setAssignedEmployeeIds(taskDetails.getAssignedEmployeeIds());
         if (taskDetails.getEstimateHours() != 0) task.setEstimateHours(taskDetails.getEstimateHours());
+
+        // ✅ NEW — only overwrite position when the client actually sent one
+        if (taskDetails.getPosition() != null) task.setPosition(taskDetails.getPosition());
 
         return taskRepository.save(task);
     }
@@ -96,11 +111,11 @@ public class TaskService {
     }
 
     public List<Task> getTasksByStatus(TaskStatus status) {
-        return taskRepository.findByStatus(status);
+        return taskRepository.findByStatusOrderByPositionAscIdAsc(status);
     }
 
     public List<Task> getTasksBySprint(Long sprintId) {
-        return taskRepository.findBySprintId(sprintId);
+        return taskRepository.findBySprintIdOrderByPositionAscIdAsc(sprintId);
     }
 
     public void deleteTask(Long id) {
@@ -124,7 +139,8 @@ public class TaskService {
     public Map<TaskStatus, List<Task>> getBoardView() {
         Map<TaskStatus, List<Task>> board = new LinkedHashMap<>();
         for (TaskStatus status : TaskStatus.values()) {
-            board.put(status, taskRepository.findByStatus(status));
+            // ✅ Sorted so the board view is consistent
+            board.put(status, taskRepository.findByStatusOrderByPositionAscIdAsc(status));
         }
         return board;
     }
@@ -135,7 +151,7 @@ public class TaskService {
                 .map(User::getId)
                 .collect(Collectors.toList());
 
-        return taskRepository.findAll().stream()
+        return taskRepository.findAllByOrderByPositionAscIdAsc().stream()
                 .filter(t -> {
                     if (t.getAssignedTeams() != null) {
                         boolean direct = java.util.Arrays.stream(t.getAssignedTeams().split(","))

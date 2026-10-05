@@ -27,7 +27,6 @@ public class Task {
 
     private LocalDate dueDate;
 
-    // ✅ NEW — estimated hours
     @Column(name = "estimate_hours")
     private double estimateHours;
 
@@ -36,6 +35,11 @@ public class Task {
 
     @Column(name = "assigned_employee_ids", length = 500)
     private String assignedEmployeeIds;
+
+    // ✅ NEW — controls card order within a column (Trello-style drag & drop)
+    // Named "task_position" to avoid clashing with SQL reserved words.
+    @Column(name = "task_position")
+    private Integer position;
 
     @ManyToOne
     @JoinColumn(name = "sprint_id")
@@ -89,7 +93,6 @@ public class Task {
     public LocalDate getDueDate() { return dueDate; }
     public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
 
-    // ✅ NEW
     public double getEstimateHours() { return estimateHours; }
     public void setEstimateHours(double estimateHours) { this.estimateHours = estimateHours; }
 
@@ -98,6 +101,10 @@ public class Task {
 
     public String getAssignedEmployeeIds() { return assignedEmployeeIds; }
     public void setAssignedEmployeeIds(String assignedEmployeeIds) { this.assignedEmployeeIds = assignedEmployeeIds; }
+
+    // ✅ NEW
+    public Integer getPosition() { return position; }
+    public void setPosition(Integer position) { this.position = position; }
 
     public Sprint getSprint() { return sprint; }
     public void setSprint(Sprint sprint) { this.sprint = sprint; }

@@ -11,4 +11,11 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findByStatus(TaskStatus status);
 
     List<Task> findBySprintId(Long sprintId);
+
+    // ✅ NEW — sorted by position so the board renders in saved order
+    List<Task> findAllByOrderByPositionAscIdAsc();
+
+    List<Task> findByStatusOrderByPositionAscIdAsc(TaskStatus status);
+
+    List<Task> findBySprintIdOrderByPositionAscIdAsc(Long sprintId);
 }
