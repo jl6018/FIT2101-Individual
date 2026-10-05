@@ -157,9 +157,20 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         try { window.localStorage.setItem(key, value); } catch { /* ignore */ }
     }
 
+    // ✅ NEW — sprint tab persistence helpers
+    const SPRINT_KEY = "symph.currentSprint";
+
+    function readSprintSetting() {
+        return readSetting(SPRINT_KEY) || "1";
+    }
+
+    function writeSprintSetting(sprintId) {
+        writeSetting(SPRINT_KEY, sprintId);
+    }
+
     // ===================== STATE =====================
     let tasks = [];
-    let currentSprintId = "1";
+    let currentSprintId = readSprintSetting();   // ✅ read saved sprint on load
     let currentTeamId = "all";
     let searchTerm = "";
 
@@ -254,7 +265,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     async function apiUpdate(task) {
         try {
-            // ✅ SAFETY — skip the API call if the task has no valid backend ID
             const numericId = Number(task.id);
             if (!Number.isFinite(numericId) || numericId <= 0) {
                 console.warn("Skipping update — task has no valid backend ID:", task);
@@ -274,7 +284,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                 sprint: { id: Number(currentSprintId) },
             };
 
-            // ✅ DEBUG — log what we're sending
             console.log(`PUT ${API_BASE}/${numericId}`, body);
 
             const res = await fetch(`${API_BASE}/${numericId}`, {
@@ -347,7 +356,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             ? `<div class="card-footer-row"><div class="card-badges">${badges}</div><div class="tag-avatars">${assigneeHtml}</div></div>`
             : "";
 
-        // ✅ data-task carries the backend ID for drag/drop + edits
         return `
       <div class="card${footerHtml ? " card-detailed" : ""}" draggable="true" data-task="${escapeHtml(task.id)}">
         <div class="card-title-row">
@@ -433,7 +441,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
         const moved = tasks.find((t) => t.id === draggedTaskId);
         if (moved) {
-            // ✅ SAFETY — ensure the task has a real backend ID before sending
             if (!moved.id || moved.id === "" || Number.isNaN(Number(moved.id))) {
                 console.warn("Cannot move — task has no backend ID:", moved);
                 alert("Failed to save task: missing task ID.");
@@ -473,10 +480,19 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                 const sprintId = tab.dataset["sprint"];
                 if (sprintId) {
                     currentSprintId = sprintId;
+                    writeSprintSetting(sprintId);   // ✅ save selected sprint
                     renderBoard();
                     renderTeamFilter();
                 }
             });
+        });
+    }
+
+    // ✅ NEW — highlight the saved sprint tab on page load
+    function highlightSavedSprintTab() {
+        const tabs = document.querySelectorAll(".sprint-tab");
+        tabs.forEach((tab) => {
+            tab.classList.toggle("active", tab.dataset["sprint"] === currentSprintId);
         });
     }
 
@@ -850,6 +866,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     // ===================== INIT =====================
     async function init() {
         await loadEmployeesFromBackend();
+        highlightSavedSprintTab();   // ✅ highlight saved sprint tab before rendering
         initSprintTabs();
         renderTeamFilter();
         await refreshFromBackend();
