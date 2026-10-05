@@ -121,7 +121,8 @@ const memberChartWrap = requireElement('memberChartWrap');
 const memberEmptyState = requireElement('memberEmptyState');
 const memberModalTotal = requireElement('memberModalTotal');
 
-let selectedWeeks = 2;
+// ===================== DEFAULT = 1 WEEK =====================
+let selectedWeeks = 1;
 
 // ===================== MODAL OPEN/CLOSE =====================
 function openModal(overlay) { overlay.classList.add('visible'); }

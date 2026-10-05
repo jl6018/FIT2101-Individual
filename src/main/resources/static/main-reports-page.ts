@@ -1,21 +1,21 @@
 // main-reports-page.ts
 // Compile with:
-//   tsc main-reports-page.ts --module esnext --target esnext --strict --ignoreConfig
+//   npx tsc main-reports-page.ts --module esnext --target esnext --strict --ignoreConfig
 
-// ===================== BFCACHE FIX (from B) =====================
+// ===================== BFCACHE FIX =====================
 window.addEventListener('pageshow', (event) => {
     if ((event as PageTransitionEvent).persisted && sessionStorage.getItem('loggedIn') !== 'true') {
         window.location.href = 'index-login-page.html';
     }
 });
 
-// ===================== AUTH GUARD (from B) =====================
+// ===================== AUTH GUARD =====================
 if (sessionStorage.getItem('loggedIn') !== 'true') {
     window.location.href = 'index-login-page.html';
     throw new Error('Not logged in');
 }
 
-// ===================== SHOW CURRENT USER (from B) =====================
+// ===================== SHOW CURRENT USER =====================
 const nameEl = document.getElementById('signedInName');
 if (nameEl) {
     const name = sessionStorage.getItem('name');
@@ -67,7 +67,7 @@ interface ApiUser {
 let TEAM_MEMBERS: TeamMember[] = [];
 let SESSIONS: LoggedSession[] = [];
 
-// ===================== BACKEND LOADERS (from B) =====================
+// ===================== BACKEND LOADERS =====================
 async function loadTeamMembers(): Promise<void> {
     try {
         const res = await fetch('/api/users');
@@ -116,7 +116,7 @@ async function loadSessions(): Promise<void> {
     }
 }
 
-// ===================== STATIC DATA (task hours + burndown) =====================
+// ===================== STATIC DATA =====================
 const TASK_HOURS: { label: string; hours: number }[] = [
     { label: 'Design', hours: 0 },
     { label: 'Build', hours: 5.5 },
@@ -150,7 +150,8 @@ const logoutOverlay = requireElement<HTMLDivElement>('logoutOverlay');
 const cancelLogoutBtn = requireElement<HTMLButtonElement>('cancelLogoutBtn');
 const confirmLogoutBtn = requireElement<HTMLButtonElement>('confirmLogoutBtn');
 
-let selectedWeeks = 2;
+// ===================== DEFAULT = 1 WEEK =====================
+let selectedWeeks = 1;
 
 // ===================== MODAL OPEN/CLOSE =====================
 function openModal(overlay: HTMLDivElement): void {
@@ -165,7 +166,6 @@ memberOverlay.addEventListener('click', (e: MouseEvent) => {
     if (e.target === memberOverlay) closeModal(memberOverlay);
 });
 
-// Logout modal (from B)
 logoutBtn.addEventListener('click', () => logoutOverlay.classList.add('visible'));
 cancelLogoutBtn.addEventListener('click', () => logoutOverlay.classList.remove('visible'));
 confirmLogoutBtn.addEventListener('click', () => {
@@ -306,7 +306,7 @@ function renderTaskHoursChart(): void {
     });
 }
 
-// ===================== BURNDOWN CHART (SVG) =====================
+// ===================== BURNDOWN CHART =====================
 function renderBurndownChart(): void {
     const width = 600;
     const height = 260;
