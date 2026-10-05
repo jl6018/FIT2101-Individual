@@ -52,7 +52,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     // ===================== REFERENCE DATA =====================
     const TEAMS = [
         { id: "Team Alpha", name: "Team Alpha" },
-        { id: "Team Beta",  name: "Team Beta" },
+        { id: "Team Beta", name: "Team Beta" },
         { id: "Team Gamma", name: "Team Gamma" },
     ];
 
@@ -97,7 +97,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     }
 
     function escapeHtml(text) {
-        return text
+        return String(text)
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
@@ -240,6 +240,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     assignedEmployeeIds: payload.assignedEmployeeIds,
                     dueDate: task.dueDate || null,
                     estimateHours: task.estimateHours,
+                    sprint: { id: Number(currentSprintId) },
                 }),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -253,19 +254,33 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     async function apiUpdate(task) {
         try {
+            // ✅ SAFETY — skip the API call if the task has no valid backend ID
+            const numericId = Number(task.id);
+            if (!Number.isFinite(numericId) || numericId <= 0) {
+                console.warn("Skipping update — task has no valid backend ID:", task);
+                alert("Failed to save task: missing task ID.");
+                return false;
+            }
+
             const payload = assigneeToBackendPayload(task.assignee);
-            const res = await fetch(`${API_BASE}/${task.id}`, {
+            const body = {
+                name: task.title,
+                description: task.description,
+                status: task.column,
+                assignedTeams: payload.assignedTeams,
+                assignedEmployeeIds: payload.assignedEmployeeIds,
+                dueDate: task.dueDate || null,
+                estimateHours: task.estimateHours,
+                sprint: { id: Number(currentSprintId) },
+            };
+
+            // ✅ DEBUG — log what we're sending
+            console.log(`PUT ${API_BASE}/${numericId}`, body);
+
+            const res = await fetch(`${API_BASE}/${numericId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name: task.title,
-                    description: task.description,
-                    status: task.column,
-                    assignedTeams: payload.assignedTeams,
-                    assignedEmployeeIds: payload.assignedEmployeeIds,
-                    dueDate: task.dueDate || null,
-                    estimateHours: task.estimateHours,
-                }),
+                body: JSON.stringify(body),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             return true;
@@ -278,7 +293,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     async function apiDelete(id) {
         try {
-            const res = await fetch(`${API_BASE}/${id}`, { method: "DELETE" });
+            const numericId = Number(id);
+            if (!Number.isFinite(numericId) || numericId <= 0) return false;
+
+            const res = await fetch(`${API_BASE}/${numericId}`, { method: "DELETE" });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             return true;
         } catch (err) {
@@ -329,11 +347,12 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             ? `<div class="card-footer-row"><div class="card-badges">${badges}</div><div class="tag-avatars">${assigneeHtml}</div></div>`
             : "";
 
+        // ✅ data-task carries the backend ID for drag/drop + edits
         return `
-      <div class="card${footerHtml ? " card-detailed" : ""}" draggable="true" data-task="${task.id}">
+      <div class="card${footerHtml ? " card-detailed" : ""}" draggable="true" data-task="${escapeHtml(task.id)}">
         <div class="card-title-row">
           <span class="card-title">${escapeHtml(task.title)}</span>
-          <button type="button" class="edit-icon" data-edit="${task.id}" title="Edit task details" aria-label="Edit ${escapeHtml(task.title)}">${PENCIL_ICON}</button>
+          <button type="button" class="edit-icon" data-edit="${escapeHtml(task.id)}" title="Edit task details" aria-label="Edit ${escapeHtml(task.title)}">${PENCIL_ICON}</button>
         </div>
         ${footerHtml}
       </div>`;
@@ -365,8 +384,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         const addBtn = target.closest("[data-add]");
         if (addBtn) {
             const draftTask = blankTask(currentSprintId, addBtn.dataset["add"]);
-            // Only pre-assign if a specific team filter is active.
-            // When "All teams" is selected, leave the task unassigned.
             if (currentTeamId !== "all") {
                 draftTask.assignee = { kind: "team", teamId: currentTeamId };
             }
@@ -416,6 +433,15 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
         const moved = tasks.find((t) => t.id === draggedTaskId);
         if (moved) {
+            // ✅ SAFETY — ensure the task has a real backend ID before sending
+            if (!moved.id || moved.id === "" || Number.isNaN(Number(moved.id))) {
+                console.warn("Cannot move — task has no backend ID:", moved);
+                alert("Failed to save task: missing task ID.");
+                draggedTaskId = null;
+                clearDropMarkers();
+                return;
+            }
+
             const from = COLUMNS.find((c) => c.id === moved.column)?.name ?? "";
             moved.column = column.dataset["column"];
 

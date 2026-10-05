@@ -74,8 +74,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         status?: ColumnId | null;
         assignedTeams?: string | null;
         assignedEmployeeIds?: string | null;
-        dueDate?: string | null;          // ✅ NEW
-        estimateHours?: number | null;    // ✅ NEW
+        dueDate?: string | null;
+        estimateHours?: number | null;
     };
 
     type BackendUser = {
@@ -93,7 +93,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     // ===================== REFERENCE DATA =====================
     const TEAMS: Team[] = [
         { id: "Team Alpha", name: "Team Alpha" },
-        { id: "Team Beta",  name: "Team Beta" },
+        { id: "Team Beta", name: "Team Beta" },
         { id: "Team Gamma", name: "Team Gamma" },
     ];
 
@@ -127,7 +127,16 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     ];
 
     function blankTask(sprintId: string, column: ColumnId): Task {
-        return { id: "", sprintId, column, title: "", description: "", assignee: null, dueDate: "", estimateHours: 0 };
+        return {
+            id: "",
+            sprintId,
+            column,
+            title: "",
+            description: "",
+            assignee: null,
+            dueDate: "",
+            estimateHours: 0,
+        };
     }
 
     // ===================== HELPERS =====================
@@ -147,8 +156,12 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     }
 
     function initials(name: string): string {
-        return name.split(/\s+/).filter(Boolean).slice(0, 2)
-            .map((part) => part.charAt(0).toUpperCase()).join("");
+        return name
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part.charAt(0).toUpperCase())
+            .join("");
     }
 
     function teamName(teamId: string): string {
@@ -170,7 +183,9 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         if (!task.assignee) return [];
         if (task.assignee.kind === "team") return [task.assignee.teamId];
         if (task.assignee.kind === "teams") return task.assignee.teamIds;
-        return assignedEmployees(task.assignee).map((employee) => employee.team).filter(Boolean);
+        return assignedEmployees(task.assignee)
+            .map((employee) => employee.team)
+            .filter(Boolean);
     }
 
     function assigneeLabel(assignee: Assignee | null): string {
@@ -191,11 +206,19 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     }
 
     function readSetting(key: string): string {
-        try { return window.localStorage.getItem(key) ?? ""; } catch { return ""; }
+        try {
+            return window.localStorage.getItem(key) ?? "";
+        } catch {
+            return "";
+        }
     }
 
     function writeSetting(key: string, value: string): void {
-        try { window.localStorage.setItem(key, value); } catch { /* ignore */ }
+        try {
+            window.localStorage.setItem(key, value);
+        } catch {
+            /* ignore */
+        }
     }
 
     // ===================== STATE =====================
@@ -206,7 +229,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     const board = requireElement<HTMLElement>("board");
 
-    function assigneeToBackendPayload(assignee: Assignee | null): { assignedTeams: string | null; assignedEmployeeIds: string | null } {
+    function assigneeToBackendPayload(assignee: Assignee | null): {
+        assignedTeams: string | null;
+        assignedEmployeeIds: string | null;
+    } {
         if (!assignee) {
             return { assignedTeams: null, assignedEmployeeIds: null };
         }
@@ -230,14 +256,20 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                 let assignee: Assignee | null = null;
 
                 if (t.assignedEmployeeIds) {
-                    const ids = t.assignedEmployeeIds.split(",").map((s) => s.trim()).filter(Boolean);
+                    const ids = t.assignedEmployeeIds
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean);
                     if (ids.length > 0) {
                         assignee = { kind: "employees", employeeIds: ids };
                     }
                 }
 
                 if (!assignee && t.assignedTeams) {
-                    const names = t.assignedTeams.split(",").map((s) => s.trim()).filter(Boolean);
+                    const names = t.assignedTeams
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean);
                     if (names.length === 1) {
                         assignee = { kind: "team", teamId: names[0] };
                     } else if (names.length > 1) {
@@ -252,8 +284,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     title: t.name,
                     description: t.description ?? "",
                     assignee,
-                    dueDate: t.dueDate ?? "",                         // ✅ NEW
-                    estimateHours: t.estimateHours ?? 0,              // ✅ NEW
+                    dueDate: t.dueDate ?? "",
+                    estimateHours: t.estimateHours ?? 0,
                 };
             });
         } catch (err) {
@@ -280,12 +312,13 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     status: task.column,
                     assignedTeams: payload.assignedTeams,
                     assignedEmployeeIds: payload.assignedEmployeeIds,
-                    dueDate: task.dueDate || null,                     // ✅ NEW
-                    estimateHours: task.estimateHours,                 // ✅ NEW
+                    dueDate: task.dueDate || null,
+                    estimateHours: task.estimateHours,
+                    sprint: { id: Number(currentSprintId) },
                 }),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return await res.json() as Task;
+            return (await res.json()) as Task;
         } catch (err) {
             console.error("Create failed:", err);
             alert("Failed to create task.");
@@ -295,19 +328,33 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     async function apiUpdate(task: Task): Promise<boolean> {
         try {
+            // ✅ SAFETY — skip the API call if the task has no real ID
+            const numericId = Number(task.id);
+            if (!Number.isFinite(numericId) || numericId <= 0) {
+                console.warn("Skipping update — task has no valid backend ID:", task);
+                alert("Failed to save task: missing task ID.");
+                return false;
+            }
+
             const payload = assigneeToBackendPayload(task.assignee);
-            const res = await fetch(`${API_BASE}/${task.id}`, {
+            const body = {
+                name: task.title,
+                description: task.description,
+                status: task.column,
+                assignedTeams: payload.assignedTeams,
+                assignedEmployeeIds: payload.assignedEmployeeIds,
+                dueDate: task.dueDate || null,
+                estimateHours: task.estimateHours,
+                sprint: { id: Number(currentSprintId) },
+            };
+
+            // ✅ DEBUG — log what we're sending
+            console.log(`PUT ${API_BASE}/${numericId}`, body);
+
+            const res = await fetch(`${API_BASE}/${numericId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name: task.title,
-                    description: task.description,
-                    status: task.column,
-                    assignedTeams: payload.assignedTeams,
-                    assignedEmployeeIds: payload.assignedEmployeeIds,
-                    dueDate: task.dueDate || null,                     // ✅ NEW
-                    estimateHours: task.estimateHours,                 // ✅ NEW
-                }),
+                body: JSON.stringify(body),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             return true;
@@ -320,7 +367,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     async function apiDelete(id: string): Promise<boolean> {
         try {
-            const res = await fetch(`${API_BASE}/${id}`, { method: "DELETE" });
+            const numericId = Number(id);
+            if (!Number.isFinite(numericId) || numericId <= 0) return false;
+
+            const res = await fetch(`${API_BASE}/${numericId}`, { method: "DELETE" });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             return true;
         } catch (err) {
@@ -335,7 +385,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         const term = searchTerm.toLowerCase();
         return tasks.filter((task) => {
             if (task.sprintId !== currentSprintId) return false;
-            if (currentTeamId !== "all" && !teamsOfTask(task).includes(currentTeamId)) return false;
+            if (currentTeamId !== "all" && !teamsOfTask(task).includes(currentTeamId))
+                return false;
             if (term && !task.title.toLowerCase().includes(term)) return false;
             return true;
         });
@@ -352,8 +403,9 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                 .join(" ");
         }
         return assignedEmployees(task.assignee)
-            .map((employee) =>
-                `<div class="avatar avatar-small avatar-purple" title="${escapeHtml(employee.name)} · ${escapeHtml(employee.team)}">${escapeHtml(initials(employee.name))}</div>`
+            .map(
+                (employee) =>
+                    `<div class="avatar avatar-small avatar-purple" title="${escapeHtml(employee.name)} · ${escapeHtml(employee.team)}">${escapeHtml(initials(employee.name))}</div>`
             )
             .join("");
     }
@@ -363,19 +415,25 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     function renderCard(task: Task): string {
         const badges = [
-            task.dueDate ? `<span class="date-badge" title="Due date">${CLOCK_ICON} ${formatDateBadge(task.dueDate)}</span>` : "",
-            task.estimateHours > 0 ? `<span class="date-badge" title="Estimate">Est. ${formatEstimate(task.estimateHours)}</span>` : "",
+            task.dueDate
+                ? `<span class="date-badge" title="Due date">${CLOCK_ICON} ${formatDateBadge(task.dueDate)}</span>`
+                : "",
+            task.estimateHours > 0
+                ? `<span class="date-badge" title="Estimate">Est. ${formatEstimate(task.estimateHours)}</span>`
+                : "",
         ].join("");
         const assigneeHtml = renderAssignee(task);
-        const footerHtml = badges || assigneeHtml
-            ? `<div class="card-footer-row"><div class="card-badges">${badges}</div><div class="tag-avatars">${assigneeHtml}</div></div>`
-            : "";
+        const footerHtml =
+            badges || assigneeHtml
+                ? `<div class="card-footer-row"><div class="card-badges">${badges}</div><div class="tag-avatars">${assigneeHtml}</div></div>`
+                : "";
 
+        // ✅ IMPORTANT — data-task carries the backend ID for drag/drop + edits
         return `
-      <div class="card${footerHtml ? " card-detailed" : ""}" draggable="true" data-task="${task.id}">
+      <div class="card${footerHtml ? " card-detailed" : ""}" draggable="true" data-task="${escapeHtml(task.id)}">
         <div class="card-title-row">
           <span class="card-title">${escapeHtml(task.title)}</span>
-          <button type="button" class="edit-icon" data-edit="${task.id}" title="Edit task details" aria-label="Edit ${escapeHtml(task.title)}">${PENCIL_ICON}</button>
+          <button type="button" class="edit-icon" data-edit="${escapeHtml(task.id)}" title="Edit task details" aria-label="Edit ${escapeHtml(task.title)}">${PENCIL_ICON}</button>
         </div>
         ${footerHtml}
       </div>`;
@@ -404,11 +462,12 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             return;
         }
 
-        const addBtn = target.closest("[data-add]");
+        const addBtn = target.closest<HTMLElement>("[data-add]");
         if (addBtn) {
-            const draftTask = blankTask(currentSprintId, addBtn.dataset["add"]);
-            // Only pre-assign if a specific team filter is active.
-            // When "All teams" is selected, leave the task unassigned.
+            const draftTask = blankTask(
+                currentSprintId,
+                addBtn.dataset["add"] as ColumnId
+            );
             if (currentTeamId !== "all") {
                 draftTask.assignee = { kind: "team", teamId: currentTeamId };
             }
@@ -426,11 +485,15 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     }
 
     function cardAfterPointer(column: HTMLElement, pointerY: number): HTMLElement | null {
-        const cards = Array.from(column.querySelectorAll<HTMLElement>(".card:not(.dragging)"));
-        return cards.find((card) => {
-            const box = card.getBoundingClientRect();
-            return pointerY < box.top + box.height / 2;
-        }) ?? null;
+        const cards = Array.from(
+            column.querySelectorAll<HTMLElement>(".card:not(.dragging)")
+        );
+        return (
+            cards.find((card) => {
+                const box = card.getBoundingClientRect();
+                return pointerY < box.top + box.height / 2;
+            }) ?? null
+        );
     }
 
     board.addEventListener("dragstart", (event: DragEvent) => {
@@ -458,6 +521,15 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
         const moved = tasks.find((t) => t.id === draggedTaskId);
         if (moved) {
+            // ✅ SAFETY — ensure the task has a real backend ID before sending
+            if (!moved.id || moved.id === "" || Number.isNaN(Number(moved.id))) {
+                console.warn("Cannot move — task has no backend ID:", moved);
+                alert("Failed to save task: missing task ID.");
+                draggedTaskId = null;
+                clearDropMarkers();
+                return;
+            }
+
             const from = COLUMNS.find((c) => c.id === moved.column)?.name ?? "";
             moved.column = column.dataset["column"] as ColumnId;
 
@@ -519,15 +591,20 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
         teamFilterMenu.innerHTML =
             `<span class="popover-label">View board for</span>` +
-            options.map((option) => {
-                const active = option.id === currentTeamId;
-                return `
+            options
+                .map((option) => {
+                    const active = option.id === currentTeamId;
+                    return `
             <button type="button" class="filter-option${active ? " active" : ""}" data-team="${option.id}" role="menuitemradio" aria-checked="${active}">
               <span>${escapeHtml(option.name)}</span><span class="filter-count">${option.count}</span>
             </button>`;
-            }).join("");
+                })
+                .join("");
 
-        teamFilterLabel.textContent = currentTeamId === "all" ? "All teams" : (teamName(currentTeamId) || "All teams");
+        teamFilterLabel.textContent =
+            currentTeamId === "all"
+                ? "All teams"
+                : teamName(currentTeamId) || "All teams";
         teamFilterBtn.classList.toggle("filtered", currentTeamId !== "all");
     }
 
@@ -579,7 +656,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         titleInput.value = draft.title;
         descriptionBox.value = draft.description;
         dueDateInput.value = draft.dueDate;
-        estimateInput.value = draft.estimateHours > 0 ? String(draft.estimateHours) : "";
+        estimateInput.value =
+            draft.estimateHours > 0 ? String(draft.estimateHours) : "";
         errorText.textContent = "";
         saveBtn.textContent = draft.id ? "Save" : "Create task";
         deleteBtn.hidden = draft.id === "";
@@ -632,14 +710,19 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
         const ticked = assignee?.kind === "employees" ? assignee.employeeIds : [];
 
-        employeeList.innerHTML = visibleEmployees.length === 0
-            ? `<p class="employee-empty">${currentTeam ? "No employees in this team yet." : "Choose a team first."}</p>`
-            : visibleEmployees.map((employee) => `
+        employeeList.innerHTML =
+            visibleEmployees.length === 0
+                ? `<p class="employee-empty">${currentTeam ? "No employees in this team yet." : "Choose a team first."}</p>`
+                : visibleEmployees
+                      .map(
+                          (employee) => `
             <label class="employee-option">
               <input type="checkbox" value="${escapeHtml(employee.id)}" ${ticked.includes(employee.id) ? "checked" : ""} />
               <span>${escapeHtml(employee.name)}</span>
               <span class="employee-team">${escapeHtml(employee.team)}</span>
-            </label>`).join("");
+            </label>`
+                      )
+                      .join("");
     }
 
     async function saveModal(): Promise<void> {
@@ -676,7 +759,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     deleteBtn.addEventListener("click", async () => {
         if (!draft) return;
-        if (!deleteArmed) { setDeleteArmed(true); return; }
+        if (!deleteArmed) {
+            setDeleteArmed(true);
+            return;
+        }
 
         const ok = await apiDelete(draft.id);
         if (!ok) return;
@@ -690,7 +776,9 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     // ----- Popovers -----
     function closePopovers(): void {
-        overlay.querySelectorAll<HTMLElement>(".popover.visible").forEach((p) => p.classList.remove("visible"));
+        overlay
+            .querySelectorAll<HTMLElement>(".popover.visible")
+            .forEach((p) => p.classList.remove("visible"));
     }
 
     document.querySelectorAll<HTMLButtonElement>("[data-popover]").forEach((button) => {
@@ -750,16 +838,22 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     assigneeSelect.addEventListener("change", () => {
         if (!draft) return;
-        draft.assignee = assigneeSelect.value ? { kind: "team", teamId: assigneeSelect.value } : null;
+        draft.assignee = assigneeSelect.value
+            ? { kind: "team", teamId: assigneeSelect.value }
+            : null;
         renderAssignControls();
     });
 
     employeeList.addEventListener("change", () => {
         if (!draft) return;
-        const employeeIds = Array.from(employeeList.querySelectorAll<HTMLInputElement>("input:checked")).map((box) => box.value);
-        draft.assignee = employeeIds.length > 0 ? { kind: "employees", employeeIds } : null;
+        const employeeIds = Array.from(
+            employeeList.querySelectorAll<HTMLInputElement>("input:checked")
+        ).map((box) => box.value);
+        draft.assignee =
+            employeeIds.length > 0 ? { kind: "employees", employeeIds } : null;
         const chip = summary.querySelector(".summary-chip");
-        if (chip) chip.innerHTML = `<b>Assigned to</b> ${escapeHtml(assigneeLabel(draft.assignee))}`;
+        if (chip)
+            chip.innerHTML = `<b>Assigned to</b> ${escapeHtml(assigneeLabel(draft.assignee))}`;
     });
 
     requireElement<HTMLButtonElement>("unassignBtn").addEventListener("click", () => {
@@ -769,7 +863,9 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     });
 
     // ----- Open / close wiring -----
-    saveBtn.addEventListener("click", () => { void saveModal(); });
+    saveBtn.addEventListener("click", () => {
+        void saveModal();
+    });
     titleInput.addEventListener("input", () => (errorText.textContent = ""));
     titleInput.addEventListener("keydown", (event: KeyboardEvent) => {
         if (event.key === "Enter") void saveModal();
@@ -829,7 +925,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     projectNameInput.addEventListener("blur", commitProjectName);
     projectNameInput.addEventListener("keydown", (event: KeyboardEvent) => {
         if (event.key === "Enter") projectNameInput.blur();
-        else if (event.key === "Escape") { projectNameInput.value = projectName; projectNameInput.blur(); }
+        else if (event.key === "Escape") {
+            projectNameInput.value = projectName;
+            projectNameInput.blur();
+        }
     });
 
     projectNameInput.value = projectName;
