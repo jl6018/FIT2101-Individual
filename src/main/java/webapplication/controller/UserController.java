@@ -54,19 +54,24 @@ public class UserController {
         userService.deleteUser(id);
     }
 
+    // ✅ UPDATED — now includes team name
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
         User user = userService.login(loginRequest.getEmail(), loginRequest.getPassword());
         if (user == null) {
             return ResponseEntity.status(401).body("Invalid email or password");
         }
+        String teamName = user.getTeam() != null ? user.getTeam().getName() : null;
         LoginResponse response = new LoginResponse(
-                user.getId(), user.getName(), user.getEmail(), user.getRole()
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getRole(),
+                teamName
         );
         return ResponseEntity.ok(response);
     }
 
-    // ===================== TEAM / JOB TITLE =====================
     @PutMapping("/{id}/team")
     public ResponseEntity<?> updateTeam(@PathVariable Long id,
                                         @RequestBody Map<String, String> body) {
