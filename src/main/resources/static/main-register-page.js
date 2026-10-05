@@ -1,9 +1,26 @@
+/**
+ * Register Page — Symph Web Application
+ * Compiled output of main-register-page.ts.
+ * Handles account creation, client-side validation, and backend registration.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+/**
+ * Retrieves a DOM element by its ID and throws if not found.
+ *
+ * @param {string} id      The ID of the element to retrieve
+ * @returns {HTMLElement}  The matching DOM element
+ * @throws {Error}         if no element with the given ID exists
+ */
 function requireElement(id) {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Missing element: ${id}`);
     return el;
 }
 
+// ===================== ELEMENTS =====================
 const form = requireElement('registerForm');
 const nameInput = requireElement('name');
 const emailInput = requireElement('email');
@@ -14,6 +31,11 @@ const errorBanner = requireElement('errorBanner');
 const errorText = requireElement('errorText');
 const dismissError = requireElement('dismissError');
 
+/**
+ * Displays an error message in the banner.
+ *
+ * @param {string} message The error message to show
+ */
 function showError(message) {
     errorText.textContent = message;
     errorBanner.classList.add('visible');
@@ -21,6 +43,11 @@ function showError(message) {
     errorBanner.style.color = '#C0392B';
 }
 
+/**
+ * Displays a success message in the banner.
+ *
+ * @param {string} message The success message to show
+ */
 function showSuccess(message) {
     errorText.textContent = message;
     errorBanner.classList.add('visible');
@@ -28,12 +55,16 @@ function showSuccess(message) {
     errorBanner.style.color = '#065F46';
 }
 
+/**
+ * Hides the error banner.
+ */
 function hideBanner() {
     errorBanner.classList.remove('visible');
 }
 
 dismissError.addEventListener('click', hideBanner);
 
+// ===================== FORM SUBMIT =====================
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     hideBanner();

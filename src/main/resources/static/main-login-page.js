@@ -1,3 +1,13 @@
+/**
+ * Login Page — Symph Web Application
+ * Compiled output of main-login-page.ts.
+ * Handles user authentication, demo mode login, session storage, and
+ * role-based redirects to the admin or employee board.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
 "use strict";
 // main-login-page.js
 // Merged: A's DEMO_MODE + B's sessionStorage handling + role-based redirect
@@ -15,6 +25,13 @@ window.addEventListener('pageshow', (event) => {
 // ============================================================
 const DEMO_MODE = false;
 
+/**
+ * Retrieves a DOM element by its ID and throws if not found.
+ *
+ * @param {string} id      The ID of the element to retrieve
+ * @returns {HTMLElement}  The matching DOM element
+ * @throws {Error}         if no element with the given ID exists
+ */
 function requireElement(id) {
     const el = document.getElementById(id);
     if (!el) {
@@ -23,6 +40,7 @@ function requireElement(id) {
     return el;
 }
 
+// ===================== ELEMENTS =====================
 const form = requireElement('loginForm');
 const userIdInput = requireElement('userId');
 const passwordInput = requireElement('password');
@@ -31,11 +49,19 @@ const errorText = requireElement('errorText');
 const dismissError = requireElement('dismissError');
 const submitBtn = requireElement('submitBtn');
 
+/**
+ * Displays an error message in the banner.
+ *
+ * @param {string} message The error message to show
+ */
 function showError(message) {
     errorText.textContent = message;
     errorBanner.classList.add('visible');
 }
 
+/**
+ * Hides the error banner.
+ */
 function hideError() {
     errorBanner.classList.remove('visible');
 }
@@ -45,6 +71,14 @@ userIdInput.addEventListener('input', hideError);
 passwordInput.addEventListener('input', hideError);
 
 // ===================== DEMO LOGIN =====================
+/**
+ * Performs a demo login with hard-coded credentials.
+ *
+ * @param {string} userId   The user ID entered
+ * @param {string} password The password entered
+ * @returns {Promise<Object>} A promise resolving to a login response
+ * @throws {Error}           if the credentials are incorrect
+ */
 async function handleLoginDemo(userId, password) {
     await new Promise((resolve) => setTimeout(resolve, 400));
 
@@ -63,6 +97,14 @@ async function handleLoginDemo(userId, password) {
 }
 
 // ===================== REAL LOGIN =====================
+/**
+ * Performs a real login by calling the backend API.
+ *
+ * @param {string} userId   The user's email address
+ * @param {string} password The user's password
+ * @returns {Promise<Object>} A promise resolving to a login response
+ * @throws {Error}           if the credentials are incorrect
+ */
 async function handleLoginReal(userId, password) {
     const res = await fetch('/api/users/login', {
         method: 'POST',
@@ -85,7 +127,7 @@ async function handleLoginReal(userId, password) {
     return data;
 }
 
-// ===================== SUBMIT =====================
+// ===================== FORM SUBMIT =====================
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -116,7 +158,7 @@ form.addEventListener('submit', async (e) => {
         sessionStorage.setItem('email', data.email || '');
         sessionStorage.setItem('name', data.name || '');
         sessionStorage.setItem('userId', String(data.id ?? ''));
-        sessionStorage.setItem('team', data.team || '');   // ✅ ADD
+        sessionStorage.setItem('team', data.team || '');
 
         // Role-based redirect
         if (data.role === 'ADMIN') {

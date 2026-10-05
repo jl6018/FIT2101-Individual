@@ -1,9 +1,25 @@
+/**
+ * Register Page — Symph Web Application
+ * Handles account creation, client-side validation, and backend registration.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+/**
+ * Retrieves a DOM element by its ID and throws if not found.
+ *
+ * @param id The ID of the element to retrieve
+ * @returns  The element cast to the expected type
+ * @throws Error if no element with the given ID exists
+ */
 function requireElement<T extends HTMLElement>(id: string): T {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Missing element: ${id}`);
     return el as T;
 }
 
+// ===================== ELEMENTS =====================
 const form = requireElement<HTMLFormElement>('registerForm');
 const nameInput = requireElement<HTMLInputElement>('name');
 const emailInput = requireElement<HTMLInputElement>('email');
@@ -14,17 +30,26 @@ const errorBanner = requireElement<HTMLDivElement>('errorBanner');
 const errorText = requireElement<HTMLSpanElement>('errorText');
 const dismissError = requireElement<HTMLButtonElement>('dismissError');
 
+/**
+ * Displays an error message in the banner.
+ *
+ * @param message The error message to show
+ */
 function showError(message: string): void {
     errorText.textContent = message;
     errorBanner.classList.add('visible');
 }
 
+/**
+ * Hides the error banner.
+ */
 function hideError(): void {
     errorBanner.classList.remove('visible');
 }
 
 dismissError.addEventListener('click', hideError);
 
+// ===================== FORM SUBMIT =====================
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
 

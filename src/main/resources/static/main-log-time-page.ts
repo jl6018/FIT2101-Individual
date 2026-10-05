@@ -1,9 +1,26 @@
+/**
+ * Log Time Page — Symph Web Application
+ * Handles the log time modal, allowing users to record the date, start time,
+ * and hours spent on a task.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+/**
+ * Retrieves a DOM element by its ID and throws if not found.
+ *
+ * @param id The ID of the element to retrieve
+ * @returns  The element cast to the expected type
+ * @throws Error if no element with the given ID exists
+ */
 function requireElement<T extends HTMLElement>(id: string): T {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Missing element: ${id}`);
     return el as T;
 }
 
+// ===================== ELEMENTS =====================
 const closeLogTimeBtn = requireElement<HTMLButtonElement>('closeLogTimeBtn');
 const logTimeForm = requireElement<HTMLFormElement>('logTimeForm');
 const logDate = requireElement<HTMLInputElement>('logDate');
@@ -14,6 +31,7 @@ closeLogTimeBtn.addEventListener('click', () => {
     document.getElementById('logTimeOverlay')?.classList.remove('visible');
 });
 
+// ===================== FORM SUBMIT =====================
 logTimeForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 

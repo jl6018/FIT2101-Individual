@@ -2,6 +2,15 @@
 // Compile with:
 //   npx tsc main-reports-page.ts --module esnext --target esnext --strict --ignoreConfig
 
+/**
+ * Reports Page — Symph Web Application
+ * Handles time contribution tables, hours-per-task bar charts, sprint burndown
+ * charts, and the member history modal.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
 // ===================== BFCACHE FIX =====================
 window.addEventListener('pageshow', (event) => {
     if ((event as PageTransitionEvent).persisted && sessionStorage.getItem('loggedIn') !== 'true') {
@@ -25,6 +34,13 @@ if (nameEl) {
     }
 }
 
+/**
+ * Retrieves a DOM element by its ID and throws if not found.
+ *
+ * @param id The ID of the element to retrieve
+ * @returns  The element cast to the expected type
+ * @throws Error if no element with the given ID exists
+ */
 function requireElement<T extends Element>(id: string): T {
     const el = document.getElementById(id);
     if (!el) {
@@ -34,18 +50,21 @@ function requireElement<T extends Element>(id: string): T {
 }
 
 // ===================== DATA TYPES =====================
+/** Reference data for a team member. */
 interface TeamMember {
     name: string;
     team: string;
     initials: string;
 }
 
+/** A logged work session associated with a member. */
 interface LoggedSession {
     member: string;
     hours: number;
     daysAgo: number;
 }
 
+/** Shape of a time log as returned by the backend API. */
 interface ApiTimeLog {
     id: number;
     hours: number;
@@ -55,6 +74,7 @@ interface ApiTimeLog {
     task?: { name?: string };
 }
 
+/** Shape of a user as returned by the backend API. */
 interface ApiUser {
     id: number;
     name: string;
@@ -68,6 +88,9 @@ let TEAM_MEMBERS: TeamMember[] = [];
 let SESSIONS: LoggedSession[] = [];
 
 // ===================== BACKEND LOADERS =====================
+/**
+ * Loads all employees from the backend and caches them in TEAM_MEMBERS.
+ */
 async function loadTeamMembers(): Promise<void> {
     try {
         const res = await fetch('/api/users');
@@ -93,9 +116,12 @@ async function loadTeamMembers(): Promise<void> {
     }
 }
 
+/**
+ * Loads all time logs from the backend and caches them in SESSIONS.
+ */
 async function loadSessions(): Promise<void> {
     try {
-        const res = await fetch('/api/timelogs');
+            const res = await fetch('/api/timelogs');
         if (!res.ok) throw new Error('Failed to load sessions');
 
         const logs: ApiTimeLog[] = await res.json();
@@ -154,9 +180,20 @@ const confirmLogoutBtn = requireElement<HTMLButtonElement>('confirmLogoutBtn');
 let selectedWeeks = 1;
 
 // ===================== MODAL OPEN/CLOSE =====================
+/**
+ * Shows a modal overlay by adding the "visible" class.
+ *
+ * @param overlay The overlay element to show
+ */
 function openModal(overlay: HTMLDivElement): void {
     overlay.classList.add('visible');
 }
+
+/**
+ * Hides a modal overlay by removing the "visible" class.
+ *
+ * @param overlay The overlay element to hide
+ */
 function closeModal(overlay: HTMLDivElement): void {
     overlay.classList.remove('visible');
 }
@@ -192,12 +229,20 @@ timeRangeRow.querySelectorAll<HTMLButtonElement>('.range-btn').forEach((btn) => 
 });
 
 // ===================== CONTRIBUTION TABLE =====================
+/** Aggregated statistics for a single team member. */
 interface MemberStats {
     totalHours: number;
     daysWorked: number;
     avgPerDay: number;
 }
 
+/**
+ * Computes contribution statistics for a member over a period.
+ *
+ * @param memberName  The member's name
+ * @param maxDaysAgo  The maximum number of days to look back
+ * @returns           The member's aggregated statistics
+ */
 function computeStats(memberName: string, maxDaysAgo: number): MemberStats {
     const sessions = SESSIONS.filter(
         (s) => s.member === memberName && s.daysAgo < maxDaysAgo
@@ -211,6 +256,9 @@ function computeStats(memberName: string, maxDaysAgo: number): MemberStats {
     return { totalHours, daysWorked, avgPerDay };
 }
 
+/**
+ * Renders the team contribution table.
+ */
 function renderContributionTable(): void {
     const maxDaysAgo = selectedWeeks * 7;
     contributionTitle.textContent = `Team contribution — last ${maxDaysAgo} days`;
@@ -241,6 +289,12 @@ function renderContributionTable(): void {
     });
 }
 
+/**
+ * Opens the member history modal for a given member.
+ *
+ * @param member     The member to display history for
+ * @param maxDaysAgo The maximum number of days to look back
+ */
 function openMemberModal(member: TeamMember, maxDaysAgo: number): void {
     memberModalName.textContent = member.name;
     memberModalTeam.textContent = `${member.team} — logged sessions`;
@@ -286,6 +340,9 @@ function openMemberModal(member: TeamMember, maxDaysAgo: number): void {
 // ===================== HOURS PER TASK CHART =====================
 const TASK_BAR_COLORS = ['#8B5FBF', '#8B5FBF', '#F5C518', '#F5C518', '#F06478', '#F06478', '#2ED4C6'];
 
+/**
+ * Renders the hours-per-task bar chart.
+ */
 function renderTaskHoursChart(): void {
     const maxHours = Math.max(...TASK_HOURS.map((t) => t.hours), 1);
 
@@ -307,6 +364,9 @@ function renderTaskHoursChart(): void {
 }
 
 // ===================== BURNDOWN CHART =====================
+/**
+ * Renders the sprint burndown chart as an SVG.
+ */
 function renderBurndownChart(): void {
     const width = 600;
     const height = 260;
@@ -318,6 +378,12 @@ function renderBurndownChart(): void {
 
     const maxValue = Math.max(...BURNDOWN_PROJECTED, ...BURNDOWN_ACTUAL);
 
+    /**
+     * Converts an array of values into an SVG polyline points string.
+     *
+     * @param values The values to plot
+     * @returns       A points string for an SVG polyline
+     */
     function toPoints(values: number[]): string {
         return values
             .map((v, i) => {
@@ -384,6 +450,9 @@ function renderBurndownChart(): void {
 }
 
 // ===================== INIT =====================
+/**
+ * Initializes the reports page by loading data and rendering all charts.
+ */
 async function init(): Promise<void> {
     await loadTeamMembers();
     await loadSessions();

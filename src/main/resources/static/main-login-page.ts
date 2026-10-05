@@ -2,6 +2,15 @@
 // Compile with:
 //   npx tsc main-login-page.ts --module esnext --target esnext --strict --ignoreConfig
 
+/**
+ * Login Page — Symph Web Application
+ * Handles user authentication, demo mode login, session storage, and
+ * role-based redirects to the admin or employee board.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
 // ============================================================
 // DEMO MODE — set to false for real backend login
 // ============================================================
@@ -14,6 +23,7 @@ window.addEventListener('pageshow', (event) => {
     }
 });
 
+/** Shape of the login response returned by the backend. */
 interface LoginResponse {
     message?: string;
     token?: string;
@@ -22,9 +32,16 @@ interface LoginResponse {
     id?: number;
     name?: string;
     email?: string;
-    team?: string;   // ✅ ADD
+    team?: string;
 }
 
+/**
+ * Retrieves a DOM element by its ID and throws if not found.
+ *
+ * @param id The ID of the element to retrieve
+ * @returns  The element cast to the expected type
+ * @throws Error if no element with the given ID exists
+ */
 function requireElement<T extends HTMLElement>(id: string): T {
     const el = document.getElementById(id);
     if (!el) {
@@ -33,6 +50,7 @@ function requireElement<T extends HTMLElement>(id: string): T {
     return el as T;
 }
 
+// ===================== ELEMENTS =====================
 const form = requireElement<HTMLFormElement>('loginForm');
 const userIdInput = requireElement<HTMLInputElement>('userId');
 const passwordInput = requireElement<HTMLInputElement>('password');
@@ -41,11 +59,19 @@ const errorText = requireElement<HTMLSpanElement>('errorText');
 const dismissError = requireElement<HTMLButtonElement>('dismissError');
 const submitBtn = requireElement<HTMLButtonElement>('submitBtn');
 
+/**
+ * Displays an error message in the banner.
+ *
+ * @param message The error message to show
+ */
 function showError(message: string): void {
     errorText.textContent = message;
     errorBanner.classList.add('visible');
 }
 
+/**
+ * Hides the error banner.
+ */
 function hideError(): void {
     errorBanner.classList.remove('visible');
 }
@@ -55,6 +81,14 @@ userIdInput.addEventListener('input', hideError);
 passwordInput.addEventListener('input', hideError);
 
 // ===================== DEMO LOGIN =====================
+/**
+ * Performs a demo login with hard-coded credentials.
+ *
+ * @param userId   The user ID entered
+ * @param password The password entered
+ * @returns         A promise resolving to a LoginResponse
+ * @throws Error    if the credentials are incorrect
+ */
 async function handleLoginDemo(userId: string, password: string): Promise<LoginResponse> {
     await new Promise((resolve) => setTimeout(resolve, 400));
 
@@ -73,6 +107,14 @@ async function handleLoginDemo(userId: string, password: string): Promise<LoginR
 }
 
 // ===================== REAL LOGIN =====================
+/**
+ * Performs a real login by calling the backend API.
+ *
+ * @param userId   The user's email address
+ * @param password The user's password
+ * @returns         A promise resolving to a LoginResponse
+ * @throws Error    if the credentials are incorrect
+ */
 async function handleLoginReal(userId: string, password: string): Promise<LoginResponse> {
     const res = await fetch('/api/users/login', {
         method: 'POST',
@@ -95,6 +137,7 @@ async function handleLoginReal(userId: string, password: string): Promise<LoginR
     return data;
 }
 
+// ===================== FORM SUBMIT =====================
 form.addEventListener('submit', async (e: SubmitEvent) => {
     e.preventDefault();
 
@@ -125,7 +168,7 @@ form.addEventListener('submit', async (e: SubmitEvent) => {
         sessionStorage.setItem('email', data.email || '');
         sessionStorage.setItem('name', data.name || '');
         sessionStorage.setItem('userId', String(data.id ?? ''));
-        sessionStorage.setItem('team', data.team || '');   // ✅ ADD
+        sessionStorage.setItem('team', data.team || '');
 
         // ===================== ROLE-BASED REDIRECT =====================
         if (data.role === 'ADMIN') {

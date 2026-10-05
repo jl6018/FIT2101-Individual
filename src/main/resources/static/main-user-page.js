@@ -1,6 +1,15 @@
+/**
+ * User Board Page — Symph Web Application
+ * Compiled from main-user-page.ts — do not hand-edit.
+ * Provides a read-only Kanban board for employees. Loads tasks scoped to the
+ * employee's team or sprint, handles sprint tab switching, and displays a
+ * read-only task modal.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
 "use strict";
-// main-user-page.js
-// Compiled from main-user-page.ts — do not hand-edit.
 
 // ===================== EMPLOYEE GUARD =====================
 window.addEventListener("pageshow", (event) => {
@@ -23,12 +32,25 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     const API_BASE = "http://localhost:8080/api/tasks";
 
     // ===================== HELPERS =====================
+    /**
+     * Retrieves a DOM element by its ID and throws if not found.
+     *
+     * @param {string} id      The ID of the element to retrieve
+     * @returns {HTMLElement}  The matching DOM element
+     * @throws {Error}         if no element with the given ID exists
+     */
     function requireElement(id) {
         const el = document.getElementById(id);
         if (!el) throw new Error(`Missing element: ${id}`);
         return el;
     }
 
+    /**
+     * Escapes HTML special characters to prevent XSS injection.
+     *
+     * @param {string} text The raw string to escape
+     * @returns {string}    The escaped string
+     */
     function escapeHtml(text) {
         return text
             .replace(/&/g, "&amp;")
@@ -38,6 +60,12 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             .replace(/'/g, "&#39;");
     }
 
+    /**
+     * Formats an ISO date string into a short badge label.
+     *
+     * @param {string} isoDate The ISO date string (YYYY-MM-DD)
+     * @returns {string}       A string such as "5 Sep"
+     */
     function formatDateBadge(isoDate) {
         const date = new Date(`${isoDate}T00:00:00`);
         return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
@@ -94,6 +122,11 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     });
 
     // ===================== BACKEND SYNC =====================
+    /**
+     * Fetches tasks scoped to the employee's team or current sprint.
+     *
+     * @returns {Promise<Array>} A promise resolving to an array of tasks
+     */
     async function fetchTasks() {
         try {
             const team = sessionStorage.getItem("team") || "";
@@ -131,6 +164,12 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     // ===================== RENDER =====================
     const CLOCK_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>`;
 
+    /**
+     * Renders a single task card as HTML.
+     *
+     * @param {Object} task The task to render
+     * @returns {string}    The card's HTML string
+     */
     function renderCard(task) {
         const badges = [
             task.dueDate ? `<span class="date-badge" title="Due date">${CLOCK_ICON} ${formatDateBadge(task.dueDate)}</span>` : "",
@@ -150,6 +189,9 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
       </div>`;
     }
 
+    /**
+     * Renders the full board with all columns and their cards.
+     */
     function renderBoard() {
         board.innerHTML = COLUMNS.map((column) => {
             const cards = tasks.filter((t) => t.column === column.id);
@@ -170,6 +212,11 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     const closeBtn = document.getElementById("modalCloseBtn");
     const cancelBtn = document.getElementById("modalCancelBtn");
 
+    /**
+     * Opens the read-only task modal with the given task's details.
+     *
+     * @param {Object} task The task to display
+     */
     function openModal(task) {
         modalColumn.value = task.column;
 
@@ -187,6 +234,9 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         overlay.classList.add("visible");
     }
 
+    /**
+     * Closes the read-only task modal.
+     */
     function closeModal() {
         overlay.classList.remove("visible");
     }
@@ -213,7 +263,11 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (task) openModal(task);
     });
 
-    // ===================== SPRINT TABS (FUNCTIONAL + PERSIST) =====================
+    // ===================== SPRINT TABS =====================
+    /**
+     * Wires up click handlers for the sprint tab buttons and persists the
+     * selected sprint in sessionStorage.
+     */
     function initSprintTabs() {
         const tabs = document.querySelectorAll(".sprint-tab");
 
@@ -242,6 +296,9 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     // ===================== INIT =====================
+    /**
+     * Initializes the user board page by loading tasks and wiring UI.
+     */
     async function init() {
         initSprintTabs();
         tasks = await fetchTasks();
