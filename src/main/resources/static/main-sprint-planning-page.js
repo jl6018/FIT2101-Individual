@@ -61,9 +61,9 @@ const closeInviteBtn = requireElement('closeInviteBtn');
 const sprintPlanningForm = requireElement('sprintPlanningForm');
 const inviteForm = requireElement('inviteForm');
 const sprintNameInput = requireElement('sprintName');
+const sprintStartDateInput = requireElement('sprintStartDate');
 const sprintDurationSelect = requireElement('sprintDuration');
-const taskDescriptionInput = requireElement('taskDescription');
-const taskDateInput = requireElement('taskDate');
+const sprintEndDateInput = requireElement('sprintEndDate');
 const membersList = requireElement('membersList');
 const ownerEmailInput = requireElement('ownerEmail');
 const pastSprintsBody = requireElement('pastSprintsBody');
@@ -76,6 +76,11 @@ function closeModal(overlay) { overlay.classList.remove('visible'); }
 startSprintPlanningBtn.addEventListener('click', async () => {
     await loadMembers();
     populateSprintNameOptions();
+    populateDurationOptions();
+
+    sprintStartDateInput.value = new Date().toISOString().split('T')[0];
+    recalculateEndDate();
+
     openModal(sprintPlanningOverlay);
 });
 closeSprintPlanningBtn.addEventListener('click', () => closeModal(sprintPlanningOverlay));
@@ -101,25 +106,31 @@ function showToast(message, type = 'success') {
 }
 
 // ===================== HELPERS =====================
-function formatDateRange(startDate, weeks) {
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + weeks * 7);
-    const options = { day: 'numeric', month: 'short' };
-    const startStr = startDate.toLocaleDateString('en-GB', options);
-    const endStr = endDate.toLocaleDateString('en-GB', { ...options, year: 'numeric' });
-    return {
-        start: startDate.toISOString().split('T')[0],
-        end: endDate.toISOString().split('T')[0],
-        label: `${startStr} - ${endStr}`,
-    };
-}
-
 function statusLabel(status) {
     if (status === 'PLANNED') return 'Planned';
     if (status === 'ACTIVE') return 'In progress';
     if (status === 'COMPLETED') return 'Completed';
     return status;
 }
+
+function recalculateEndDate() {
+    const startValue = sprintStartDateInput.value;
+    const weeks = Number(sprintDurationSelect.value);
+
+    if (!startValue || !weeks) {
+        sprintEndDateInput.value = '';
+        return;
+    }
+
+    const start = new Date(startValue + 'T00:00:00');
+    const end = new Date(start);
+    end.setDate(end.getDate() + weeks * 7);
+
+    sprintEndDateInput.value = end.toISOString().split('T')[0];
+}
+
+sprintStartDateInput.addEventListener('change', recalculateEndDate);
+sprintDurationSelect.addEventListener('change', recalculateEndDate);
 
 // ===================== LOAD MEMBERS =====================
 async function loadMembers() {
@@ -233,6 +244,13 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
         return;
     }
 
+    const startDate = sprintStartDateInput.value;
+    if (!startDate) {
+        sprintStartDateInput.focus();
+        showToast('Please choose a start date.', 'error');
+        return;
+    }
+
     const weeks = Number(sprintDurationSelect.value);
     if (!weeks || weeks < 1 || weeks > 3) {
         sprintDurationSelect.focus();
@@ -240,10 +258,14 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
         return;
     }
 
+    const endDate = sprintEndDateInput.value;
+    if (!endDate) {
+        showToast('Could not calculate end date.', 'error');
+        return;
+    }
+
     const checkedMembers = membersList.querySelectorAll('input[type="checkbox"]:checked');
     const memberCount = checkedMembers.length;
-
-    const dates = formatDateRange(new Date(), weeks);
 
     try {
         const res = await fetch(SPRINTS_API, {
@@ -251,8 +273,8 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 name: sprintName,
-                startDate: dates.start,
-                endDate: dates.end,
+                startDate: startDate,
+                endDate: endDate,
                 memberCount,
                 status: 'PLANNED',
             }),
@@ -268,6 +290,7 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
         sprintPlanningForm.reset();
         populateSprintNameOptions();
         populateDurationOptions();
+        recalculateEndDate();
         await loadSprints();
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to create sprint';
@@ -310,4 +333,4 @@ inviteForm.addEventListener('submit', async (e) => {
 // ===================== INIT =====================
 populateSprintNameOptions();
 populateDurationOptions();
-loadSprints();
+void loadSprints();
