@@ -102,6 +102,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             dueDate: "",
             estimateHours: 0,
             priority: "",
+            position: 0,               // ✅ NEW
         };
     }
 
@@ -354,6 +355,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     dueDate: t.dueDate ?? "",
                     estimateHours: t.estimateHours ?? 0,
                     priority: t.priority ?? "",
+                    position: t.position ?? 0,       // ✅ NEW
                 };
             });
         } catch (err) {
@@ -383,6 +385,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     dueDate: task.dueDate || null,
                     estimateHours: task.estimateHours,
                     priority: task.priority || null,
+                    position: task.position,        // ✅ NEW
                     sprint: { id: Number(currentSprintId) },
                 }),
             });
@@ -414,6 +417,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                 dueDate: task.dueDate || null,
                 estimateHours: task.estimateHours,
                 priority: task.priority || null,
+                position: task.position,            // ✅ NEW
                 sprint: { id: Number(currentSprintId) },
             };
 
@@ -503,10 +507,13 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
       </div>`;
     }
 
+    // ✅ CHANGED — cards sorted by `position`
     function renderBoard() {
         const shown = visibleTasks();
         board.innerHTML = COLUMNS.map((column) => {
-            const cards = shown.filter((task) => task.column === column.id);
+            const cards = shown
+                .filter((task) => task.column === column.id)
+                .sort((a, b) => a.position - b.position);
             return `
       <section class="column" data-column="${column.id}">
         <h2>${column.name}</h2>
@@ -571,30 +578,57 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         cardAfterPointer(column, event.clientY)?.classList.add("drop-before");
     });
 
+    // ✅ CHANGED — computes and persists the new `position`
     board.addEventListener("drop", async (event) => {
         const column = event.target.closest(".column");
         if (!column || !draggedTaskId) return;
         event.preventDefault();
 
         const moved = tasks.find((t) => t.id === draggedTaskId);
-        if (moved) {
-            if (!moved.id || moved.id === "" || Number.isNaN(Number(moved.id))) {
-                console.warn("Cannot move — task has no backend ID:", moved);
-                showAlertModal("Cannot move", "This task has no ID yet. Refresh the page and try again.");
-                draggedTaskId = null;
-                clearDropMarkers();
-                return;
-            }
+        if (!moved) {
+            draggedTaskId = null;
+            clearDropMarkers();
+            return;
+        }
 
-            const from = COLUMNS.find((c) => c.id === moved.column)?.name ?? "";
-            moved.column = column.dataset["column"];
+        if (!moved.id || moved.id === "" || Number.isNaN(Number(moved.id))) {
+            console.warn("Cannot move — task has no backend ID:", moved);
+            showAlertModal("Cannot move", "This task has no ID yet. Refresh the page and try again.");
+            draggedTaskId = null;
+            clearDropMarkers();
+            return;
+        }
 
-            const ok = await apiUpdate(moved);
-            if (ok) {
-                const to = COLUMNS.find((c) => c.id === moved.column)?.name ?? "";
-                if (from !== to) showToast(`Moved to ${to}`);
-                await refreshFromBackend();
-            }
+        const targetColumn = column.dataset["column"];
+        const beforeId =
+            cardAfterPointer(column, event.clientY)?.dataset["task"] ?? null;
+
+        const siblings = tasks
+            .filter((t) => t.column === targetColumn && t.id !== moved.id)
+            .sort((a, b) => a.position - b.position);
+
+        let newPosition;
+        if (!beforeId) {
+            const last = siblings[siblings.length - 1];
+            newPosition = last ? last.position + 1 : 1;
+        } else {
+            const idx = siblings.findIndex((t) => t.id === beforeId);
+            const prev = siblings[idx - 1];
+            const next = siblings[idx];
+            newPosition = prev
+                ? (prev.position + next.position) / 2
+                : next.position - 1;
+        }
+
+        const from = COLUMNS.find((c) => c.id === moved.column)?.name ?? "";
+        moved.column = targetColumn;
+        moved.position = newPosition;
+
+        const ok = await apiUpdate(moved);
+        if (ok) {
+            const to = COLUMNS.find((c) => c.id === moved.column)?.name ?? "";
+            if (from !== to) showToast(`Moved to ${to}`);
+            await refreshFromBackend();
         }
 
         draggedTaskId = null;

@@ -64,6 +64,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         dueDate: string;
         estimateHours: number;
         priority: Priority;
+        position: number;               // ✅ NEW — controls card order (Trello-style)
     };
 
     type Team = { id: string; name: string };
@@ -79,6 +80,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         dueDate?: string | null;
         estimateHours?: number | null;
         priority?: Priority | null;
+        position?: number | null;       // ✅ NEW
     };
 
     type BackendUser = {
@@ -156,6 +158,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             dueDate: "",
             estimateHours: 0,
             priority: "",
+            position: 0,               // ✅ NEW
         };
     }
 
@@ -352,7 +355,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     });
 
     // -------- Invite Product Owner (Share button) --------
-    // Same behaviour as the Team Management version — same endpoint, same toasts.
     const shareBtn = document.getElementById("shareBtn");
     const inviteOverlay = document.getElementById("inviteOverlay");
     const closeInviteBtn = document.getElementById("closeInviteBtn");
@@ -438,6 +440,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     dueDate: t.dueDate ?? "",
                     estimateHours: t.estimateHours ?? 0,
                     priority: (t.priority ?? "") as Priority,
+                    position: t.position ?? 0,     // ✅ NEW
                 };
             });
         } catch (err) {
@@ -467,6 +470,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     dueDate: task.dueDate || null,
                     estimateHours: task.estimateHours,
                     priority: task.priority || null,
+                    position: task.position,            // ✅ NEW
                     sprint: { id: Number(currentSprintId) },
                 }),
             });
@@ -498,6 +502,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                 dueDate: task.dueDate || null,
                 estimateHours: task.estimateHours,
                 priority: task.priority || null,
+                position: task.position,               // ✅ NEW
                 sprint: { id: Number(currentSprintId) },
             };
 
@@ -594,10 +599,13 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
       </div>`;
     }
 
+    // ✅ CHANGED — cards are sorted by `position` so the saved order is honoured
     function renderBoard(): void {
         const shown = visibleTasks();
         board.innerHTML = COLUMNS.map((column) => {
-            const cards = shown.filter((task) => task.column === column.id);
+            const cards = shown
+                .filter((task) => task.column === column.id)
+                .sort((a, b) => a.position - b.position);
             return `
       <section class="column" data-column="${column.id}">
         <h2>${column.name}</h2>
@@ -669,30 +677,60 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         cardAfterPointer(column, event.clientY)?.classList.add("drop-before");
     });
 
+    // ✅ CHANGED — computes the dropped card's new `position` and persists it
     board.addEventListener("drop", async (event: DragEvent) => {
         const column = (event.target as HTMLElement).closest<HTMLElement>(".column");
         if (!column || !draggedTaskId) return;
         event.preventDefault();
 
         const moved = tasks.find((t) => t.id === draggedTaskId);
-        if (moved) {
-            if (!moved.id || moved.id === "" || Number.isNaN(Number(moved.id))) {
-                console.warn("Cannot move — task has no backend ID:", moved);
-                showAlertModal("Cannot move", "This task has no ID yet. Refresh the page and try again.");
-                draggedTaskId = null;
-                clearDropMarkers();
-                return;
-            }
+        if (!moved) {
+            draggedTaskId = null;
+            clearDropMarkers();
+            return;
+        }
 
-            const from = COLUMNS.find((c) => c.id === moved.column)?.name ?? "";
-            moved.column = column.dataset["column"] as ColumnId;
+        if (!moved.id || moved.id === "" || Number.isNaN(Number(moved.id))) {
+            console.warn("Cannot move — task has no backend ID:", moved);
+            showAlertModal("Cannot move", "This task has no ID yet. Refresh the page and try again.");
+            draggedTaskId = null;
+            clearDropMarkers();
+            return;
+        }
 
-            const ok = await apiUpdate(moved);
-            if (ok) {
-                const to = COLUMNS.find((c) => c.id === moved.column)?.name ?? "";
-                if (from !== to) showToast(`Moved to ${to}`);
-                await refreshFromBackend();
-            }
+        const targetColumn = column.dataset["column"] as ColumnId;
+        const beforeId =
+            cardAfterPointer(column, event.clientY)?.dataset["task"] ?? null;
+
+        // Other cards already in the target column, sorted by their stored position
+        const siblings = tasks
+            .filter((t) => t.column === targetColumn && t.id !== moved.id)
+            .sort((a, b) => a.position - b.position);
+
+        // Work out the new numeric position: between the neighbours if dropped
+        // on a card, or one past the last card if dropped at the bottom.
+        let newPosition: number;
+        if (!beforeId) {
+            const last = siblings[siblings.length - 1];
+            newPosition = last ? last.position + 1 : 1;
+        } else {
+            const idx = siblings.findIndex((t) => t.id === beforeId);
+            const prev = siblings[idx - 1];
+            const next = siblings[idx];
+            newPosition = prev
+                ? (prev.position + next.position) / 2
+                : next.position - 1;
+        }
+
+        const from = COLUMNS.find((c) => c.id === moved.column)?.name ?? "";
+        moved.column = targetColumn;
+        moved.position = newPosition;
+
+        const ok = await apiUpdate(moved);
+        if (ok) {
+            const to = COLUMNS.find((c) => c.id === moved.column)?.name ?? "";
+            if (from !== to) showToast(`Moved to ${to}`);
+            await refreshFromBackend();
         }
 
         draggedTaskId = null;
