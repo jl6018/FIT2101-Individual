@@ -1,179 +1,232 @@
-export {};
+// main-user-page.ts
+// Compile with:
+//   npx tsc main-user-page.ts --module esnext --target esnext --strict --ignoreConfig
 
-type Priority = "Low" | "Medium" | "High" | "Urgent";
+// ===================== EMPLOYEE GUARD =====================
+window.addEventListener("pageshow", (event) => {
+    if ((event as PageTransitionEvent).persisted && sessionStorage.getItem("loggedIn") !== "true") {
+        window.location.href = "index-login-page.html";
+    }
+});
 
-type CardData = {
-    title: string;
-    detailed?: {
-        progress: number;
-        tags: string[];
-        avatars: string[];
-        date?: string;
-        priority?: Priority;
-    };
-    team?: string;
-};
-
-type ColumnData = {
-    name: string;
-    cards: CardData[];
-};
-
-type SprintData = {
-    columns: ColumnData[];
-};
-
-const sprintBoards: Record<string, SprintData> = {
-    "1": {
-        columns: [
-            { name: "Product Backlog", cards: [{ title: "Set Up Login" }, { title: "TEXT" }] },
-            {
-                name: "Sprint Backlog",
-                cards: [
-                    {
-                        title: "US01 - Set Up Login",
-                        team: "Team Alpha",
-                        detailed: {
-                            progress: 30,
-                            tags: ["Front-end", "Urgent"],
-                            avatars: ["V", "C"],
-                            date: "2026-09-01",
-                            priority: "Urgent",
-                        },
-                    },
-                    { title: "TEXT", team: "Team Alpha" },
-                ],
-            },
-            { name: "In Progress", cards: [{ title: "Set Up Login", team: "Team Alpha" }] },
-            { name: "Completed", cards: [{ title: "Set Up Login", team: "Team Alpha" }, { title: "TEXT", team: "Team Alpha" }] },
-        ],
-    },
-    "2": {
-        columns: [
-            { name: "Product Backlog", cards: [{ title: "Design Dashboard", team: "Team Alpha" }] },
-            { name: "Sprint Backlog", cards: [{ title: "Design Dashboard", team: "Team Alpha" }] },
-            { name: "In Progress", cards: [] },
-            { name: "Completed", cards: [] },
-        ],
-    },
-    "3": {
-        columns: [
-            { name: "Product Backlog", cards: [] },
-            { name: "Sprint Backlog", cards: [] },
-            { name: "In Progress", cards: [] },
-            { name: "Completed", cards: [] },
-        ],
-    },
-};
-
-let currentSprintId = "1";
-
-// Change this to match the logged-in user's team
-const CURRENT_USER_TEAM = "Team Alpha";
-
-function formatDateBadge(isoDate: string): string {
-    const date = new Date(`${isoDate}T00:00:00`);
-    return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+if (sessionStorage.getItem("loggedIn") !== "true") {
+    window.location.href = "index-login-page.html";
+    throw new Error("Not logged in");
+}
+if (sessionStorage.getItem("role") !== "EMPLOYEE") {
+    window.location.href = "index-admin-page.html";
+    throw new Error("Employee access only");
 }
 
-function renderCard(card: CardData, colIndex: number, cardIndex: number): string {
-    const cardId = `card-${colIndex}-${cardIndex}`;
+(() => {
+    // ===================== CONFIG =====================
+    const API_BASE = "http://localhost:8080/api/tasks";
 
-    if (card.detailed) {
-        const tagsHtml = card.detailed.tags
-            .map((tag) => {
-                const cls = tag.toLowerCase() === "urgent" ? "tag-urgent" : "tag-frontend";
-                return `<span class="tag ${cls}">${tag}</span>`;
-            })
-            .join("");
-        const avatarsHtml = card.detailed.avatars
-            .map((initial) => `<div class="avatar avatar-small avatar-purple">${initial}</div>`)
-            .join("");
-        const dateHtml = card.detailed.date
-            ? `<span class="date-badge">🗓 ${formatDateBadge(card.detailed.date)}</span>`
-            : "<span></span>";
+    // ===================== TYPES =====================
+    type ColumnId = "PRODUCT_BACKLOG" | "TO_DO" | "IN_PROGRESS" | "IN_REVIEW" | "COMPLETED";
 
-        return `
-      <div class="card card-detailed" id="${cardId}">
-        <div class="card-title-row">
-          <input type="checkbox" class="status-checkbox" />
-          <span class="card-title">${card.title}</span>
-        </div>
-        <div class="progress-row">
-          <span class="progress-percent">${card.detailed.progress}%</span>
-          <span class="progress-label">Completed</span>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" style="width: ${card.detailed.progress}%;"></div>
-        </div>
-        <div class="tags-row">
-          ${tagsHtml}
-        </div>
-        <div class="card-footer-row">
-          ${dateHtml}
-          <div class="tag-avatars">${avatarsHtml}</div>
-        </div>
-      </div>
-    `;
+    type Task = {
+        id: string;
+        column: ColumnId;
+        title: string;
+        description: string;
+        dueDate: string;
+        estimateHours: number;
+    };
+
+    type BackendTask = {
+        id: number;
+        name: string;
+        description?: string | null;
+        status?: ColumnId | null;
+        dueDate?: string | null;
+        estimateHours?: number | null;
+    };
+
+    // ===================== HELPERS =====================
+    function requireElement<T extends HTMLElement>(id: string): T {
+        const el = document.getElementById(id);
+        if (!el) throw new Error(`Missing element: ${id}`);
+        return el as T;
     }
 
-    return `
-    <div class="card" id="${cardId}">
-      <div class="card-title-row">
-        <input type="checkbox" class="status-checkbox" />
-        <span class="card-title">${card.title}</span>
-      </div>
-    </div>
-  `;
-}
+    function escapeHtml(text: string): string {
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
 
-function renderBoard(sprintId: string): void {
-    const board = document.getElementById("board");
-    if (!board) return;
+    function formatDateBadge(isoDate: string): string {
+        const date = new Date(`${isoDate}T00:00:00`);
+        return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    }
 
-    const data = sprintBoards[sprintId];
-    if (!data) return;
+    const COLUMNS: { id: ColumnId; name: string }[] = [
+        { id: "PRODUCT_BACKLOG", name: "Product Backlog" },
+        { id: "TO_DO", name: "To Do" },
+        { id: "IN_PROGRESS", name: "In Progress" },
+        { id: "IN_REVIEW", name: "In Review" },
+        { id: "COMPLETED", name: "Completed" },
+    ];
 
-    currentSprintId = sprintId;
+    // ===================== STATE =====================
+    let tasks: Task[] = [];
+    let currentSprintId = "1";                     // ✅ NEW
+    const board = requireElement<HTMLElement>("board");
 
-    // Filter: only show cards for the logged-in user's team
-    const filtered = {
-        ...data,
-        columns: data.columns.map((col) => ({
-            ...col,
-            cards: col.cards.filter((c) => {
-                return !c.team || c.team === CURRENT_USER_TEAM;
-            }),
-        })),
-    };
+    const nameEl = document.getElementById("signedInName");
+    if (nameEl) {
+        const name = sessionStorage.getItem("name");
+        const role = sessionStorage.getItem("role");
+        if (name) {
+            nameEl.textContent = role === "ADMIN" ? `${name} (Admin)` : name;
+        }
+    }
 
-    board.innerHTML = filtered.columns
-        .map(
-            (column, colIndex) => `
-        <section class="column">
-          <h2>${column.name}</h2>
-          ${column.cards.map((card, cardIndex) => renderCard(card, colIndex, cardIndex)).join("")}
-        </section>
-      `
-        )
-        .join("");
-}
+    // ===================== LOGOUT MODAL =====================
+    const logoutBtn = document.getElementById("logoutBtn");
+    const logoutOverlay = document.getElementById("logoutOverlay");
+    const cancelLogoutBtn = document.getElementById("cancelLogoutBtn");
+    const confirmLogoutBtn = document.getElementById("confirmLogoutBtn");
 
-function initSprintTabs(): void {
-    const tabs = document.querySelectorAll<HTMLButtonElement>(".sprint-tab");
+    logoutBtn?.addEventListener("click", () => logoutOverlay?.classList.add("visible"));
+    cancelLogoutBtn?.addEventListener("click", () => logoutOverlay?.classList.remove("visible"));
+    confirmLogoutBtn?.addEventListener("click", () => {
+        sessionStorage.clear();
+        window.location.href = "index-login-page.html";
+    });
+    logoutOverlay?.addEventListener("click", (e) => {
+        if (e.target === logoutOverlay) logoutOverlay.classList.remove("visible");
+    });
 
-    tabs.forEach((tab) => {
+    // ===================== BACKEND SYNC =====================
+    async function fetchTasks(): Promise<Task[]> {
+        try {
+            const res = await fetch(`${API_BASE}/sprint/${currentSprintId}`);   // ✅ CHANGED
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data: BackendTask[] = await res.json();
+
+            return data.map((t) => ({
+                id: String(t.id),
+                column: (t.status ?? "PRODUCT_BACKLOG") as ColumnId,
+                title: t.name,
+                description: t.description ?? "",
+                dueDate: t.dueDate ?? "",
+                estimateHours: t.estimateHours ?? 0,
+            }));
+        } catch (err) {
+            console.error("Failed to load tasks:", err);
+            return [];
+        }
+    }
+
+    // ===================== RENDER =====================
+    const CLOCK_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>`;
+
+    function renderCard(task: Task): string {
+        const badges = [
+            task.dueDate ? `<span class="date-badge" title="Due date">${CLOCK_ICON} ${formatDateBadge(task.dueDate)}</span>` : "",
+            task.estimateHours > 0 ? `<span class="date-badge" title="Estimate">Est. ${task.estimateHours}h</span>` : "",
+        ].join("");
+
+        const footerHtml = badges
+            ? `<div class="card-footer-row"><div class="card-badges">${badges}</div></div>`
+            : "";
+
+        return `
+      <div class="card${footerHtml ? " card-detailed" : ""}" data-task="${task.id}" style="cursor: pointer;">
+        <div class="card-title-row">
+          <span class="card-title">${escapeHtml(task.title)}</span>
+        </div>
+        ${footerHtml}
+      </div>`;
+    }
+
+    function renderBoard(): void {
+        board.innerHTML = COLUMNS.map((column) => {
+            const cards = tasks.filter((t) => t.column === column.id);
+            return `
+      <section class="column" data-column="${column.id}">
+        <h2>${column.name}</h2>
+        <div class="card-list">${cards.map(renderCard).join("")}</div>
+      </section>`;
+        }).join("");
+    }
+
+    // ===================== TASK MODAL (READ-ONLY) =====================
+    const overlay = requireElement<HTMLDivElement>("taskModalOverlay");
+    const modalColumn = requireElement<HTMLSelectElement>("modalColumn");
+    const titleInput = requireElement<HTMLInputElement>("modalTitle");
+    const descriptionBox = requireElement<HTMLTextAreaElement>("modalDescription");
+    const summary = requireElement<HTMLDivElement>("modalSummary");
+    const closeBtn = requireElement<HTMLButtonElement>("modalCloseBtn");
+    const cancelBtn = requireElement<HTMLButtonElement>("modalCancelBtn");
+
+    function openModal(task: Task): void {
+        modalColumn.value = task.column;
+
+        titleInput.value = task.title;
+        descriptionBox.value = task.description || "No description";
+
+        const column = COLUMNS.find((c) => c.id === task.column);
+        const chips: string[] = [
+            `<span class="summary-chip"><b>Due</b> ${task.dueDate ? formatDateBadge(task.dueDate) : "No due date"}</span>`,
+            `<span class="summary-chip"><b>Estimate</b> ${task.estimateHours > 0 ? `${task.estimateHours}h` : "Not set"}</span>`,
+            `<span class="summary-chip"><b>Column</b> ${column ? column.name : ""}</span>`,
+        ];
+        summary.innerHTML = chips.join("");
+
+        overlay.classList.add("visible");
+    }
+
+    function closeModal(): void {
+        overlay.classList.remove("visible");
+    }
+
+    closeBtn.addEventListener("click", closeModal);
+    cancelBtn.addEventListener("click", closeModal);
+    overlay.addEventListener("click", (event) => {
+        if (event.target === overlay) closeModal();
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeModal();
+    });
+
+    // ===================== BOARD CLICK =====================
+    board.addEventListener("click", (event) => {
+        const target = event.target as HTMLElement;
+        const card = target.closest<HTMLElement>("[data-task]");
+        if (!card) return;
+
+        const id = card.dataset["task"];
+        const task = tasks.find((t) => t.id === id);
+        if (task) openModal(task);
+    });
+
+    // ===================== SPRINT TABS (FUNCTIONAL) =====================
+    document.querySelectorAll<HTMLButtonElement>(".sprint-tab").forEach((tab) => {
         tab.addEventListener("click", () => {
-            tabs.forEach((t) => t.classList.remove("active"));
+            document.querySelectorAll(".sprint-tab").forEach((t) => t.classList.remove("active"));
             tab.classList.add("active");
 
-            const sprintId = tab.dataset.sprint;
-            if (sprintId) {
-                renderBoard(sprintId);
-            }
+            const sprintId = tab.dataset["sprint"];
+            if (!sprintId) return;
+
+            currentSprintId = sprintId;
+            void (async () => {
+                tasks = await fetchTasks();
+                renderBoard();
+            })();
         });
     });
-}
 
-initSprintTabs();
-renderBoard(currentSprintId);
+    // ===================== INIT =====================
+    async function init(): Promise<void> {
+        tasks = await fetchTasks();
+        renderBoard();
+    }
+    void init();
+})();
