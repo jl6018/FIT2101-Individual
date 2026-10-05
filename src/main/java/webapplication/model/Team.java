@@ -1,5 +1,6 @@
 package webapplication.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;   // ← add this import
 import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +21,7 @@ public class Team {
             joinColumns = @JoinColumn(name = "team_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
+    @JsonIgnore                     // ✅ prevents infinite recursion
     private List<User> members = new ArrayList<>();
 
     public Team() {
@@ -29,28 +31,12 @@ public class Team {
         this.name = name;
     }
 
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    // ✅ ADD THIS METHOD
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public List<User> getMembers() {
-        return members;
-    }
-
-    public void setMembers(List<User> members) {
-        this.members = members;
-    }
+    public List<User> getMembers() { return members; }
+    public void setMembers(List<User> members) { this.members = members; }
 }

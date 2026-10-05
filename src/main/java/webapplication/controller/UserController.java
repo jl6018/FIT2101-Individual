@@ -10,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -65,8 +66,27 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
-    // ===================== HANDLE VALIDATION ERRORS =====================
-    // Returns the field error message as plain text
+    // ===================== TEAM / JOB TITLE =====================
+    @PutMapping("/{id}/team")
+    public ResponseEntity<?> updateTeam(@PathVariable Long id,
+                                        @RequestBody Map<String, String> body) {
+        try {
+            return ResponseEntity.ok(userService.updateTeam(id, body.get("team")));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/{id}/job-title")
+    public ResponseEntity<?> updateJobTitle(@PathVariable Long id,
+                                            @RequestBody Map<String, String> body) {
+        try {
+            return ResponseEntity.ok(userService.updateJobTitle(id, body.get("jobTitle")));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        }
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<String> handleValidation(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult()

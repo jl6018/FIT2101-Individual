@@ -1,8 +1,8 @@
 package webapplication.service;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
+import webapplication.model.Team;
 import webapplication.model.User;
+import webapplication.repository.TeamRepository;
 import webapplication.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
@@ -12,9 +12,11 @@ import java.util.List;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final TeamRepository teamRepository;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, TeamRepository teamRepository) {
         this.userRepository = userRepository;
+        this.teamRepository = teamRepository;
     }
 
     public List<User> getAllUsers() {
@@ -47,5 +49,24 @@ public class UserService {
 
     public User login(String email, String password) {
         return userRepository.findByEmailAndPassword(email, password).orElse(null);
+    }
+
+    // ===================== TEAM / JOB TITLE =====================
+    public User updateTeam(Long id, String teamName) {
+        User user = getUserById(id);
+        if (teamName == null || teamName.isBlank()) {
+            user.setTeam(null);
+        } else {
+            Team team = teamRepository.findByName(teamName)
+                    .orElseThrow(() -> new RuntimeException("Team not found: " + teamName));
+            user.setTeam(team);
+        }
+        return userRepository.save(user);
+    }
+
+    public User updateJobTitle(Long id, String jobTitle) {
+        User user = getUserById(id);
+        user.setJobTitle(jobTitle);
+        return userRepository.save(user);
     }
 }
