@@ -210,8 +210,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     title: t.name,
                     description: t.description ?? "",
                     assignee,
-                    dueDate: "",
-                    estimateHours: 0,
+                    dueDate: t.dueDate ?? "",
+                    estimateHours: t.estimateHours ?? 0,
                 };
             });
         } catch (err) {
@@ -238,6 +238,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     status: task.column,
                     assignedTeams: payload.assignedTeams,
                     assignedEmployeeIds: payload.assignedEmployeeIds,
+                    dueDate: task.dueDate || null,
+                    estimateHours: task.estimateHours,
                 }),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -261,6 +263,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     status: task.column,
                     assignedTeams: payload.assignedTeams,
                     assignedEmployeeIds: payload.assignedEmployeeIds,
+                    dueDate: task.dueDate || null,
+                    estimateHours: task.estimateHours,
                 }),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -361,9 +365,9 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         const addBtn = target.closest("[data-add]");
         if (addBtn) {
             const draftTask = blankTask(currentSprintId, addBtn.dataset["add"]);
-            if (currentTeamId === "all") {
-                draftTask.assignee = { kind: "teams", teamIds: TEAMS.map((t) => t.name) };
-            } else {
+            // Only pre-assign if a specific team filter is active.
+            // When "All teams" is selected, leave the task unassigned.
+            if (currentTeamId !== "all") {
                 draftTask.assignee = { kind: "team", teamId: currentTeamId };
             }
             openModal(draftTask);
@@ -575,7 +579,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         const assignee = draft.assignee;
         const currentTeam = assignee?.kind === "team" ? assignee.teamId : null;
 
-        // Always a dropdown with all teams
         assigneeSelect.innerHTML =
             `<option value="">Choose a team…</option>` +
             TEAMS.map((t) => `<option value="${t.name}">${escapeHtml(t.name)}</option>`).join("");
