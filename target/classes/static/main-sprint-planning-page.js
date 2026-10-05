@@ -50,6 +50,7 @@ logoutOverlay.addEventListener('click', (e) => {
 // ===================== CONFIG =====================
 const SPRINTS_API = "http://localhost:8080/api/sprints";
 const USERS_API = "http://localhost:8080/api/users";
+const TASKS_API = "http://localhost:8080/api/tasks";
 
 // ===================== ELEMENTS =====================
 const startSprintPlanningBtn = requireElement('startSprintPlanningBtn');
@@ -62,8 +63,6 @@ const sprintPlanningForm = requireElement('sprintPlanningForm');
 const inviteForm = requireElement('inviteForm');
 const sprintNameInput = requireElement('sprintName');
 const sprintDurationSelect = requireElement('sprintDuration');
-const taskDescriptionInput = requireElement('taskDescription');
-const taskDateInput = requireElement('taskDate');
 const membersList = requireElement('membersList');
 const ownerEmailInput = requireElement('ownerEmail');
 const pastSprintsBody = requireElement('pastSprintsBody');
@@ -76,6 +75,7 @@ function closeModal(overlay) { overlay.classList.remove('visible'); }
 startSprintPlanningBtn.addEventListener('click', async () => {
     await loadMembers();
     populateSprintNameOptions();
+    populateDurationOptions();
     openModal(sprintPlanningOverlay);
 });
 closeSprintPlanningBtn.addEventListener('click', () => closeModal(sprintPlanningOverlay));
@@ -166,17 +166,24 @@ function populateDurationOptions() {
     `;
 }
 
-// ===================== LOAD SPRINTS =====================
+// ===================== LOAD SPRINTS (with first task column) =====================
 async function loadSprints() {
     try {
-        const res = await fetch(SPRINTS_API);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const sprints = await res.json();
+        const [sprintsRes, tasksRes] = await Promise.all([
+            fetch(SPRINTS_API),
+            fetch(TASKS_API),
+        ]);
+
+        if (!sprintsRes.ok) throw new Error(`Sprints: HTTP ${sprintsRes.status}`);
+        if (!tasksRes.ok) throw new Error(`Tasks: HTTP ${tasksRes.status}`);
+
+        const sprints = await sprintsRes.json();
+        const tasks = await tasksRes.json();
 
         pastSprintsBody.innerHTML = '';
 
         if (sprints.length === 0) {
-            pastSprintsBody.innerHTML = `<tr><td colspan="5">No sprints yet.</td></tr>`;
+            pastSprintsBody.innerHTML = `<tr><td colspan="6">No sprints yet.</td></tr>`;
             return;
         }
 
@@ -188,12 +195,16 @@ async function loadSprints() {
                 const end = new Date(s.endDate);
                 const range = `${start.toLocaleDateString('en-GB', opts)} - ${end.toLocaleDateString('en-GB', { ...opts, year: 'numeric' })}`;
 
+                const firstTask = tasks.find((t) => t.sprint && t.sprint.id === s.id);
+                const firstTaskName = firstTask ? firstTask.name : '—';
+
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${s.name}</td>
                     <td>${range}</td>
                     <td>${s.memberCount ?? 0}</td>
                     <td>${statusLabel(s.status)}</td>
+                    <td>${firstTaskName}</td>
                     <td><button class="delete-sprint-btn" type="button">Delete</button></td>
                 `;
 
@@ -205,6 +216,7 @@ async function loadSprints() {
             });
     } catch (err) {
         console.error('Failed to load sprints:', err);
+        pastSprintsBody.innerHTML = `<tr><td colspan="6">Could not load sprints.</td></tr>`;
     }
 }
 

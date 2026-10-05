@@ -50,6 +50,7 @@ logoutOverlay.addEventListener('click', (e: MouseEvent) => {
 // ===================== CONFIG =====================
 const SPRINTS_API = "http://localhost:8080/api/sprints";
 const USERS_API = "http://localhost:8080/api/users";
+const TASKS_API = "http://localhost:8080/api/tasks";   // ✅ NEW
 
 // ===================== ELEMENTS =====================
 const startSprintPlanningBtn = requireElement<HTMLButtonElement>('startSprintPlanningBtn');
@@ -62,8 +63,6 @@ const sprintPlanningForm = requireElement<HTMLFormElement>('sprintPlanningForm')
 const inviteForm = requireElement<HTMLFormElement>('inviteForm');
 const sprintNameInput = requireElement<HTMLSelectElement>('sprintName');
 const sprintDurationSelect = requireElement<HTMLSelectElement>('sprintDuration');
-const taskDescriptionInput = requireElement<HTMLInputElement>('taskDescription');
-const taskDateInput = requireElement<HTMLInputElement>('taskDate');
 const membersList = requireElement<HTMLDivElement>('membersList');
 const ownerEmailInput = requireElement<HTMLInputElement>('ownerEmail');
 const pastSprintsBody = requireElement<HTMLTableSectionElement>('pastSprintsBody');
@@ -76,6 +75,7 @@ function closeModal(overlay: HTMLDivElement): void { overlay.classList.remove('v
 startSprintPlanningBtn.addEventListener('click', async () => {
     await loadMembers();
     populateSprintNameOptions();
+    populateDurationOptions();
     openModal(sprintPlanningOverlay);
 });
 closeSprintPlanningBtn.addEventListener('click', () => closeModal(sprintPlanningOverlay));
@@ -166,17 +166,24 @@ function populateDurationOptions(): void {
     `;
 }
 
-// ===================== LOAD SPRINTS =====================
+// ===================== LOAD SPRINTS (with first task column) =====================
 async function loadSprints(): Promise<void> {
     try {
-        const res = await fetch(SPRINTS_API);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const sprints: { id: number; name: string; startDate: string; endDate: string; status: string; memberCount?: number }[] = await res.json();
+        const [sprintsRes, tasksRes] = await Promise.all([
+            fetch(SPRINTS_API),
+            fetch(TASKS_API),
+        ]);
+
+        if (!sprintsRes.ok) throw new Error(`Sprints: HTTP ${sprintsRes.status}`);
+        if (!tasksRes.ok) throw new Error(`Tasks: HTTP ${tasksRes.status}`);
+
+        const sprints: { id: number; name: string; startDate: string; endDate: string; status: string; memberCount?: number }[] = await sprintsRes.json();
+        const tasks: { id: number; name: string; sprint?: { id: number } | null }[] = await tasksRes.json();
 
         pastSprintsBody.innerHTML = '';
 
         if (sprints.length === 0) {
-            pastSprintsBody.innerHTML = `<tr><td colspan="5">No sprints yet.</td></tr>`;
+            pastSprintsBody.innerHTML = `<tr><td colspan="6">No sprints yet.</td></tr>`;
             return;
         }
 
@@ -188,12 +195,16 @@ async function loadSprints(): Promise<void> {
                 const end = new Date(s.endDate);
                 const range = `${start.toLocaleDateString('en-GB', opts)} - ${end.toLocaleDateString('en-GB', { ...opts, year: 'numeric' })}`;
 
+                const firstTask = tasks.find((t) => t.sprint && t.sprint.id === s.id);
+                const firstTaskName = firstTask ? firstTask.name : '—';
+
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${s.name}</td>
                     <td>${range}</td>
                     <td>${s.memberCount ?? 0}</td>
                     <td>${statusLabel(s.status)}</td>
+                    <td>${firstTaskName}</td>
                     <td><button class="delete-sprint-btn" type="button">Delete</button></td>
                 `;
 
@@ -205,6 +216,7 @@ async function loadSprints(): Promise<void> {
             });
     } catch (err) {
         console.error('Failed to load sprints:', err);
+        pastSprintsBody.innerHTML = `<tr><td colspan="6">Could not load sprints.</td></tr>`;
     }
 }
 
