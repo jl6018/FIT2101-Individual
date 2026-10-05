@@ -73,7 +73,9 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         description?: string | null;
         status?: ColumnId | null;
         assignedTeams?: string | null;
-        assignedEmployeeIds?: string | null;   // ✅ NEW
+        assignedEmployeeIds?: string | null;
+        dueDate?: string | null;          // ✅ NEW
+        estimateHours?: number | null;    // ✅ NEW
     };
 
     type BackendUser = {
@@ -204,6 +206,19 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     const board = requireElement<HTMLElement>("board");
 
+    function assigneeToBackendPayload(assignee: Assignee | null): { assignedTeams: string | null; assignedEmployeeIds: string | null } {
+        if (!assignee) {
+            return { assignedTeams: null, assignedEmployeeIds: null };
+        }
+        if (assignee.kind === "team") {
+            return { assignedTeams: assignee.teamId, assignedEmployeeIds: null };
+        }
+        if (assignee.kind === "teams") {
+            return { assignedTeams: assignee.teamIds.join(","), assignedEmployeeIds: null };
+        }
+        return { assignedTeams: null, assignedEmployeeIds: assignee.employeeIds.join(",") };
+    }
+
     // ===================== BACKEND SYNC =====================
     async function fetchTasks(): Promise<Task[]> {
         try {
@@ -214,7 +229,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             return data.map((t) => {
                 let assignee: Assignee | null = null;
 
-                // ✅ Prefer employees if any are assigned
                 if (t.assignedEmployeeIds) {
                     const ids = t.assignedEmployeeIds.split(",").map((s) => s.trim()).filter(Boolean);
                     if (ids.length > 0) {
@@ -222,7 +236,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     }
                 }
 
-                // ✅ Otherwise fall back to teams
                 if (!assignee && t.assignedTeams) {
                     const names = t.assignedTeams.split(",").map((s) => s.trim()).filter(Boolean);
                     if (names.length === 1) {
@@ -239,8 +252,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     title: t.name,
                     description: t.description ?? "",
                     assignee,
-                    dueDate: "",
-                    estimateHours: 0,
+                    dueDate: t.dueDate ?? "",                         // ✅ NEW
+                    estimateHours: t.estimateHours ?? 0,              // ✅ NEW
                 };
             });
         } catch (err) {
@@ -255,20 +268,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderTeamFilter();
     }
 
-    // ✅ Produce backend payload from assignee
-    function assigneeToBackendPayload(assignee: Assignee | null): { assignedTeams: string | null; assignedEmployeeIds: string | null } {
-        if (!assignee) {
-            return { assignedTeams: null, assignedEmployeeIds: null };
-        }
-        if (assignee.kind === "team") {
-            return { assignedTeams: assignee.teamId, assignedEmployeeIds: null };
-        }
-        if (assignee.kind === "teams") {
-            return { assignedTeams: assignee.teamIds.join(","), assignedEmployeeIds: null };
-        }
-        return { assignedTeams: null, assignedEmployeeIds: assignee.employeeIds.join(",") };
-    }
-
     async function apiCreate(task: Task): Promise<Task | null> {
         try {
             const payload = assigneeToBackendPayload(task.assignee);
@@ -281,6 +280,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     status: task.column,
                     assignedTeams: payload.assignedTeams,
                     assignedEmployeeIds: payload.assignedEmployeeIds,
+                    dueDate: task.dueDate || null,                     // ✅ NEW
+                    estimateHours: task.estimateHours,                 // ✅ NEW
                 }),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -304,6 +305,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     status: task.column,
                     assignedTeams: payload.assignedTeams,
                     assignedEmployeeIds: payload.assignedEmployeeIds,
+                    dueDate: task.dueDate || null,                     // ✅ NEW
+                    estimateHours: task.estimateHours,                 // ✅ NEW
                 }),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -401,16 +404,14 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             return;
         }
 
-        const addBtn = target.closest<HTMLElement>("[data-add]");
+        const addBtn = target.closest("[data-add]");
         if (addBtn) {
-            const draftTask = blankTask(currentSprintId, addBtn.dataset["add"] as ColumnId);
-
-            if (currentTeamId === "all") {
-                draftTask.assignee = { kind: "teams", teamIds: TEAMS.map((t) => t.name) };
-            } else {
+            const draftTask = blankTask(currentSprintId, addBtn.dataset["add"]);
+            // Only pre-assign if a specific team filter is active.
+            // When "All teams" is selected, leave the task unassigned.
+            if (currentTeamId !== "all") {
                 draftTask.assignee = { kind: "team", teamId: currentTeamId };
             }
-
             openModal(draftTask);
         }
     });
@@ -620,7 +621,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         const assignee = draft.assignee;
         const currentTeam = assignee?.kind === "team" ? assignee.teamId : null;
 
-        // Always a dropdown with all teams
         assigneeSelect.innerHTML =
             `<option value="">Choose a team…</option>` +
             TEAMS.map((t) => `<option value="${t.name}">${escapeHtml(t.name)}</option>`).join("");
