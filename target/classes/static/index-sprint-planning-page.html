@@ -63,12 +63,11 @@
                     <th>Dates</th>
                     <th>Members</th>
                     <th>Status</th>
-                    <th>First task</th>
                     <th></th>
                 </tr>
                 </thead>
                 <tbody id="pastSprintsBody">
-                <!-- Filled dynamically from GET /api/sprints + GET /api/tasks -->
+                <!-- Filled dynamically from GET /api/sprints -->
                 </tbody>
             </table>
         </section>
@@ -107,6 +106,16 @@
                 <div class="members-list" id="membersList">
                     <p class="muted">Loading members…</p>
                 </div>
+            </div>
+
+            <div class="form-field">
+                <label for="taskDescription">Add a task</label>
+                <input type="text" id="taskDescription" name="taskDescription" placeholder="Task description">
+            </div>
+
+            <div class="form-field">
+                <label for="taskDate" class="sr-only">Date</label>
+                <input type="date" id="taskDate" name="taskDate">
             </div>
 
             <button type="submit" class="btn-primary full-width">Create sprint</button>
