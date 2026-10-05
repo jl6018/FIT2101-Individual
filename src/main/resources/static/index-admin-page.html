@@ -192,6 +192,27 @@
                             <button class="popover-btn popover-btn-quiet" id="unassignBtn" type="button">Unassign</button>
                         </div>
                     </div>
+
+                    <!-- ✅ NEW: Priority pill + popover -->
+                    <div class="pill-wrap">
+                        <button class="pill" type="button" data-popover="priorityPopover">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M5 21V4M5 4h11l-2 4 2 4H5"/>
+                            </svg>
+                            Priority
+                        </button>
+                        <div class="popover" id="priorityPopover">
+                            <label class="popover-label" for="prioritySelect">Priority level</label>
+                            <select id="prioritySelect" aria-label="Task priority">
+                                <option value="">No priority</option>
+                                <option value="LOW">Low</option>
+                                <option value="MEDIUM">Medium</option>
+                                <option value="HIGH">High</option>
+                                <option value="URGENT">Urgent</option>
+                            </select>
+                            <button class="popover-btn popover-btn-quiet" id="priorityClearBtn" type="button">Clear</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 

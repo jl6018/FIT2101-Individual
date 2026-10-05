@@ -86,7 +86,17 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     ];
 
     function blankTask(sprintId, column) {
-        return { id: "", sprintId, column, title: "", description: "", assignee: null, dueDate: "", estimateHours: 0 };
+        return {
+            id: "",
+            sprintId,
+            column,
+            title: "",
+            description: "",
+            assignee: null,
+            dueDate: "",
+            estimateHours: 0,
+            priority: "",   // ✅ NEW
+        };
     }
 
     // ===================== HELPERS =====================
@@ -157,7 +167,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         try { window.localStorage.setItem(key, value); } catch { /* ignore */ }
     }
 
-    // ✅ NEW — sprint tab persistence helpers
+    // ✅ Sprint tab persistence helpers
     const SPRINT_KEY = "symph.currentSprint";
 
     function readSprintSetting() {
@@ -170,7 +180,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     // ===================== STATE =====================
     let tasks = [];
-    let currentSprintId = readSprintSetting();   // ✅ read saved sprint on load
+    let currentSprintId = readSprintSetting();
     let currentTeamId = "all";
     let searchTerm = "";
 
@@ -223,6 +233,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     assignee,
                     dueDate: t.dueDate ?? "",
                     estimateHours: t.estimateHours ?? 0,
+                    priority: t.priority ?? "",   // ✅ NEW
                 };
             });
         } catch (err) {
@@ -251,6 +262,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     assignedEmployeeIds: payload.assignedEmployeeIds,
                     dueDate: task.dueDate || null,
                     estimateHours: task.estimateHours,
+                    priority: task.priority || null,   // ✅ NEW
                     sprint: { id: Number(currentSprintId) },
                 }),
             });
@@ -281,6 +293,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                 assignedEmployeeIds: payload.assignedEmployeeIds,
                 dueDate: task.dueDate || null,
                 estimateHours: task.estimateHours,
+                priority: task.priority || null,   // ✅ NEW
                 sprint: { id: Number(currentSprintId) },
             };
 
@@ -347,7 +360,11 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const CLOCK_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>`;
 
     function renderCard(task) {
+        const priorityBadge = task.priority
+            ? `<span class="priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>`   // ✅ NEW
+            : "";
         const badges = [
+            priorityBadge,
             task.dueDate ? `<span class="date-badge" title="Due date">${CLOCK_ICON} ${formatDateBadge(task.dueDate)}</span>` : "",
             task.estimateHours > 0 ? `<span class="date-badge" title="Estimate">Est. ${formatEstimate(task.estimateHours)}</span>` : "",
         ].join("");
@@ -480,7 +497,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                 const sprintId = tab.dataset["sprint"];
                 if (sprintId) {
                     currentSprintId = sprintId;
-                    writeSprintSetting(sprintId);   // ✅ save selected sprint
+                    writeSprintSetting(sprintId);
                     renderBoard();
                     renderTeamFilter();
                 }
@@ -488,7 +505,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         });
     }
 
-    // ✅ NEW — highlight the saved sprint tab on page load
     function highlightSavedSprintTab() {
         const tabs = document.querySelectorAll(".sprint-tab");
         tabs.forEach((tab) => {
@@ -567,6 +583,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const assigneeSelect = requireElement("assigneeSelect");
     const employeeList = requireElement("employeeList");
     const estimateInput = requireElement("estimateInput");
+    const prioritySelect = requireElement("prioritySelect");   // ✅ NEW
 
     let draft = null;
     let assignKind = "team";
@@ -580,6 +597,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         descriptionBox.value = draft.description;
         dueDateInput.value = draft.dueDate;
         estimateInput.value = draft.estimateHours > 0 ? String(draft.estimateHours) : "";
+        prioritySelect.value = draft.priority;   // ✅ NEW
         errorText.textContent = "";
         saveBtn.textContent = draft.id ? "Save" : "Create task";
         deleteBtn.hidden = draft.id === "";
@@ -603,6 +621,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             `<span class="summary-chip"><b>Assigned to</b> ${escapeHtml(assigneeLabel(draft.assignee))}</span>`,
             `<span class="summary-chip"><b>Due</b> ${draft.dueDate ? formatDateBadge(draft.dueDate) : "No due date"}</span>`,
             `<span class="summary-chip"><b>Estimate</b> ${draft.estimateHours > 0 ? formatEstimate(draft.estimateHours) : "Not set"}</span>`,
+            `<span class="summary-chip"><b>Priority</b> ${draft.priority || "None"}</span>`,   // ✅ NEW
         ];
         summary.innerHTML = chips.join("");
         renderAssignControls();
@@ -740,6 +759,20 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderDraft();
     });
 
+    // ----- Priority (US19) -----   ✅ NEW
+    prioritySelect.addEventListener("change", () => {
+        if (!draft) return;
+        draft.priority = prioritySelect.value;
+        renderDraft();
+    });
+
+    requireElement("priorityClearBtn").addEventListener("click", () => {
+        if (!draft) return;
+        draft.priority = "";
+        prioritySelect.value = "";
+        renderDraft();
+    });
+
     // ----- Assignee -----
     document.querySelectorAll("[data-assign-kind]").forEach((segment) => {
         segment.addEventListener("click", () => {
@@ -866,7 +899,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     // ===================== INIT =====================
     async function init() {
         await loadEmployeesFromBackend();
-        highlightSavedSprintTab();   // ✅ highlight saved sprint tab before rendering
+        highlightSavedSprintTab();
         initSprintTabs();
         renderTeamFilter();
         await refreshFromBackend();
