@@ -7,6 +7,14 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Exposes REST endpoints for managing Product Owner invitations.
+ * Handles creation, retrieval, and deletion of invites.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
 @RestController
 @RequestMapping("/api/invites")
 @CrossOrigin
@@ -14,14 +22,20 @@ public class ProductOwnerInviteController {
 
     private final ProductOwnerInviteService inviteService;
 
+    /**
+     * Parameterized constructor with the required ProductOwnerInviteService dependency.
+     *
+     * @param inviteService The service handling invite business logic
+     */
     public ProductOwnerInviteController(ProductOwnerInviteService inviteService) {
         this.inviteService = inviteService;
     }
 
     /**
-     * POST /api/invites
-     * Body: { "email": "owner@company.com" }
-     * Returns 200 with the saved invite, or 400 with an error message.
+     * Creates a new Product Owner invitation.
+     *
+     * @param invite            The invite object containing the email to invite
+     * @return                  A ResponseEntity with the saved invite on success, or an error message on failure
      */
     @PostMapping
     public ResponseEntity<?> invite(@RequestBody ProductOwnerInvite invite) {
@@ -29,19 +43,28 @@ public class ProductOwnerInviteController {
             ProductOwnerInvite saved = inviteService.inviteProductOwner(invite);
             return ResponseEntity.ok(saved);
         } catch (IllegalArgumentException e) {
-            // Bad input — 400
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (RuntimeException e) {
-            // Duplicate / business rule — 400 with the message
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
+    /**
+     * Retrieves all Product Owner invitations.
+     *
+     * @return A list of all invites
+     */
     @GetMapping
     public List<ProductOwnerInvite> getAll() {
         return inviteService.getAllInvites();
     }
 
+    /**
+     * Retrieves a single invitation by its unique ID.
+     *
+     * @param id                The ID of the invite to retrieve
+     * @return                  A ResponseEntity with the invite on success, or an error message on failure
+     */
     @GetMapping("/{id}")
     public ResponseEntity<?> getById(@PathVariable Long id) {
         try {
@@ -51,6 +74,12 @@ public class ProductOwnerInviteController {
         }
     }
 
+    /**
+     * Deletes an invitation by its unique ID.
+     *
+     * @param id                The ID of the invite to delete
+     * @return                  A ResponseEntity with no content on success, or an error message on failure
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
         try {

@@ -12,6 +12,14 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Exposes REST endpoints for managing users and authentication.
+ * Handles user CRUD operations, login, team assignment, and job title updates.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
 @RestController
 @RequestMapping("/api/users")
 @CrossOrigin
@@ -19,20 +27,42 @@ public class UserController {
 
     private final UserService userService;
 
+    /**
+     * Parameterized constructor with the required UserService dependency.
+     *
+     * @param userService The service handling user business logic
+     */
     public UserController(UserService userService) {
         this.userService = userService;
     }
 
+    /**
+     * Retrieves all users from the database.
+     *
+     * @return A list of all users
+     */
     @GetMapping
     public List<User> getAllUsers() {
         return userService.getAllUsers();
     }
 
+    /**
+     * Retrieves a single user by their unique ID.
+     *
+     * @param id The ID of the user to retrieve
+     * @return   The User object
+     */
     @GetMapping("/{id}")
     public User getUser(@PathVariable Long id) {
         return userService.getUserById(id);
     }
 
+    /**
+     * Creates a new user if the email is not already registered.
+     *
+     * @param user              The User object to save
+     * @return                  A ResponseEntity with the saved user, or an error message on failure
+     */
     @PostMapping
     public ResponseEntity<?> createUser(@Valid @RequestBody User user) {
         try {
@@ -42,6 +72,13 @@ public class UserController {
         }
     }
 
+    /**
+     * Updates an existing user's name, email, and role.
+     *
+     * @param id   The ID of the user to update
+     * @param user The User object containing the updated details
+     * @return     The updated User object
+     */
     @PutMapping("/{id}")
     public User updateUser(
             @PathVariable Long id,
@@ -49,12 +86,22 @@ public class UserController {
         return userService.updateUser(id, user);
     }
 
+    /**
+     * Deletes a user from the database by their ID.
+     *
+     * @param id The ID of the user to delete
+     */
     @DeleteMapping("/{id}")
     public void deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
     }
 
-    // ✅ UPDATED — now includes team name
+    /**
+     * Authenticates a user and returns their profile with team information.
+     *
+     * @param loginRequest      The login credentials containing email and password
+     * @return                  A ResponseEntity with the login response on success, or an error message on failure
+     */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
         User user = userService.login(loginRequest.getEmail(), loginRequest.getPassword());
@@ -72,6 +119,13 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Updates a user's team assignment.
+     *
+     * @param id                The ID of the user to update
+     * @param body              A map containing the team name
+     * @return                  A ResponseEntity with the updated user, or an error message on failure
+     */
     @PutMapping("/{id}/team")
     public ResponseEntity<?> updateTeam(@PathVariable Long id,
                                         @RequestBody Map<String, String> body) {
@@ -82,6 +136,13 @@ public class UserController {
         }
     }
 
+    /**
+     * Updates a user's job title.
+     *
+     * @param id                The ID of the user to update
+     * @param body              A map containing the job title
+     * @return                  A ResponseEntity with the updated user, or an error message on failure
+     */
     @PutMapping("/{id}/job-title")
     public ResponseEntity<?> updateJobTitle(@PathVariable Long id,
                                             @RequestBody Map<String, String> body) {
@@ -92,6 +153,12 @@ public class UserController {
         }
     }
 
+    /**
+     * Handles validation errors for request bodies.
+     *
+     * @param ex The exception containing field validation errors
+     * @return   A ResponseEntity with the first validation error message
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<String> handleValidation(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult()

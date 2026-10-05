@@ -14,6 +14,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Manages task Create, Read, Update, Delete, assignment, board ordering,
+ * and team-based filtering operations.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
 @Service
 public class TaskService {
 
@@ -21,6 +29,13 @@ public class TaskService {
     private final UserRepository userRepository;
     private final SprintRepository sprintRepository;
 
+    /**
+     * Parameterized constructor with the required repository dependencies.
+     *
+     * @param taskRepository   The repository handling task database operations
+     * @param userRepository   The repository handling user database operations
+     * @param sprintRepository The repository handling sprint database operations
+     */
     public TaskService(TaskRepository taskRepository,
                        UserRepository userRepository,
                        SprintRepository sprintRepository) {
@@ -29,16 +44,35 @@ public class TaskService {
         this.sprintRepository = sprintRepository;
     }
 
+    /**
+     * Retrieves all tasks ordered by board position.
+     *
+     * @return A list of all tasks
+     */
     public List<Task> getAllTasks() {
-        // ✅ Returned in the order the cards were arranged on the board
         return taskRepository.findAllByOrderByPositionAscIdAsc();
     }
 
+    /**
+     * Retrieves a single task by its unique ID.
+     *
+     * @param id                The ID of the task to retrieve
+     * @return                  The Task object
+     * @throws RuntimeException if no task with the given ID exists
+     */
     public Task getTaskById(Long id) {
         return taskRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
     }
 
+    /**
+     * Creates a new task with default status and position handling.
+     * If no status is provided, defaults to PRODUCT_BACKLOG.
+     * If no position is provided, places the task at the bottom of its column.
+     *
+     * @param task The Task object to save
+     * @return     The saved Task object with its assigned ID and position
+     */
     public Task createTask(Task task) {
         if (task.getStatus() == null) {
             task.setStatus(TaskStatus.PRODUCT_BACKLOG);
@@ -49,7 +83,6 @@ public class TaskService {
             task.setProgress(100);
         }
 
-        // ✅ Resolve sprint from DB if present
         if (task.getSprint() != null && task.getSprint().getId() != null) {
             Sprint sprint = sprintRepository.findById(task.getSprint().getId())
                     .orElse(null);
@@ -58,8 +91,6 @@ public class TaskService {
             task.setSprint(null);
         }
 
-        // ✅ NEW — if the client did not supply a position, drop the card at the
-        // bottom of its column (max existing position + 1).
         if (task.getPosition() == null || task.getPosition() <= 0) {
             int maxPos = taskRepository.findAllByOrderByPositionAscIdAsc().stream()
                     .filter(t -> t.getStatus() == task.getStatus())
@@ -74,6 +105,14 @@ public class TaskService {
         return taskRepository.save(task);
     }
 
+    /**
+     * Updates an existing task's details. Only non-null fields are overwritten.
+     *
+     * @param id                The ID of the task to update
+     * @param taskDetails       The Task object containing the updated details
+     * @return                  The updated Task object
+     * @throws RuntimeException if the task does not exist
+     */
     public Task updateTask(Long id, Task taskDetails) {
         Task task = getTaskById(id);
 
@@ -95,12 +134,20 @@ public class TaskService {
         if (taskDetails.getAssignedEmployeeIds() != null) task.setAssignedEmployeeIds(taskDetails.getAssignedEmployeeIds());
         if (taskDetails.getEstimateHours() != 0) task.setEstimateHours(taskDetails.getEstimateHours());
 
-        // ✅ NEW — only overwrite position when the client actually sent one
         if (taskDetails.getPosition() != null) task.setPosition(taskDetails.getPosition());
 
         return taskRepository.save(task);
     }
 
+    /**
+     * Updates the progress percentage of a task.
+     *
+     * @param id                    The ID of the task to update
+     * @param progress              The progress value between 0 and 100
+     * @return                      The updated Task object
+     * @throws IllegalArgumentException if progress is outside the 0-100 range
+     * @throws RuntimeException         if the task does not exist
+     */
     public Task updateProgress(Long id, int progress) {
         if (progress < 0 || progress > 100) {
             throw new IllegalArgumentException("Progress must be between 0 and 100");
@@ -110,18 +157,43 @@ public class TaskService {
         return taskRepository.save(task);
     }
 
+    /**
+     * Retrieves all tasks with a specific status ordered by board position.
+     *
+     * @param status The TaskStatus to filter by
+     * @return       A list of tasks matching the status
+     */
     public List<Task> getTasksByStatus(TaskStatus status) {
         return taskRepository.findByStatusOrderByPositionAscIdAsc(status);
     }
 
+    /**
+     * Retrieves all tasks belonging to a specific sprint ordered by board position.
+     *
+     * @param sprintId The ID of the sprint
+     * @return         A list of tasks in the sprint
+     */
     public List<Task> getTasksBySprint(Long sprintId) {
         return taskRepository.findBySprintIdOrderByPositionAscIdAsc(sprintId);
     }
 
+    /**
+     * Deletes a task from the database by its ID.
+     *
+     * @param id The ID of the task to delete
+     */
     public void deleteTask(Long id) {
         taskRepository.deleteById(id);
     }
 
+    /**
+     * Assigns a task to a specific user.
+     *
+     * @param taskId            The ID of the task to assign
+     * @param userId            The ID of the user to assign the task to
+     * @return                  The updated Task object
+     * @throws RuntimeException if the task or user does not exist
+     */
     public Task assignTask(Long taskId, Long userId) {
         Task task = getTaskById(taskId);
         User user = userRepository.findById(userId)
@@ -130,21 +202,41 @@ public class TaskService {
         return taskRepository.save(task);
     }
 
+    /**
+     * Updates the status of a task.
+     *
+     * @param taskId            The ID of the task to update
+     * @param status            The new TaskStatus
+     * @return                  The updated Task object
+     * @throws RuntimeException if the task does not exist
+     */
     public Task updateStatus(Long taskId, TaskStatus status) {
         Task task = getTaskById(taskId);
         task.setStatus(status);
         return taskRepository.save(task);
     }
 
+    /**
+     * Retrieves the board view grouping tasks by their status.
+     * Each status column is ordered by board position.
+     *
+     * @return A map of TaskStatus to lists of tasks
+     */
     public Map<TaskStatus, List<Task>> getBoardView() {
         Map<TaskStatus, List<Task>> board = new LinkedHashMap<>();
         for (TaskStatus status : TaskStatus.values()) {
-            // ✅ Sorted so the board view is consistent
             board.put(status, taskRepository.findByStatusOrderByPositionAscIdAsc(status));
         }
         return board;
     }
 
+    /**
+     * Retrieves all tasks belonging to a specific team.
+     * Matches tasks by direct team assignment or by assigned employee membership.
+     *
+     * @param teamName The name of the team
+     * @return         A list of tasks assigned to the given team
+     */
     public List<Task> getTasksByTeam(String teamName) {
         List<Long> teamMemberIds = userRepository.findAll().stream()
                 .filter(u -> u.getTeam() != null && teamName.equals(u.getTeam().getName()))
