@@ -17,6 +17,7 @@
 <body>
 <div class="app-shell" id="appShell">
 
+    <!-- ===================== SIDEBAR ===================== -->
     <aside class="sidebar">
         <div class="sidebar-top">
             <a class="logo" href="index-admin-page.html"><img src="images/symph-logo.png" alt="Symph" /></a>
@@ -47,6 +48,7 @@
 
     <div class="app-main">
 
+        <!-- ===================== NAVBAR ===================== -->
         <nav class="navbar">
             <div class="search-bar">
                 <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -79,6 +81,7 @@
             </div>
         </nav>
 
+        <!-- ===================== PROJECT HEADER ===================== -->
         <header class="project-header">
             <div class="project-header-left">
                 <h1 class="project-name">
@@ -89,7 +92,6 @@
             </div>
             <div class="project-header-right">
                 <button class="start-sprint-btn" id="startSprintBtn" type="button">▶ Start Sprint</button>
-                <button class="start-sprint-btn" id="completeSprintBtn" type="button" style="background:#DC2626;">■ Complete Sprint</button>
                 <div class="avatar-stack">
                     <div class="avatar avatar-teal">T</div>
                     <div class="avatar avatar-pink">H</div>
@@ -106,6 +108,7 @@
             </div>
         </header>
 
+        <!-- ===================== SPRINT TABS ===================== -->
         <div class="board-controls">
             <div class="sprint-tabs">
                 <button class="sprint-tab active" data-sprint="1" type="button">Sprint 1</button>
@@ -174,23 +177,6 @@
                     </div>
 
                     <div class="pill-wrap">
-                        <button class="pill" type="button" data-popover="priorityPopover">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg>
-                            Priority
-                        </button>
-                        <div class="popover" id="priorityPopover">
-                            <label class="popover-label" for="prioritySelect">Priority level</label>
-                            <select id="prioritySelect">
-                                <option value="">None</option>
-                                <option value="LOW">Low</option>
-                                <option value="MEDIUM">Medium</option>
-                                <option value="HIGH">High</option>
-                                <option value="URGENT">Urgent</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="pill-wrap">
                         <button class="pill" type="button" data-popover="membersPopover">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"/></svg>
                             Members
@@ -226,6 +212,7 @@
     </div>
 </div>
 
+<!-- ===================== MODAL: Logout ===================== -->
 <div class="modal-overlay" id="logoutOverlay">
     <div class="modal modal-narrow" role="dialog" aria-modal="true">
         <h2 class="modal-title">Log out?</h2>
