@@ -48,6 +48,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     // ===================== CONFIG =====================
     const API_BASE = "http://localhost:8080/api/tasks";
     const USERS_API = "http://localhost:8080/api/users";
+    const SPRINTS_API = "http://localhost:8080/api/sprints";
 
     // ===================== REFERENCE DATA =====================
     const TEAMS = [
@@ -86,7 +87,17 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     ];
 
     function blankTask(sprintId, column) {
-        return { id: "", sprintId, column, title: "", description: "", assignee: null, dueDate: "", estimateHours: 0 };
+        return {
+            id: "",
+            sprintId,
+            column,
+            title: "",
+            description: "",
+            assignee: null,
+            dueDate: "",
+            estimateHours: 0,
+            priority: null,
+        };
     }
 
     // ===================== HELPERS =====================
@@ -159,7 +170,11 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     // ===================== STATE =====================
     let tasks = [];
-    let currentSprintId = "1";
+
+    // ✅ Restore last selected sprint across page navigation
+    const savedSprintId = sessionStorage.getItem("currentSprintId");
+    let currentSprintId = savedSprintId && savedSprintId !== "" ? savedSprintId : "1";
+
     let currentTeamId = "all";
     let searchTerm = "";
 
@@ -181,7 +196,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     // ===================== BACKEND SYNC =====================
     async function fetchTasks() {
         try {
-            const res = await fetch(API_BASE);
+            const res = await fetch(`${API_BASE}/sprint/${currentSprintId}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             return data.map((t) => {
@@ -205,13 +220,14 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
                 return {
                     id: String(t.id),
-                    sprintId: "1",
+                    sprintId: currentSprintId,
                     column: t.status ?? "PRODUCT_BACKLOG",
                     title: t.name,
                     description: t.description ?? "",
                     assignee,
                     dueDate: t.dueDate ?? "",
                     estimateHours: t.estimateHours ?? 0,
+                    priority: t.priority ?? null,
                 };
             });
         } catch (err) {
@@ -240,6 +256,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     assignedEmployeeIds: payload.assignedEmployeeIds,
                     dueDate: task.dueDate || null,
                     estimateHours: task.estimateHours,
+                    priority: task.priority || null,
                     sprint: { id: Number(currentSprintId) },
                 }),
             });
@@ -254,7 +271,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     async function apiUpdate(task) {
         try {
-            // ✅ SAFETY — skip the API call if the task has no valid backend ID
             const numericId = Number(task.id);
             if (!Number.isFinite(numericId) || numericId <= 0) {
                 console.warn("Skipping update — task has no valid backend ID:", task);
@@ -271,10 +287,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                 assignedEmployeeIds: payload.assignedEmployeeIds,
                 dueDate: task.dueDate || null,
                 estimateHours: task.estimateHours,
+                priority: task.priority || null,
                 sprint: { id: Number(currentSprintId) },
             };
 
-            // ✅ DEBUG — log what we're sending
             console.log(`PUT ${API_BASE}/${numericId}`, body);
 
             const res = await fetch(`${API_BASE}/${numericId}`, {
@@ -296,7 +312,12 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             const numericId = Number(id);
             if (!Number.isFinite(numericId) || numericId <= 0) return false;
 
-            const res = await fetch(`${API_BASE}/${numericId}`, { method: "DELETE" });
+            const role = sessionStorage.getItem("role") || "EMPLOYEE";
+
+            const res = await fetch(`${API_BASE}/${numericId}`, {
+                method: "DELETE",
+                headers: { "X-Role": role },
+            });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             return true;
         } catch (err) {
@@ -341,13 +362,13 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         const badges = [
             task.dueDate ? `<span class="date-badge" title="Due date">${CLOCK_ICON} ${formatDateBadge(task.dueDate)}</span>` : "",
             task.estimateHours > 0 ? `<span class="date-badge" title="Estimate">Est. ${formatEstimate(task.estimateHours)}</span>` : "",
+            task.priority ? `<span class="date-badge priority-${task.priority.toLowerCase()}" title="Priority">${task.priority}</span>` : "",
         ].join("");
         const assigneeHtml = renderAssignee(task);
         const footerHtml = badges || assigneeHtml
             ? `<div class="card-footer-row"><div class="card-badges">${badges}</div><div class="tag-avatars">${assigneeHtml}</div></div>`
             : "";
 
-        // ✅ data-task carries the backend ID for drag/drop + edits
         return `
       <div class="card${footerHtml ? " card-detailed" : ""}" draggable="true" data-task="${escapeHtml(task.id)}">
         <div class="card-title-row">
@@ -433,7 +454,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
         const moved = tasks.find((t) => t.id === draggedTaskId);
         if (moved) {
-            // ✅ SAFETY — ensure the task has a real backend ID before sending
             if (!moved.id || moved.id === "" || Number.isNaN(Number(moved.id))) {
                 console.warn("Cannot move — task has no backend ID:", moved);
                 alert("Failed to save task: missing task ID.");
@@ -466,6 +486,13 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     // ===================== SPRINT TABS + SEARCH =====================
     function initSprintTabs() {
         const tabs = document.querySelectorAll(".sprint-tab");
+
+        // ✅ Restore the previously-selected tab on page load
+        tabs.forEach((tab) => {
+            const isActive = tab.dataset["sprint"] === currentSprintId;
+            tab.classList.toggle("active", isActive);
+        });
+
         tabs.forEach((tab) => {
             tab.addEventListener("click", () => {
                 tabs.forEach((other) => other.classList.remove("active"));
@@ -473,8 +500,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                 const sprintId = tab.dataset["sprint"];
                 if (sprintId) {
                     currentSprintId = sprintId;
-                    renderBoard();
-                    renderTeamFilter();
+                    sessionStorage.setItem("currentSprintId", sprintId);   // ✅ persist
+                    void refreshFromBackend();
                 }
             });
         });
@@ -551,6 +578,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const assigneeSelect = requireElement("assigneeSelect");
     const employeeList = requireElement("employeeList");
     const estimateInput = requireElement("estimateInput");
+    const prioritySelect = requireElement("prioritySelect");
 
     let draft = null;
     let assignKind = "team";
@@ -564,6 +592,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         descriptionBox.value = draft.description;
         dueDateInput.value = draft.dueDate;
         estimateInput.value = draft.estimateHours > 0 ? String(draft.estimateHours) : "";
+        prioritySelect.value = draft.priority ?? "";
         errorText.textContent = "";
         saveBtn.textContent = draft.id ? "Save" : "Create task";
         deleteBtn.hidden = draft.id === "";
@@ -587,6 +616,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             `<span class="summary-chip"><b>Assigned to</b> ${escapeHtml(assigneeLabel(draft.assignee))}</span>`,
             `<span class="summary-chip"><b>Due</b> ${draft.dueDate ? formatDateBadge(draft.dueDate) : "No due date"}</span>`,
             `<span class="summary-chip"><b>Estimate</b> ${draft.estimateHours > 0 ? formatEstimate(draft.estimateHours) : "Not set"}</span>`,
+            `<span class="summary-chip"><b>Priority</b> ${draft.priority ?? "None"}</span>`,
         ];
         summary.innerHTML = chips.join("");
         renderAssignControls();
@@ -724,6 +754,14 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderDraft();
     });
 
+    // ----- Priority -----
+    prioritySelect.addEventListener("change", () => {
+        if (!draft) return;
+        const value = prioritySelect.value;
+        draft.priority = value === "" ? null : value;
+        renderDraft();
+    });
+
     // ----- Assignee -----
     document.querySelectorAll("[data-assign-kind]").forEach((segment) => {
         segment.addEventListener("click", () => {
@@ -842,9 +880,58 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     // ===================== START SPRINT (US23) =====================
     const startSprintBtn = document.getElementById("startSprintBtn");
-    startSprintBtn?.addEventListener("click", () => {
+    startSprintBtn?.addEventListener("click", async () => {
         if (!confirm("Start the sprint now? Time tracking will begin.")) return;
-        showToast("Sprint started");
+
+        const sprintId = Number(currentSprintId);
+        if (!Number.isFinite(sprintId) || sprintId <= 0) {
+            showToast("No sprint selected");
+            return;
+        }
+
+        try {
+            const res = await fetch(`${SPRINTS_API}/${sprintId}/start`, {
+                method: "PUT",
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || `HTTP ${res.status}`);
+            }
+
+            showToast("Sprint started");
+        } catch (err) {
+            console.error("Start sprint failed:", err);
+            showToast("Failed to start sprint");
+        }
+    });
+
+    // ===================== COMPLETE SPRINT =====================
+    const completeSprintBtn = document.getElementById("completeSprintBtn");
+    completeSprintBtn?.addEventListener("click", async () => {
+        if (!confirm("Complete this sprint? This cannot be undone.")) return;
+
+        const sprintId = Number(currentSprintId);
+        if (!Number.isFinite(sprintId) || sprintId <= 0) {
+            showToast("No sprint selected");
+            return;
+        }
+
+        try {
+            const res = await fetch(`${SPRINTS_API}/${sprintId}/complete`, {
+                method: "PUT",
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || `HTTP ${res.status}`);
+            }
+
+            showToast("Sprint completed");
+        } catch (err) {
+            console.error("Complete sprint failed:", err);
+            showToast("Failed to complete sprint");
+        }
     });
 
     // ===================== INIT =====================

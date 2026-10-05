@@ -155,7 +155,7 @@ async function loadSprints() {
         pastSprintsBody.innerHTML = '';
 
         if (sprints.length === 0) {
-            pastSprintsBody.innerHTML = `<tr><td colspan="4">No sprints yet.</td></tr>`;
+            pastSprintsBody.innerHTML = `<tr><td colspan="5">No sprints yet.</td></tr>`;
             return;
         }
 
@@ -173,6 +173,7 @@ async function loadSprints() {
                     <td>${range}</td>
                     <td>${s.memberCount ?? 0}</td>
                     <td>${statusLabel(s.status)}</td>
+                    <td><button class="delete-sprint-btn" data-sprint-id="${s.id}" type="button">Delete</button></td>
                 `;
                 pastSprintsBody.appendChild(row);
             });
@@ -180,6 +181,35 @@ async function loadSprints() {
         console.error('Failed to load sprints:', err);
     }
 }
+
+// ===================== DELETE SPRINT =====================
+pastSprintsBody.addEventListener('click', async (event) => {
+    const target = event.target;
+    if (!target.classList.contains('delete-sprint-btn')) return;
+
+    const sprintId = target.dataset['sprintId'];
+    if (!sprintId) return;
+
+    if (!confirm(`Delete this sprint (ID ${sprintId})? This cannot be undone.`)) return;
+
+    try {
+        const res = await fetch(`${SPRINTS_API}/${sprintId}`, {
+            method: 'DELETE',
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || `HTTP ${res.status}`);
+        }
+
+        showToast('Sprint deleted', 'success');
+        await loadSprints();
+    } catch (err) {
+        console.error('Delete sprint failed:', err);
+        const message = err instanceof Error ? err.message : 'Failed to delete sprint';
+        showToast('Delete sprint failed: ' + message, 'error');
+    }
+});
 
 // ===================== CREATE SPRINT =====================
 sprintPlanningForm.addEventListener('submit', async (e) => {
@@ -245,7 +275,6 @@ inviteForm.addEventListener('submit', async (e) => {
         });
 
         if (!res.ok) {
-            // Backend returns plain text (e.g. "Email already invited")
             const text = await res.text();
             throw new Error(text || 'Failed to send invite');
         }
