@@ -1271,3 +1271,31 @@ textarea {
 .priority-medium { background-color: #2e7d32; }
 .priority-high   { background-color: #e07b1c; }
 .priority-urgent { background-color: #d33; }
+
+/* ===================== START / END SPRINT BUTTON STATES ===================== */
+
+.start-sprint-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.85;
+}
+
+.start-sprint-btn.is-active {
+    background: #DC2626;
+    color: white;
+}
+.start-sprint-btn.is-active:hover {
+    background: #B91C1C;
+}
+
+.start-sprint-btn.is-completed {
+    background: #9CA3AF;
+    color: white;
+}
+
+.start-sprint-btn.is-planned {
+    background: #22C55E;
+    color: white;
+}
+.start-sprint-btn.is-planned:hover {
+    background: #16A34A;
+}

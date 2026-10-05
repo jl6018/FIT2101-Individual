@@ -433,3 +433,21 @@ select:focus {
     width: auto;
     max-width: 100%;
 }
+
+/* ===================== DELETE SPRINT BUTTON ===================== */
+
+.delete-sprint-btn {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    color: #DC2626;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.delete-sprint-btn:hover {
+    background: #FEE2E2;
+}

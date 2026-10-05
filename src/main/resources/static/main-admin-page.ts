@@ -47,8 +47,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     // ===================== TYPES =====================
     type ColumnId = "PRODUCT_BACKLOG" | "TO_DO" | "IN_PROGRESS" | "IN_REVIEW" | "COMPLETED";
-
-    type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT" | "";   // ✅ NEW
+    type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT" | "";
 
     type Assignee =
         | { kind: "team"; teamId: string }
@@ -64,7 +63,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         assignee: Assignee | null;
         dueDate: string;
         estimateHours: number;
-        priority: Priority;   // ✅ NEW
+        priority: Priority;
     };
 
     type Team = { id: string; name: string };
@@ -79,7 +78,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         assignedEmployeeIds?: string | null;
         dueDate?: string | null;
         estimateHours?: number | null;
-        priority?: Priority | null;   // ✅ NEW
+        priority?: Priority | null;
     };
 
     type BackendUser = {
@@ -90,9 +89,26 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         team?: { name: string } | null;
     };
 
+    type Sprint = {
+        id: number;
+        name: string;
+        startDate: string;
+        endDate: string;
+        status: "PLANNED" | "ACTIVE" | "COMPLETED";
+        memberCount?: number;
+    };
+
     // ===================== CONFIG =====================
     const API_BASE = "http://localhost:8080/api/tasks";
     const USERS_API = "http://localhost:8080/api/users";
+    const SPRINTS_API = "http://localhost:8080/api/sprints";
+
+    // ✅ NEW — board tab number → sprint name in DB
+    const SPRINT_TAB_NAMES: Record<string, string> = {
+        "1": "Sprint 1",
+        "2": "Sprint 2",
+        "3": "Sprint 3",
+    };
 
     // ===================== REFERENCE DATA =====================
     const TEAMS: Team[] = [
@@ -140,7 +156,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             assignee: null,
             dueDate: "",
             estimateHours: 0,
-            priority: "",   // ✅ NEW
+            priority: "",
         };
     }
 
@@ -226,7 +242,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
     }
 
-    // ✅ Sprint tab persistence helpers
     const SPRINT_KEY = "symph.currentSprint";
 
     function readSprintSetting(): string {
@@ -302,7 +317,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     assignee,
                     dueDate: t.dueDate ?? "",
                     estimateHours: t.estimateHours ?? 0,
-                    priority: (t.priority ?? "") as Priority,   // ✅ NEW
+                    priority: (t.priority ?? "") as Priority,
                 };
             });
         } catch (err) {
@@ -331,7 +346,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     assignedEmployeeIds: payload.assignedEmployeeIds,
                     dueDate: task.dueDate || null,
                     estimateHours: task.estimateHours,
-                    priority: task.priority || null,   // ✅ NEW
+                    priority: task.priority || null,
                     sprint: { id: Number(currentSprintId) },
                 }),
             });
@@ -362,7 +377,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                 assignedEmployeeIds: payload.assignedEmployeeIds,
                 dueDate: task.dueDate || null,
                 estimateHours: task.estimateHours,
-                priority: task.priority || null,   // ✅ NEW
+                priority: task.priority || null,
                 sprint: { id: Number(currentSprintId) },
             };
 
@@ -432,7 +447,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     function renderCard(task: Task): string {
         const priorityBadge = task.priority
-            ? `<span class="priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>`   // ✅ NEW
+            ? `<span class="priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>`
             : "";
         const badges = [
             priorityBadge,
@@ -583,6 +598,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     writeSprintSetting(sprintId);
                     renderBoard();
                     renderTeamFilter();
+                    void refreshSprintButton();
                 }
             });
         });
@@ -671,7 +687,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const assigneeSelect = requireElement<HTMLSelectElement>("assigneeSelect");
     const employeeList = requireElement<HTMLDivElement>("employeeList");
     const estimateInput = requireElement<HTMLInputElement>("estimateInput");
-    const prioritySelect = requireElement<HTMLSelectElement>("prioritySelect");   // ✅ NEW
+    const prioritySelect = requireElement<HTMLSelectElement>("prioritySelect");
 
     let draft: Task | null = null;
     let assignKind: "team" | "teams" | "employees" = "team";
@@ -686,7 +702,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         dueDateInput.value = draft.dueDate;
         estimateInput.value =
             draft.estimateHours > 0 ? String(draft.estimateHours) : "";
-        prioritySelect.value = draft.priority;   // ✅ NEW
+        prioritySelect.value = draft.priority;
         errorText.textContent = "";
         saveBtn.textContent = draft.id ? "Save" : "Create task";
         deleteBtn.hidden = draft.id === "";
@@ -710,7 +726,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             `<span class="summary-chip"><b>Assigned to</b> ${escapeHtml(assigneeLabel(draft.assignee))}</span>`,
             `<span class="summary-chip"><b>Due</b> ${draft.dueDate ? formatDateBadge(draft.dueDate) : "No due date"}</span>`,
             `<span class="summary-chip"><b>Estimate</b> ${draft.estimateHours > 0 ? formatEstimate(draft.estimateHours) : "Not set"}</span>`,
-            `<span class="summary-chip"><b>Priority</b> ${draft.priority || "None"}</span>`,   // ✅ NEW
+            `<span class="summary-chip"><b>Priority</b> ${draft.priority || "None"}</span>`,
         ];
         summary.innerHTML = chips.join("");
         renderAssignControls();
@@ -858,7 +874,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderDraft();
     });
 
-    // ----- Priority (US19) -----   ✅ NEW
+    // ----- Priority -----
     prioritySelect.addEventListener("change", () => {
         if (!draft) return;
         draft.priority = prioritySelect.value as Priority;
@@ -999,11 +1015,95 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     setSidebarCollapsed(readSetting(SIDEBAR_KEY) === "1");
 
-    // ===================== START SPRINT (US23) =====================
-    const startSprintBtn = document.getElementById("startSprintBtn");
-    startSprintBtn?.addEventListener("click", () => {
-        if (!confirm("Start the sprint now? Time tracking will begin.")) return;
-        showToast("Sprint started");
+    // ===================== START / END SPRINT (US23) =====================
+    const startSprintBtn = document.getElementById("startSprintBtn") as HTMLButtonElement | null;
+    let currentSprintStatus: Sprint["status"] | null = null;
+    let currentSprintNumericId: number | null = null;   // ✅ NEW — the real DB id from /latest
+
+    // ✅ NEW — fetch the latest sprint by tab name
+    async function fetchSprintStatus(tabId: string): Promise<Sprint | null> {
+        const name = SPRINT_TAB_NAMES[tabId];
+        if (!name) return null;
+        try {
+            const res = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
+            if (res.status === 404) return null;   // no sprint with that name yet
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return (await res.json()) as Sprint;
+        } catch (err) {
+            console.error("Failed to load sprint:", err);
+            return null;
+        }
+    }
+
+    function renderSprintButton(status: Sprint["status"] | null): void {
+        if (!startSprintBtn) return;
+
+        startSprintBtn.classList.remove("is-active", "is-completed", "is-planned");
+
+        if (status === "ACTIVE") {
+            startSprintBtn.textContent = "■ End Sprint";
+            startSprintBtn.classList.add("is-active");
+            startSprintBtn.disabled = false;
+            startSprintBtn.title = "Mark the current sprint as completed";
+        } else if (status === "COMPLETED") {
+            startSprintBtn.textContent = "✓ Sprint Completed";
+            startSprintBtn.classList.add("is-completed");
+            startSprintBtn.disabled = true;
+            startSprintBtn.title = "This sprint is already completed";
+        } else {
+            startSprintBtn.textContent = "▶ Start Sprint";
+            startSprintBtn.classList.add("is-planned");
+            startSprintBtn.disabled = false;
+            startSprintBtn.title = "Start the current sprint";
+        }
+    }
+
+    async function refreshSprintButton(): Promise<void> {
+        const sprint = await fetchSprintStatus(currentSprintId);
+        currentSprintStatus = sprint?.status ?? null;
+        currentSprintNumericId = sprint?.id ?? null;   // ✅ store the DB id
+        renderSprintButton(currentSprintStatus);
+    }
+
+    startSprintBtn?.addEventListener("click", async () => {
+        if (!startSprintBtn || startSprintBtn.disabled) return;
+
+        // ✅ use the id from the latest sprint fetch, not the tab number
+        const numericId = currentSprintNumericId;
+        if (numericId === null || !Number.isFinite(numericId) || numericId <= 0) {
+            alert("No sprint found for this tab. Create one in Sprint Planning first.");
+            return;
+        }
+
+        const starting = currentSprintStatus !== "ACTIVE";
+
+        const confirmMsg = starting
+            ? "Start the sprint now? Time tracking will begin."
+            : "End this sprint? The sprint will be marked as completed.";
+        if (!confirm(confirmMsg)) return;
+
+        startSprintBtn.disabled = true;
+
+        try {
+            const endpoint = starting ? "start" : "complete";
+            const res = await fetch(`${SPRINTS_API}/${numericId}/${endpoint}`, {
+                method: "PUT",
+            });
+
+            if (!res.ok) {
+                const msg = await res.text();
+                throw new Error(msg || `HTTP ${res.status}`);
+            }
+
+            const updated: Sprint = await res.json();
+            currentSprintStatus = updated.status;
+            renderSprintButton(currentSprintStatus);
+            showToast(starting ? "Sprint started" : "Sprint completed");
+        } catch (err) {
+            console.error("Sprint action failed:", err);
+            alert(`Failed to update sprint status (sprint ${numericId}). Check the console for details.`);
+            await refreshSprintButton();
+        }
     });
 
     // ===================== INIT =====================
@@ -1012,6 +1112,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         highlightSavedSprintTab();
         initSprintTabs();
         renderTeamFilter();
+        await refreshSprintButton();
         await refreshFromBackend();
     }
     void init();

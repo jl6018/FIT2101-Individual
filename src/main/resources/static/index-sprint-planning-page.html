@@ -63,6 +63,7 @@
                     <th>Dates</th>
                     <th>Members</th>
                     <th>Status</th>
+                    <th></th>
                 </tr>
                 </thead>
                 <tbody id="pastSprintsBody">
@@ -84,13 +85,16 @@
             <div class="form-row">
                 <div class="form-field">
                     <label for="sprintName">Sprint name</label>
-                    <input type="text" id="sprintName" name="sprintName" value="Sprint 2" required>
+                    <select id="sprintName" name="sprintName" required>
+                        <!-- Options filled dynamically -->
+                    </select>
                 </div>
                 <div class="form-field">
                     <label for="sprintDuration">Duration</label>
-                    <select id="sprintDuration" name="sprintDuration">
+                    <select id="sprintDuration" name="sprintDuration" required>
+                        <option value="">Choose a duration</option>
                         <option value="1">1 week</option>
-                        <option value="2" selected>2 weeks</option>
+                        <option value="2">2 weeks</option>
                         <option value="3">3 weeks</option>
                     </select>
                 </div>
