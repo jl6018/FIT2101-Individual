@@ -276,9 +276,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     }
 
     // ===================== CUSTOM MODALS =====================
-    // HTML element refs are looked up lazily so this script never crashes
-    // if a modal isn't present on the page.
-
     function showOverlay(id: string): void {
         const el = document.getElementById(id);
         if (el) el.classList.add("visible");
@@ -352,6 +349,46 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     document.getElementById("closeAlertBtn")?.addEventListener("click", () => hideOverlay("alertOverlay"));
     document.getElementById("alertOverlay")?.addEventListener("click", (e) => {
         if (e.target === document.getElementById("alertOverlay")) hideOverlay("alertOverlay");
+    });
+
+    // -------- Invite Product Owner modal --------
+    const shareBtn = document.getElementById("shareBtn");
+    const inviteOverlay = document.getElementById("inviteOverlay");
+    const closeInviteBtn = document.getElementById("closeInviteBtn");
+    const inviteForm = document.getElementById("inviteForm") as HTMLFormElement | null;
+    const ownerEmailInput = document.getElementById("ownerEmail") as HTMLInputElement | null;
+
+    shareBtn?.addEventListener("click", () => inviteOverlay?.classList.add("visible"));
+    closeInviteBtn?.addEventListener("click", () => inviteOverlay?.classList.remove("visible"));
+    inviteOverlay?.addEventListener("click", (e) => {
+        if (e.target === inviteOverlay) inviteOverlay.classList.remove("visible");
+    });
+
+    inviteForm?.addEventListener("submit", async (e: SubmitEvent) => {
+        e.preventDefault();
+
+        const email = ownerEmailInput?.value.trim();
+        if (!email) return;
+
+        try {
+            const res = await fetch("/api/invites", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email }),
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || "Failed to send invite");
+            }
+
+            inviteOverlay?.classList.remove("visible");
+            showToast(`Invite sent to ${email}`);
+            inviteForm.reset();
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Failed to send invite";
+            showAlertModal("Invite failed", message);
+        }
     });
 
     // ===================== BACKEND SYNC =====================
@@ -1147,7 +1184,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
         const numericId = currentSprintNumericId;
         if (numericId === null || !Number.isFinite(numericId) || numericId <= 0) {
-            // ✅ Replaced alert() with custom modal
             showNoSprintModal();
             return;
         }
@@ -1158,7 +1194,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             ? "Start the sprint now? Time tracking will begin."
             : "End this sprint? The sprint will be marked as completed.";
 
-        // ✅ Replaced confirm() with custom modal
         const confirmed = await showConfirmModal({
             title: starting ? "Start sprint?" : "End sprint?",
             message: confirmMsg,

@@ -53,19 +53,14 @@ const USERS_API = "http://localhost:8080/api/users";
 
 // ===================== ELEMENTS =====================
 const startSprintPlanningBtn = requireElement('startSprintPlanningBtn');
-const inviteProductOwnerBtn = requireElement('inviteProductOwnerBtn');
 const sprintPlanningOverlay = requireElement('sprintPlanningOverlay');
-const inviteOverlay = requireElement('inviteOverlay');
 const closeSprintPlanningBtn = requireElement('closeSprintPlanningBtn');
-const closeInviteBtn = requireElement('closeInviteBtn');
 const sprintPlanningForm = requireElement('sprintPlanningForm');
-const inviteForm = requireElement('inviteForm');
 const sprintNameInput = requireElement('sprintName');
 const sprintStartDateInput = requireElement('sprintStartDate');
 const sprintDurationSelect = requireElement('sprintDuration');
 const sprintEndDateInput = requireElement('sprintEndDate');
 const membersList = requireElement('membersList');
-const ownerEmailInput = requireElement('ownerEmail');
 const pastSprintsBody = requireElement('pastSprintsBody');
 const toast = requireElement('toast');
 
@@ -90,10 +85,8 @@ startSprintPlanningBtn.addEventListener('click', async () => {
     openModal(sprintPlanningOverlay);
 });
 closeSprintPlanningBtn.addEventListener('click', () => closeModal(sprintPlanningOverlay));
-inviteProductOwnerBtn.addEventListener('click', () => openModal(inviteOverlay));
-closeInviteBtn.addEventListener('click', () => closeModal(inviteOverlay));
 
-[sprintPlanningOverlay, inviteOverlay].forEach((overlay) => {
+[sprintPlanningOverlay].forEach((overlay) => {
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) closeModal(overlay);
     });
@@ -329,38 +322,6 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to create sprint';
         showToast('Create sprint failed: ' + message, 'error');
-    }
-});
-
-// ===================== INVITE PRODUCT OWNER =====================
-inviteForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const email = ownerEmailInput.value.trim();
-    if (!email) {
-        ownerEmailInput.focus();
-        showToast('Please enter an email address.', 'error');
-        return;
-    }
-
-    try {
-        const res = await fetch('/api/invites', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email }),
-        });
-
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || 'Failed to send invite');
-        }
-
-        closeModal(inviteOverlay);
-        showToast(`Invite sent to ${email}`, 'success');
-        inviteForm.reset();
-    } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to send invite';
-        showToast(message, 'error');
     }
 });
 

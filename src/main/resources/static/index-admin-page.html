@@ -98,7 +98,7 @@
                     <div class="avatar avatar-gray">B</div>
                     <span class="avatar-more">+2</span>
                 </div>
-                <button class="share-btn" type="button">
+                <button class="share-btn" id="shareBtn" type="button">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <circle cx="10" cy="8" r="4"/><path d="M3 20c0-3.5 3-6 7-6s7 2.5 7 6M19 8v6M16 11h6"/>
                     </svg>
@@ -277,6 +277,24 @@
         <div class="modal-actions">
             <button id="closeAlertBtn" class="btn-primary full-width" type="button">OK</button>
         </div>
+    </div>
+</div>
+
+<!-- ===================== MODAL: Invite Product Owner ===================== -->
+<div class="modal-overlay" id="inviteOverlay">
+    <div class="modal modal-narrow" role="dialog" aria-modal="true" aria-labelledby="inviteTitle">
+        <button class="modal-close" id="closeInviteBtn" aria-label="Close" type="button">✕</button>
+        <h2 id="inviteTitle" class="modal-title">Invite Product Owner</h2>
+        <p class="modal-subtitle">They'll receive a sign-in link by email — there's no public sign-up form.</p>
+
+        <form id="inviteForm">
+            <div class="form-field">
+                <label for="ownerEmail">Email address</label>
+                <input type="email" id="ownerEmail" name="ownerEmail" placeholder="owner@company.com" required>
+            </div>
+
+            <button type="submit" class="btn-primary full-width">Send invite</button>
+        </form>
     </div>
 </div>
 

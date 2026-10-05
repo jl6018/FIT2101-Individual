@@ -1367,3 +1367,85 @@ textarea {
     font-family: inherit;
 }
 .btn-danger:hover { background: #B91C1C; }
+
+/* ===================== INVITE MODAL STYLES ===================== */
+#inviteOverlay .modal {
+    background-color: #f4f5fd;
+    max-width: 440px;
+    border-radius: 16px;
+    padding: 28px;
+}
+
+#inviteOverlay .modal-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: none;
+    border: none;
+    font-size: 16px;
+    color: #6B7280;
+    cursor: pointer;
+}
+
+#inviteOverlay .modal-title {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 6px;
+    color: #1a1a1a;
+}
+
+#inviteOverlay .modal-subtitle {
+    font-size: 13px;
+    color: #4B5563;
+    margin: 0 0 20px;
+    line-height: 1.5;
+}
+
+#inviteOverlay .form-field {
+    margin-bottom: 16px;
+}
+
+#inviteOverlay label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+#inviteOverlay input[type="email"] {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #E5E7EB;
+    font-size: 14px;
+    background: #fff;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+#inviteOverlay input[type="email"]:focus {
+    outline: 2px solid #6366F1;
+    outline-offset: 1px;
+}
+
+#inviteOverlay .btn-primary {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 10px;
+    background: #111;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+#inviteOverlay .btn-primary:hover {
+    background: #2a2a2a;
+}
+
+#inviteOverlay .btn-primary.full-width {
+    width: 100%;
+}

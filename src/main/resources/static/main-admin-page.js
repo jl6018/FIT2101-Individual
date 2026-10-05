@@ -275,6 +275,46 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         if (e.target === document.getElementById("alertOverlay")) hideOverlay("alertOverlay");
     });
 
+    // -------- Invite Product Owner modal (Share button) --------
+    const shareBtn = document.getElementById("shareBtn");
+    const inviteOverlay = document.getElementById("inviteOverlay");
+    const closeInviteBtn = document.getElementById("closeInviteBtn");
+    const inviteForm = document.getElementById("inviteForm");
+    const ownerEmailInput = document.getElementById("ownerEmail");
+
+    shareBtn?.addEventListener("click", () => inviteOverlay?.classList.add("visible"));
+    closeInviteBtn?.addEventListener("click", () => inviteOverlay?.classList.remove("visible"));
+    inviteOverlay?.addEventListener("click", (e) => {
+        if (e.target === inviteOverlay) inviteOverlay.classList.remove("visible");
+    });
+
+    inviteForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const email = ownerEmailInput?.value.trim();
+        if (!email) return;
+
+        try {
+            const res = await fetch("/api/invites", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email }),
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || "Failed to send invite");
+            }
+
+            inviteOverlay?.classList.remove("visible");
+            showToast(`Invite sent to ${email}`);
+            inviteForm.reset();
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Failed to send invite";
+            showAlertModal("Invite failed", message);
+        }
+    });
+
     // ===================== BACKEND SYNC =====================
     async function fetchTasks() {
         try {

@@ -1,10 +1,10 @@
-"use strict";
-// main-team-management-page.js
-// Compiled from main-team-management-page.ts — do not hand-edit.
+// main-team-management-page.ts
+// Compile with:
+//   npx tsc main-team-management-page.ts --module esnext --target esnext --strict --ignoreConfig
 
 // ===================== BFCACHE FIX =====================
 window.addEventListener('pageshow', (event) => {
-    if (event.persisted && sessionStorage.getItem('loggedIn') !== 'true') {
+    if ((event as PageTransitionEvent).persisted && sessionStorage.getItem('loggedIn') !== 'true') {
         window.location.href = 'index-login-page.html';
     }
 });
@@ -25,17 +25,17 @@ if (nameEl) {
     }
 }
 
-function requireElement(id) {
+function requireElement<T extends HTMLElement>(id: string): T {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
-    return el;
+    return el as T;
 }
 
 // ===================== LOGOUT MODAL =====================
-const logoutBtn = requireElement('logoutBtn');
-const logoutOverlay = requireElement('logoutOverlay');
-const cancelLogoutBtn = requireElement('cancelLogoutBtn');
-const confirmLogoutBtn = requireElement('confirmLogoutBtn');
+const logoutBtn = requireElement<HTMLButtonElement>('logoutBtn');
+const logoutOverlay = requireElement<HTMLDivElement>('logoutOverlay');
+const cancelLogoutBtn = requireElement<HTMLButtonElement>('cancelLogoutBtn');
+const confirmLogoutBtn = requireElement<HTMLButtonElement>('confirmLogoutBtn');
 
 logoutBtn.addEventListener('click', () => logoutOverlay.classList.add('visible'));
 cancelLogoutBtn.addEventListener('click', () => logoutOverlay.classList.remove('visible'));
@@ -43,53 +43,46 @@ confirmLogoutBtn.addEventListener('click', () => {
     sessionStorage.clear();
     window.location.href = 'index-login-page.html';
 });
-logoutOverlay.addEventListener('click', (e) => {
+logoutOverlay.addEventListener('click', (e: MouseEvent) => {
     if (e.target === logoutOverlay) logoutOverlay.classList.remove('visible');
 });
 
 // ===================== ELEMENTS =====================
-const addMemberBtn = requireElement('addMemberBtn');
-const inviteProductOwnerBtn = requireElement('inviteProductOwnerBtn');
-const addMemberOverlay = requireElement('addMemberOverlay');
-const inviteOverlay = requireElement('inviteOverlay');
-const removeMemberOverlay = requireElement('removeMemberOverlay');
-const closeAddMemberBtn = requireElement('closeAddMemberBtn');
-const closeInviteBtn = requireElement('closeInviteBtn');
-const addMemberForm = requireElement('addMemberForm');
-const inviteForm = requireElement('inviteForm');
-const memberUserSelect = requireElement('memberUser');
-const memberJobTitleSelect = requireElement('memberJobTitle');
-const memberTeamSelect = requireElement('memberTeam');
-const ownerEmailInput = requireElement('ownerEmail');
-const membersBody = requireElement('membersBody');
-const removeMemberName = requireElement('removeMemberName');
-const removeMemberTeam = requireElement('removeMemberTeam');
-const cancelRemoveBtn = requireElement('cancelRemoveBtn');
-const confirmRemoveBtn = requireElement('confirmRemoveBtn');
-const toast = requireElement('toast');
+const addMemberBtn = requireElement<HTMLButtonElement>('addMemberBtn');
+const addMemberOverlay = requireElement<HTMLDivElement>('addMemberOverlay');
+const removeMemberOverlay = requireElement<HTMLDivElement>('removeMemberOverlay');
+const closeAddMemberBtn = requireElement<HTMLButtonElement>('closeAddMemberBtn');
+const addMemberForm = requireElement<HTMLFormElement>('addMemberForm');
+const memberUserSelect = requireElement<HTMLSelectElement>('memberUser');
+const memberJobTitleSelect = requireElement<HTMLSelectElement>('memberJobTitle');
+const memberTeamSelect = requireElement<HTMLSelectElement>('memberTeam');
+const membersBody = requireElement<HTMLTableSectionElement>('membersBody');
+const removeMemberName = requireElement<HTMLElement>('removeMemberName');
+const removeMemberTeam = requireElement<HTMLElement>('removeMemberTeam');
+const cancelRemoveBtn = requireElement<HTMLButtonElement>('cancelRemoveBtn');
+const confirmRemoveBtn = requireElement<HTMLButtonElement>('confirmRemoveBtn');
+const toast = requireElement<HTMLDivElement>('toast');
 
-let rowPendingRemoval = null;
-let registeredUsers = [];
+let rowPendingRemoval: HTMLTableRowElement | null = null;
+let registeredUsers: { id: number; name: string; email: string; role: string }[] = [];
 
 // ===================== MODAL OPEN/CLOSE =====================
-function openModal(overlay) { overlay.classList.add('visible'); }
-function closeModal(overlay) { overlay.classList.remove('visible'); }
+function openModal(overlay: HTMLDivElement): void { overlay.classList.add('visible'); }
+function closeModal(overlay: HTMLDivElement): void { overlay.classList.remove('visible'); }
 
 addMemberBtn.addEventListener('click', () => openModal(addMemberOverlay));
 closeAddMemberBtn.addEventListener('click', () => closeModal(addMemberOverlay));
-inviteProductOwnerBtn.addEventListener('click', () => openModal(inviteOverlay));
-closeInviteBtn.addEventListener('click', () => closeModal(inviteOverlay));
 
-[addMemberOverlay, inviteOverlay, removeMemberOverlay].forEach((overlay) => {
-    overlay.addEventListener('click', (e) => {
+[addMemberOverlay, removeMemberOverlay].forEach((overlay) => {
+    overlay.addEventListener('click', (e: MouseEvent) => {
         if (e.target === overlay) closeModal(overlay);
     });
 });
 
 // ===================== TOAST =====================
-let toastTimeoutId;
+let toastTimeoutId: number | undefined;
 
-function showToast(message, type = 'success') {
+function showToast(message: string, type: 'success' | 'error' = 'success'): void {
     toast.textContent = message;
     toast.classList.remove('success', 'error');
     toast.classList.add(type);
@@ -99,13 +92,13 @@ function showToast(message, type = 'success') {
 }
 
 // ===================== LOAD USERS =====================
-async function loadMembers() {
+async function loadMembers(): Promise<void> {
     try {
         const res = await fetch('/api/users');
         if (!res.ok) throw new Error('Failed to load users');
 
         const allUsers = await res.json();
-        registeredUsers = allUsers.filter((user) => user.role === 'EMPLOYEE');
+        registeredUsers = allUsers.filter((user: any) => user.role === 'EMPLOYEE');
 
         memberUserSelect.innerHTML = '<option value="">Select a user...</option>';
         registeredUsers.forEach((user) => {
@@ -120,7 +113,7 @@ async function loadMembers() {
 }
 
 // ===================== LOAD TABLE (ONLY ASSIGNED) =====================
-async function loadTeamMemberships() {
+async function loadTeamMemberships(): Promise<void> {
     try {
         const res = await fetch('/api/users');
         if (!res.ok) return;
@@ -129,8 +122,8 @@ async function loadTeamMemberships() {
         membersBody.innerHTML = '';
 
         users
-            .filter((u) => u.role === 'EMPLOYEE' && u.team != null)
-            .forEach((u) => {
+            .filter((u: any) => u.role === 'EMPLOYEE' && u.team != null)
+            .forEach((u: any) => {
                 const teamName = u.team.name;
                 const jobTitle = u.jobTitle ?? '—';
 
@@ -156,7 +149,7 @@ async function loadTeamMemberships() {
 }
 
 // ===================== ADD MEMBER =====================
-addMemberForm.addEventListener('submit', async (e) => {
+addMemberForm.addEventListener('submit', async (e: SubmitEvent) => {
     e.preventDefault();
 
     const userId = memberUserSelect.value;
@@ -191,44 +184,12 @@ addMemberForm.addEventListener('submit', async (e) => {
     }
 });
 
-// ===================== INVITE PRODUCT OWNER =====================
-inviteForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const email = ownerEmailInput.value.trim();
-    if (!email) {
-        showToast('Please enter an email address.', 'error');
-        return;
-    }
-
-    try {
-        const res = await fetch('/api/invites', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email }),
-        });
-
-        if (!res.ok) {
-            // Backend returns plain text (e.g. "Email already invited")
-            const text = await res.text();
-            throw new Error(text || 'Failed to send invite.');
-        }
-
-        closeModal(inviteOverlay);
-        showToast(`Invite sent to ${email}`, 'success');
-        inviteForm.reset();
-    } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to send invite';
-        showToast(message, 'error');
-    }
-});
-
 // ===================== REMOVE MEMBER =====================
-membersBody.addEventListener('click', (e) => {
-    const target = e.target;
+membersBody.addEventListener('click', (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
     if (!target.classList.contains('remove-btn')) return;
 
-    const row = target.closest('tr');
+    const row = target.closest('tr') as HTMLTableRowElement | null;
     if (!row) return;
 
     rowPendingRemoval = row;
@@ -256,7 +217,7 @@ confirmRemoveBtn.addEventListener('click', async () => {
         if (userId && teamName) {
             const teamsRes = await fetch('/api/teams');
             const teams = await teamsRes.json();
-            const team = teams.find((t) => t.name === teamName);
+            const team = teams.find((t: any) => t.name === teamName);
 
             if (!team) throw new Error('Team not found');
 
@@ -277,5 +238,5 @@ confirmRemoveBtn.addEventListener('click', async () => {
 });
 
 // ===================== INIT =====================
-loadMembers();
-loadTeamMemberships();
+void loadMembers();
+void loadTeamMemberships();
