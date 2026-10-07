@@ -29,8 +29,8 @@ public class User {
     @NotBlank(message = "Email is required")
     @Email(message = "Please enter a proper email like user@example.com")
     @Pattern(
-            regexp = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$",
-            message = "Please enter a valid email address (e.g. user@example.com)"
+            regexp = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.(com|org|net|edu|gov|mil|io|co|my|sg|uk|us|info|biz|dev|app)$",
+            message = "Please enter a valid email with a recognized domain (e.g. user@gmail.com)"
     )
     @Column(unique = true, nullable = false)
     private String email;
@@ -70,7 +70,14 @@ public class User {
     public void setName(String name) { this.name = name; }
 
     public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+
+    /**
+     * Normalizes the email by trimming whitespace and lowercasing it
+     * before validation runs, so "  XX@GMAIL.COM  " becomes "xx@gmail.com".
+     */
+    public void setEmail(String email) {
+        this.email = (email == null) ? null : email.trim().toLowerCase();
+    }
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
