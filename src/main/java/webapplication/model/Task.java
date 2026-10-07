@@ -1,8 +1,11 @@
 package webapplication.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Represents a task within the Symph web application.
@@ -55,6 +58,15 @@ public class Task {
     @ManyToOne
     @JoinColumn(name = "assigned_user_id")
     private User assignedUser;
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "task_tags",
+            joinColumns = @JoinColumn(name = "task_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    @JsonIgnoreProperties("hibernateLazyInitializer")
+    private Set<Tag> tags = new HashSet<>();
 
     /**
      * Default constructor.
@@ -275,4 +287,18 @@ public class Task {
      * @param assignedUser The User object
      */
     public void setAssignedUser(User assignedUser) { this.assignedUser = assignedUser; }
+
+    /**
+     * Gets the tags attached to this task.
+     *
+     * @return A set of Tag objects
+     */
+    public Set<Tag> getTags() { return tags; }
+
+    /**
+     * Sets the tags attached to this task.
+     *
+     * @param tags A set of Tag objects
+     */
+    public void setTags(Set<Tag> tags) { this.tags = tags; }
 }
