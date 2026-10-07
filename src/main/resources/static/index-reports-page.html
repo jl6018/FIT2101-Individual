@@ -1,27 +1,24 @@
 <!--
     Reports Page — Symph Web Application
     Displays time contribution, hours per task, and sprint burndown charts.
-    Includes a time range selector, team contribution table, bar chart,
-    SVG burndown chart, and a member history modal.
+    Includes a time range selector, team contribution table, and member
+    history modal, all driven by /api/timelogs endpoints.
 
     @author Lim Jia Li
     @version 17.0.16
 -->
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Symph — Reports</title>
     <link rel="stylesheet" href="style-reports-page.css">
 
-    <!-- Prevent caching so reports always reflect the latest data -->
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 </head>
-
 <body>
 
 <div class="app-shell">
@@ -31,7 +28,6 @@
             <img src="images/symph-logo.png" alt="Symph" />
         </a>
 
-        <!-- Primary navigation menu -->
         <nav class="nav">
             <a href="index-admin-page.html" class="nav-item">
                 <span class="dot"></span> Sprint Board
@@ -47,7 +43,6 @@
             </a>
         </nav>
 
-        <!-- Signed-in user info and logout -->
         <div class="sidebar-footer">
             <div class="signed-in">Signed in as <strong id="signedInName">Admin</strong></div>
             <button id="logoutBtn" class="switch-account-btn">Log out</button>
@@ -56,7 +51,6 @@
 
     <!-- ===================== MAIN CONTENT ===================== -->
     <main class="main">
-        <!-- Top bar with search and icons -->
         <div class="top-bar">
             <span class="top-bar-badge">Admin</span>
             <input type="text" class="top-bar-search" placeholder="Search">
@@ -69,7 +63,7 @@
         </div>
 
         <h1>Reports</h1>
-        <p class="page-subtitle">Time contribution, hours per task and sprint burndown</p>
+        <p class="page-subtitle">Time contribution per member over a selectable range</p>
 
         <!-- ===================== TIME RANGE ===================== -->
         <section class="panel">
@@ -81,9 +75,9 @@
             </div>
         </section>
 
-        <!-- ===================== TEAM CONTRIBUTION ===================== -->
+        <!-- ===================== TEAM CONTRIBUTION (US26 / US27 / US28) ===================== -->
         <section class="panel">
-            <h2 id="contributionTitle">Team contribution — last 7 days</h2>
+            <h2 id="contributionTitle">Team contribution</h2>
             <p class="muted">Average hours per day = total hours logged in this range ÷ days that member
                 actually logged work. Click a row for their individual history.</p>
 
@@ -98,26 +92,6 @@
                 </thead>
                 <tbody id="contributionBody"></tbody>
             </table>
-        </section>
-
-        <!-- ===================== HOURS PER TASK ===================== -->
-        <section class="panel">
-            <h2>Hours per task</h2>
-            <p class="muted">Total logged hours against each task in this sprint.</p>
-            <div class="bar-chart" id="taskHoursChart"></div>
-        </section>
-
-        <!-- ===================== SPRINT BURNDOWN ===================== -->
-        <section class="panel">
-            <h2>Sprint burndown</h2>
-            <p class="muted">Illustrative example — actual vs projected velocity across the sprint.</p>
-            <div class="burndown-wrap">
-                <svg id="burndownChart" viewBox="0 0 600 260" class="burndown-svg"></svg>
-            </div>
-            <div class="legend">
-                <span class="legend-item"><span class="legend-swatch projected"></span> Projected velocity</span>
-                <span class="legend-item"><span class="legend-swatch actual"></span> Actual velocity</span>
-            </div>
         </section>
     </main>
 </div>
@@ -151,5 +125,4 @@
 
 <script src="main-reports-page.js" type="module" defer></script>
 </body>
-
 </html>
