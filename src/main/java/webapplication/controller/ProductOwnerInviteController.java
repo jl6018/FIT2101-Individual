@@ -9,7 +9,7 @@ import java.util.List;
 
 /**
  * Exposes REST endpoints for managing Product Owner invitations.
- * Handles creation, retrieval, and deletion of invites.
+ * Handles creation, retrieval, deletion, and invitation checks.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -57,6 +57,22 @@ public class ProductOwnerInviteController {
     @GetMapping
     public List<ProductOwnerInvite> getAll() {
         return inviteService.getAllInvites();
+    }
+
+    /**
+     * Checks whether an email has been invited as a Product Owner.
+     * Used by the login page to gate PRODUCT_OWNER logins (US20 + US22).
+     *
+     * @param email The email address to check
+     * @return      200 OK if invited, 404 Not Found if not
+     */
+    @GetMapping("/check")
+    public ResponseEntity<?> checkInvited(@RequestParam String email) {
+        boolean invited = inviteService.isInvited(email);
+        if (invited) {
+            return ResponseEntity.ok().build();
+        }
+        return ResponseEntity.status(404).body("Not invited");
     }
 
     /**

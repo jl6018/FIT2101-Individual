@@ -7,7 +7,10 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * Manages Product Owner invitation validation, creation, retrieval, and deletion.
+ * Manages Product Owner invitation validation, creation, retrieval,
+ * deletion, and invitation checks.
+ * Emails are normalized to lowercase and trimmed before being stored or
+ * compared, so XX@x.com and xx@x.com are treated as the same address.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -29,10 +32,12 @@ public class ProductOwnerInviteService {
 
     /**
      * Validates and saves a Product Owner invite.
+     * The email is trimmed and lowercased before saving so duplicates
+     * differing only by case are prevented.
      *
      * @param invite                The invite to validate and save
      * @return                      The saved invite object
-     * @throws IllegalArgumentException if the email is missing or has an invalid format
+     * @throws IllegalArgumentException if the email is missing or invalid
      * @throws RuntimeException         if the email has already been invited
      */
     public ProductOwnerInvite inviteProductOwner(ProductOwnerInvite invite) {
@@ -86,5 +91,17 @@ public class ProductOwnerInviteService {
             throw new RuntimeException("Invite not found");
         }
         inviteRepository.deleteById(id);
+    }
+
+    /**
+     * Returns true if the given email has been invited as a Product Owner.
+     * The check is case-insensitive and trims whitespace.
+     *
+     * @param email The email to check
+     * @return      True if invited, false otherwise
+     */
+    public boolean isInvited(String email) {
+        if (email == null || email.isBlank()) return false;
+        return inviteRepository.findByEmail(email.trim().toLowerCase()).isPresent();
     }
 }

@@ -28,6 +28,10 @@ public class User {
 
     @NotBlank(message = "Email is required")
     @Email(message = "Please enter a proper email like user@example.com")
+    @Pattern(
+            regexp = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$",
+            message = "Please enter a valid email address (e.g. user@example.com)"
+    )
     @Column(unique = true, nullable = false)
     private String email;
 

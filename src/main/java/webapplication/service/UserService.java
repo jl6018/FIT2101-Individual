@@ -11,6 +11,8 @@ import java.util.List;
 /**
  * Manages user Create, Read, Update, Delete, login validation,
  * team assignment, and job title operations.
+ * Emails are normalized to lowercase and trimmed before being stored or
+ * compared, so XX@x.com and xx@x.com are treated as the same address.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -55,14 +57,19 @@ public class UserService {
     }
 
     /**
-     * Creates a new user if the email has not already been registered.
+     * Creates a new user. The email is normalized to lowercase and trimmed
+     * before the duplicate check, so XX@x.com and xx@x.com are treated as
+     * the same email address.
      *
      * @param user              The User object to save
      * @return                  The saved User object with its assigned ID
      * @throws RuntimeException if the email is already registered
      */
     public User createUser(User user) {
-        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+        String normalizedEmail = user.getEmail().trim().toLowerCase();
+        user.setEmail(normalizedEmail);
+
+        if (userRepository.findByEmail(normalizedEmail).isPresent()) {
             throw new RuntimeException("Email already registered");
         }
         return userRepository.save(user);
@@ -79,7 +86,7 @@ public class UserService {
     public User updateUser(Long id, User updatedUser) {
         User user = getUserById(id);
         user.setName(updatedUser.getName());
-        user.setEmail(updatedUser.getEmail());
+        user.setEmail(updatedUser.getEmail().trim().toLowerCase());
         user.setRole(updatedUser.getRole());
         return userRepository.save(user);
     }
@@ -94,14 +101,16 @@ public class UserService {
     }
 
     /**
-     * Authenticates a user by checking their email and password.
+     * Authenticates a user by email and password. The email is normalized
+     * the same way as at registration, so casing doesn't matter.
      *
      * @param email     The email entered by the user
      * @param password  The password entered by the user
      * @return          The User object if credentials are valid, or null if invalid
      */
     public User login(String email, String password) {
-        return userRepository.findByEmailAndPassword(email, password).orElse(null);
+        String normalizedEmail = email == null ? "" : email.trim().toLowerCase();
+        return userRepository.findByEmailAndPassword(normalizedEmail, password).orElse(null);
     }
 
     /**
