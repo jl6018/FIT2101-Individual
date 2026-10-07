@@ -2,7 +2,7 @@
  * Sprint Planning Page — Symph Web Application
  * Compiled from main-sprint-planning-page.ts — do not hand-edit.
  * Handles sprint creation, member loading, end-date calculation, the delete
- * sprint modal, and logout for the Sprint Planning page.
+ * sprint modal, and building tasks from the planning form (US22).
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -23,27 +23,39 @@ if (sessionStorage.getItem('loggedIn') !== 'true') {
     throw new Error('Not logged in');
 }
 
+// ===================== US22: SPRINT PLANNING GUARD =====================
+const role = sessionStorage.getItem('role');
+if (role !== 'ADMIN' && role !== 'PRODUCT_OWNER') {
+    window.location.href = 'index-user-page.html';
+    throw new Error('Only admins and product owners can access Sprint Planning');
+}
+
 // ===================== SHOW CURRENT USER =====================
 const nameEl = document.getElementById('signedInName');
 if (nameEl) {
     const name = sessionStorage.getItem('name');
-    const role = sessionStorage.getItem('role');
+    const userRole = sessionStorage.getItem('role');
     if (name) {
-        nameEl.textContent = role === 'ADMIN' ? `${name} (Admin)` : name;
+        const suffix =
+            userRole === 'ADMIN' ? ' (Admin)' :
+            userRole === 'PRODUCT_OWNER' ? ' (Product Owner)' : '';
+        nameEl.textContent = `${name}${suffix}`;
     }
 }
 
-/**
- * Retrieves a DOM element by its ID and throws if not found.
- *
- * @param {string} id      The ID of the element to retrieve
- * @returns {HTMLElement}  The matching DOM element
- * @throws {Error}         if no element with the given ID exists
- */
 function requireElement(id) {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
     return el;
+}
+
+function escapeHtml(text) {
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 // ===================== LOGOUT MODAL =====================
@@ -64,6 +76,7 @@ logoutOverlay.addEventListener('click', (e) => {
 
 // ===================== CONFIG =====================
 const SPRINTS_API = "http://localhost:8080/api/sprints";
+const TASKS_API = "http://localhost:8080/api/tasks";
 const USERS_API = "http://localhost:8080/api/users";
 
 // ===================== ELEMENTS =====================
@@ -78,6 +91,8 @@ const sprintEndDateInput = requireElement('sprintEndDate');
 const membersList = requireElement('membersList');
 const pastSprintsBody = requireElement('pastSprintsBody');
 const toast = requireElement('toast');
+const taskListEl = requireElement('taskList');
+const addTaskRowBtn = requireElement('addTaskRowBtn');
 
 // ===================== DELETE SPRINT MODAL ELEMENTS =====================
 const deleteSprintOverlay = requireElement('deleteSprintOverlay');
@@ -86,18 +101,7 @@ const cancelDeleteBtn = requireElement('cancelDeleteBtn');
 const confirmDeleteBtn = requireElement('confirmDeleteBtn');
 
 // ===================== MODAL OPEN/CLOSE =====================
-/**
- * Shows a modal overlay by adding the "visible" class.
- *
- * @param {HTMLElement} overlay The overlay element to show
- */
 function openModal(overlay) { overlay.classList.add('visible'); }
-
-/**
- * Hides a modal overlay by removing the "visible" class.
- *
- * @param {HTMLElement} overlay The overlay element to hide
- */
 function closeModal(overlay) { overlay.classList.remove('visible'); }
 
 startSprintPlanningBtn.addEventListener('click', async () => {
@@ -107,6 +111,10 @@ startSprintPlanningBtn.addEventListener('click', async () => {
 
     sprintStartDateInput.value = new Date().toISOString().split('T')[0];
     recalculateEndDate();
+
+    // Seed the task list with one blank row
+    taskListEl.innerHTML = '';
+    addTaskRow();
 
     openModal(sprintPlanningOverlay);
 });
@@ -121,12 +129,6 @@ closeSprintPlanningBtn.addEventListener('click', () => closeModal(sprintPlanning
 // ===================== TOAST =====================
 let toastTimeoutId;
 
-/**
- * Displays a toast notification for 3 seconds.
- *
- * @param {string} message            The message to display
- * @param {string} [type='success']   Whether the toast is a success or error notification
- */
 function showToast(message, type = 'success') {
     toast.textContent = message;
     toast.classList.remove('success', 'error');
@@ -137,12 +139,6 @@ function showToast(message, type = 'success') {
 }
 
 // ===================== HELPERS =====================
-/**
- * Converts a backend sprint status into a display label.
- *
- * @param {string} status The raw status string
- * @returns {string}      The display label
- */
 function statusLabel(status) {
     if (status === 'PLANNED') return 'Planned';
     if (status === 'ACTIVE') return 'In progress';
@@ -150,10 +146,6 @@ function statusLabel(status) {
     return status;
 }
 
-/**
- * Recalculates and displays the sprint end date based on the start date
- * and duration.
- */
 function recalculateEndDate() {
     const startValue = sprintStartDateInput.value;
     const weeks = Number(sprintDurationSelect.value);
@@ -173,10 +165,51 @@ function recalculateEndDate() {
 sprintStartDateInput.addEventListener('change', recalculateEndDate);
 sprintDurationSelect.addEventListener('change', recalculateEndDate);
 
-// ===================== LOAD MEMBERS =====================
+// ===================== TASK LIST BUILDER (US22) =====================
 /**
- * Loads all employees from the backend into the members checklist.
+ * Adds one blank task row to the task-list builder.
+ * Each row contains name, description, and due date inputs.
  */
+function addTaskRow() {
+    const row = document.createElement('div');
+    row.className = 'task-row';
+
+    row.innerHTML = `
+        <div class="task-row-top">
+            <input type="text" class="task-row-name" placeholder="Task name" maxlength="200" />
+            <input type="date" class="task-row-date" />
+            <button type="button" class="task-row-remove" aria-label="Remove task">✕</button>
+        </div>
+        <textarea class="task-row-desc" placeholder="Description (optional)" maxlength="2000"></textarea>
+    `;
+
+    row.querySelector('.task-row-remove').addEventListener('click', () => row.remove());
+
+    taskListEl.appendChild(row);
+}
+
+addTaskRowBtn.addEventListener('click', addTaskRow);
+
+/**
+ * Reads every task row in the builder.
+ *
+ * @returns {Array} A list of { name, description, dueDate }
+ */
+function readTaskRows() {
+    const rows = taskListEl.querySelectorAll('.task-row');
+    const tasks = [];
+    rows.forEach((row) => {
+        const name = row.querySelector('.task-row-name').value.trim();
+        const description = row.querySelector('.task-row-desc').value.trim();
+        const dueDate = row.querySelector('.task-row-date').value;
+        if (name) {
+            tasks.push({ name, description, dueDate });
+        }
+    });
+    return tasks;
+}
+
+// ===================== LOAD MEMBERS =====================
 async function loadMembers() {
     try {
         const res = await fetch(USERS_API);
@@ -192,7 +225,7 @@ async function loadMembers() {
                 return `
                 <label class="member-row">
                     <input type="checkbox" name="member" value="${u.id}" checked>
-                    <span>${u.name} — ${team}</span>
+                    <span>${escapeHtml(u.name)} — ${escapeHtml(team)}</span>
                 </label>`;
             }).join('');
     } catch (err) {
@@ -201,10 +234,7 @@ async function loadMembers() {
     }
 }
 
-// ===================== POPULATE SPRINT NAME OPTIONS =====================
-/**
- * Populates the sprint name dropdown with the available sprint options.
- */
+// ===================== POPULATE DROPDOWNS =====================
 function populateSprintNameOptions() {
     sprintNameInput.innerHTML = `
         <option value="">Choose a sprint</option>
@@ -214,10 +244,6 @@ function populateSprintNameOptions() {
     `;
 }
 
-// ===================== POPULATE DURATION OPTIONS =====================
-/**
- * Populates the duration dropdown with the available week options.
- */
 function populateDurationOptions() {
     sprintDurationSelect.innerHTML = `
         <option value="">Choose a duration</option>
@@ -228,9 +254,6 @@ function populateDurationOptions() {
 }
 
 // ===================== LOAD SPRINTS =====================
-/**
- * Loads all sprints from the backend and renders them in the past sprints table.
- */
 async function loadSprints() {
     try {
         const res = await fetch(SPRINTS_API);
@@ -254,7 +277,7 @@ async function loadSprints() {
 
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${s.name}</td>
+                    <td>${escapeHtml(s.name)}</td>
                     <td>${range}</td>
                     <td>${s.memberCount ?? 0}</td>
                     <td>${statusLabel(s.status)}</td>
@@ -275,12 +298,6 @@ async function loadSprints() {
 // ===================== DELETE SPRINT (custom modal) =====================
 let pendingDeleteId = null;
 
-/**
- * Opens the delete sprint confirmation modal.
- *
- * @param {number} sprintId   The ID of the sprint to delete
- * @param {string} sprintName The name of the sprint to delete
- */
 function openDeleteModal(sprintId, sprintName) {
     pendingDeleteId = sprintId;
     deleteSprintName.textContent = sprintName;
@@ -320,7 +337,7 @@ confirmDeleteBtn.addEventListener('click', async () => {
     }
 });
 
-// ===================== CREATE SPRINT =====================
+// ===================== CREATE SPRINT + TASKS =====================
 sprintPlanningForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -355,6 +372,7 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
     const memberCount = checkedMembers.length;
 
     try {
+        // 1. Create the sprint
         const res = await fetch(SPRINTS_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -372,11 +390,41 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
             throw new Error(msg || 'Failed to create sprint');
         }
 
+        const createdSprint = await res.json();
+
+        // 2. Create the tasks the PO added
+        const taskRows = readTaskRows();
+        const taskResults = await Promise.all(taskRows.map((t) =>
+            fetch(TASKS_API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: t.name,
+                    description: t.description,
+                    status: 'PRODUCT_BACKLOG',
+                    dueDate: t.dueDate || null,
+                    position: 0,
+                    progress: 0,
+                    sprint: { id: createdSprint.id },
+                }),
+            })
+        ));
+
+        const failed = taskResults.filter((r) => !r.ok).length;
+
         closeModal(sprintPlanningOverlay);
-        showToast('Sprint created', 'success');
+        if (failed > 0) {
+            showToast(`Sprint created — ${failed} task(s) failed to save`, 'error');
+        } else if (taskRows.length > 0) {
+            showToast(`Sprint created with ${taskRows.length} task(s)`, 'success');
+        } else {
+            showToast('Sprint created', 'success');
+        }
+
         sprintPlanningForm.reset();
         populateSprintNameOptions();
         populateDurationOptions();
+        taskListEl.innerHTML = '';
         recalculateEndDate();
         await loadSprints();
     } catch (err) {

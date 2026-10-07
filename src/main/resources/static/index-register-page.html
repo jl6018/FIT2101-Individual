@@ -1,8 +1,8 @@
 <!--
     Register Page — Symph Web Application
     Provides the account creation form for new users. Includes fields for
-    name, email, password, and role (Employee or Admin), plus an error
-    banner and a link back to the login page.
+    name, email, password, and role (Employee, Product Owner, or Admin),
+    plus an error banner and a link back to the login page.
 
     @author Lim Jia Li
     @version 17.0.16
@@ -18,18 +18,15 @@
 <body>
 
 <div class="login-wrap">
-    <!-- Branding -->
     <div class="logo"><span class="s1">SYM</span><span class="s2">PH</span></div>
     <h1>Create your account</h1>
 
     <div class="card">
-        <!-- Error banner shown when registration fails -->
         <div class="error-banner" id="errorBanner">
             <span id="errorText"></span>
             <button class="close-x" id="dismissError" aria-label="Dismiss error">✕</button>
         </div>
 
-        <!-- Registration form -->
         <form id="registerForm" novalidate>
             <div class="field">
                 <label for="name">Full name</label>
@@ -50,6 +47,7 @@
                 <label for="role">Role</label>
                 <select id="role" name="role" style="width:100%;padding:12px 14px;border-radius:10px;border:none;">
                     <option value="EMPLOYEE">Employee</option>
+                    <option value="PRODUCT_OWNER">Product Owner</option>
                     <option value="ADMIN">Admin</option>
                 </select>
             </div>
@@ -57,7 +55,6 @@
             <button type="submit" class="submit" id="registerBtn">Register</button>
         </form>
 
-        <!-- Login link -->
         <p style="text-align:center;margin-top:16px;font-size:14px;">
             Already have an account? <a href="index-login-page.html">Log in</a>
         </p>

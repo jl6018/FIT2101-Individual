@@ -6,7 +6,8 @@
  * accumulated sprint hours (US25), team filtering, tag filtering/sorting
  * (US14), search, the task modal with progress editing (US16), log-time
  * modal (US24), card status dropdown (US18), sprint start/end controls,
- * tag management (US13), and admin-only task deletion (US11).
+ * tag management (US13), admin-only task deletion (US11), and the
+ * PRODUCT_OWNER role (US22).
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -14,7 +15,7 @@
 
 "use strict";
 
-// ===================== ADMIN GUARD =====================
+// ===================== ADMIN / PRODUCT OWNER GUARD =====================
 window.addEventListener("pageshow", (event) => {
     if (event.persisted && sessionStorage.getItem("loggedIn") !== "true") {
         window.location.href = "index-login-page.html";
@@ -25,9 +26,11 @@ if (sessionStorage.getItem("loggedIn") !== "true") {
     window.location.href = "index-login-page.html";
     throw new Error("Not logged in");
 }
-if (sessionStorage.getItem("role") !== "ADMIN") {
+
+const USER_ROLE = sessionStorage.getItem("role");
+if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     window.location.href = "index-user-page.html";
-    throw new Error("Admin access only");
+    throw new Error("Admin or Product Owner access only");
 }
 
 (() => {
@@ -37,7 +40,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         const name = sessionStorage.getItem("name");
         const role = sessionStorage.getItem("role");
         if (name) {
-            nameEl.textContent = role === "ADMIN" ? `${name} (Admin)` : name;
+            const suffix =
+                role === "ADMIN" ? " (Admin)" :
+                role === "PRODUCT_OWNER" ? " (Product Owner)" : "";
+            nameEl.textContent = `${name}${suffix}`;
         }
     }
 
@@ -505,10 +511,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
     }
 
-    /**
-     * US11: Sends the current user's role via the "X-Role" header so the
-     * backend can reject non-admin deletes with a 403.
-     */
     async function apiDelete(id) {
         try {
             const numericId = Number(id);
@@ -1137,11 +1139,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
         errorText.textContent = "";
         saveBtn.textContent = draft.id ? "Save" : "Create task";
-
-        // US11: the Delete button is only shown to admins.
-        const isAdmin = sessionStorage.getItem("role") === "ADMIN";
-        deleteBtn.hidden = draft.id === "" || !isAdmin;
-
+        deleteBtn.hidden = draft.id === "" || sessionStorage.getItem("role") !== "ADMIN";
         setDeleteArmed(false);
 
         renderDraft();

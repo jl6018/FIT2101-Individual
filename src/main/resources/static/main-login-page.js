@@ -9,29 +9,15 @@
  */
 
 "use strict";
-// main-login-page.js
-// Merged: A's DEMO_MODE + B's sessionStorage handling + role-based redirect
 
-// ===================== BFCACHE FIX =====================
 window.addEventListener('pageshow', (event) => {
     if (event.persisted && sessionStorage.getItem('loggedIn') !== 'true') {
         window.location.href = 'index-login-page.html';
     }
 });
 
-// ============================================================
-// DEMO MODE — set to true for testing without a backend.
-// While true: userId "admin" + password "admin" succeeds.
-// ============================================================
 const DEMO_MODE = false;
 
-/**
- * Retrieves a DOM element by its ID and throws if not found.
- *
- * @param {string} id      The ID of the element to retrieve
- * @returns {HTMLElement}  The matching DOM element
- * @throws {Error}         if no element with the given ID exists
- */
 function requireElement(id) {
     const el = document.getElementById(id);
     if (!el) {
@@ -40,7 +26,6 @@ function requireElement(id) {
     return el;
 }
 
-// ===================== ELEMENTS =====================
 const form = requireElement('loginForm');
 const userIdInput = requireElement('userId');
 const passwordInput = requireElement('password');
@@ -49,19 +34,11 @@ const errorText = requireElement('errorText');
 const dismissError = requireElement('dismissError');
 const submitBtn = requireElement('submitBtn');
 
-/**
- * Displays an error message in the banner.
- *
- * @param {string} message The error message to show
- */
 function showError(message) {
     errorText.textContent = message;
     errorBanner.classList.add('visible');
 }
 
-/**
- * Hides the error banner.
- */
 function hideError() {
     errorBanner.classList.remove('visible');
 }
@@ -70,15 +47,6 @@ dismissError.addEventListener('click', hideError);
 userIdInput.addEventListener('input', hideError);
 passwordInput.addEventListener('input', hideError);
 
-// ===================== DEMO LOGIN =====================
-/**
- * Performs a demo login with hard-coded credentials.
- *
- * @param {string} userId   The user ID entered
- * @param {string} password The password entered
- * @returns {Promise<Object>} A promise resolving to a login response
- * @throws {Error}           if the credentials are incorrect
- */
 async function handleLoginDemo(userId, password) {
     await new Promise((resolve) => setTimeout(resolve, 400));
 
@@ -96,15 +64,6 @@ async function handleLoginDemo(userId, password) {
     };
 }
 
-// ===================== REAL LOGIN =====================
-/**
- * Performs a real login by calling the backend API.
- *
- * @param {string} userId   The user's email address
- * @param {string} password The user's password
- * @returns {Promise<Object>} A promise resolving to a login response
- * @throws {Error}           if the credentials are incorrect
- */
 async function handleLoginReal(userId, password) {
     const res = await fetch('/api/users/login', {
         method: 'POST',
@@ -127,7 +86,6 @@ async function handleLoginReal(userId, password) {
     return data;
 }
 
-// ===================== FORM SUBMIT =====================
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -152,7 +110,6 @@ form.addEventListener('submit', async (e) => {
             localStorage.setItem('authToken', data.token);
         }
 
-        // Store session
         sessionStorage.setItem('loggedIn', 'true');
         sessionStorage.setItem('role', data.role || '');
         sessionStorage.setItem('email', data.email || '');
@@ -160,8 +117,8 @@ form.addEventListener('submit', async (e) => {
         sessionStorage.setItem('userId', String(data.id ?? ''));
         sessionStorage.setItem('team', data.team || '');
 
-        // Role-based redirect
-        if (data.role === 'ADMIN') {
+        // US22: Product Owners land on the admin board too.
+        if (data.role === 'ADMIN' || data.role === 'PRODUCT_OWNER') {
             window.location.href = 'index-admin-page.html';
         } else {
             window.location.href = 'index-user-page.html';

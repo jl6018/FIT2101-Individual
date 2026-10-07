@@ -11,19 +11,14 @@
  * @version 17.0.16
  */
 
-// ============================================================
-// DEMO MODE — set to false for real backend login
-// ============================================================
 const DEMO_MODE = false;
 
-// ===================== BFCACHE FIX =====================
 window.addEventListener('pageshow', (event) => {
     if ((event as PageTransitionEvent).persisted && sessionStorage.getItem('loggedIn') !== 'true') {
         window.location.href = 'index-login-page.html';
     }
 });
 
-/** Shape of the login response returned by the backend. */
 interface LoginResponse {
     message?: string;
     token?: string;
@@ -35,13 +30,6 @@ interface LoginResponse {
     team?: string;
 }
 
-/**
- * Retrieves a DOM element by its ID and throws if not found.
- *
- * @param id The ID of the element to retrieve
- * @returns  The element cast to the expected type
- * @throws Error if no element with the given ID exists
- */
 function requireElement<T extends HTMLElement>(id: string): T {
     const el = document.getElementById(id);
     if (!el) {
@@ -50,7 +38,6 @@ function requireElement<T extends HTMLElement>(id: string): T {
     return el as T;
 }
 
-// ===================== ELEMENTS =====================
 const form = requireElement<HTMLFormElement>('loginForm');
 const userIdInput = requireElement<HTMLInputElement>('userId');
 const passwordInput = requireElement<HTMLInputElement>('password');
@@ -59,19 +46,11 @@ const errorText = requireElement<HTMLSpanElement>('errorText');
 const dismissError = requireElement<HTMLButtonElement>('dismissError');
 const submitBtn = requireElement<HTMLButtonElement>('submitBtn');
 
-/**
- * Displays an error message in the banner.
- *
- * @param message The error message to show
- */
 function showError(message: string): void {
     errorText.textContent = message;
     errorBanner.classList.add('visible');
 }
 
-/**
- * Hides the error banner.
- */
 function hideError(): void {
     errorBanner.classList.remove('visible');
 }
@@ -80,15 +59,6 @@ dismissError.addEventListener('click', hideError);
 userIdInput.addEventListener('input', hideError);
 passwordInput.addEventListener('input', hideError);
 
-// ===================== DEMO LOGIN =====================
-/**
- * Performs a demo login with hard-coded credentials.
- *
- * @param userId   The user ID entered
- * @param password The password entered
- * @returns         A promise resolving to a LoginResponse
- * @throws Error    if the credentials are incorrect
- */
 async function handleLoginDemo(userId: string, password: string): Promise<LoginResponse> {
     await new Promise((resolve) => setTimeout(resolve, 400));
 
@@ -106,15 +76,6 @@ async function handleLoginDemo(userId: string, password: string): Promise<LoginR
     };
 }
 
-// ===================== REAL LOGIN =====================
-/**
- * Performs a real login by calling the backend API.
- *
- * @param userId   The user's email address
- * @param password The user's password
- * @returns         A promise resolving to a LoginResponse
- * @throws Error    if the credentials are incorrect
- */
 async function handleLoginReal(userId: string, password: string): Promise<LoginResponse> {
     const res = await fetch('/api/users/login', {
         method: 'POST',
@@ -137,7 +98,6 @@ async function handleLoginReal(userId: string, password: string): Promise<LoginR
     return data;
 }
 
-// ===================== FORM SUBMIT =====================
 form.addEventListener('submit', async (e: SubmitEvent) => {
     e.preventDefault();
 
@@ -162,7 +122,6 @@ form.addEventListener('submit', async (e: SubmitEvent) => {
             localStorage.setItem('authToken', data.token);
         }
 
-        // ===================== SESSION STORAGE =====================
         sessionStorage.setItem('loggedIn', 'true');
         sessionStorage.setItem('role', data.role || '');
         sessionStorage.setItem('email', data.email || '');
@@ -170,8 +129,8 @@ form.addEventListener('submit', async (e: SubmitEvent) => {
         sessionStorage.setItem('userId', String(data.id ?? ''));
         sessionStorage.setItem('team', data.team || '');
 
-        // ===================== ROLE-BASED REDIRECT =====================
-        if (data.role === 'ADMIN') {
+        // US22: Product Owners land on the admin board too.
+        if (data.role === 'ADMIN' || data.role === 'PRODUCT_OWNER') {
             window.location.href = 'index-admin-page.html';
         } else {
             window.location.href = 'index-user-page.html';
