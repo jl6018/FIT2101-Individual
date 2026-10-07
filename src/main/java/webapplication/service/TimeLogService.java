@@ -1,5 +1,6 @@
 package webapplication.service;
 
+import webapplication.dto.TimeLogSummary;
 import webapplication.model.Task;
 import webapplication.model.TimeLog;
 import webapplication.model.User;
@@ -10,7 +11,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Manages time log creation, retrieval, and total hours calculation.
@@ -38,19 +40,6 @@ public class TimeLogService {
         return timeLogRepository.findAll();
     }
 
-    /**
-     * Creates and saves a time log from raw front-end values.
-     *
-     * @param dateStr     ISO date string (YYYY-MM-DD), required
-     * @param startTimeStr ISO time string (HH:mm), optional
-     * @param hours       Hours worked, must be > 0
-     * @param description Optional free-text description
-     * @param taskId      The task ID to log against
-     * @param userId      The user ID logging the work
-     * @return            The saved TimeLog object
-     * @throws IllegalArgumentException if inputs are invalid
-     * @throws RuntimeException         if the task or user does not exist
-     */
     public TimeLog logHours(String dateStr, String startTimeStr, double hours,
                             String description, Long taskId, Long userId) {
 
@@ -88,9 +77,6 @@ public class TimeLogService {
         return timeLogRepository.save(log);
     }
 
-    /**
-     * Legacy save method used by any remaining callers.
-     */
     public TimeLog logHours(TimeLog timeLog) {
         return timeLogRepository.save(timeLog);
     }
@@ -111,14 +97,69 @@ public class TimeLogService {
     }
 
     /**
-     * Calculates the total hours logged against every task in the given sprint.
-     *
-     * @param sprintId The ID of the sprint
-     * @return         The total hours logged in that sprint
+     * US25: total hours logged across every task in a sprint.
      */
     public double getTotalHoursForSprint(Long sprintId) {
         return timeLogRepository.findByTaskSprintId(sprintId).stream()
                 .mapToDouble(TimeLog::getHours)
                 .sum();
+    }
+
+    /**
+     * US26 / US27: per-member aggregated contribution over a date range.
+     * Includes every EMPLOYEE even if they logged nothing (so the table
+     * always lists the full team).
+     *
+     * @param from Start date (inclusive)
+     * @param to   End date (inclusive)
+     * @return     One summary row per employee, sorted by total hours desc
+     */
+    public List<TimeLogSummary> getSummaryByRange(LocalDate from, LocalDate to) {
+        List<TimeLog> logs = timeLogRepository.findByDateBetween(from, to);
+
+        // Group logs by user
+        Map<Long, List<TimeLog>> byUser = logs.stream()
+                .filter(l -> l.getUser() != null)
+                .collect(Collectors.groupingBy(l -> l.getUser().getId()));
+
+        // Include every employee so the table is never empty
+        List<User> allUsers = userRepository.findAll();
+        List<TimeLogSummary> rows = new ArrayList<>();
+
+        for (User u : allUsers) {
+            if (!"EMPLOYEE".equals(u.getRole())) continue;
+
+            List<TimeLog> mine = byUser.getOrDefault(u.getId(), Collections.emptyList());
+            double total = mine.stream().mapToDouble(TimeLog::getHours).sum();
+            long daysWorked = mine.stream()
+                    .map(TimeLog::getDate)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .count();
+            double avg = daysWorked > 0 ? total / daysWorked : 0.0;
+
+            String teamName = (u.getTeam() != null) ? u.getTeam().getName() : "Unassigned";
+            rows.add(new TimeLogSummary(
+                    u.getId(), u.getName(), teamName, total, (int) daysWorked, avg));
+        }
+
+        rows.sort((a, b) -> Double.compare(b.getTotalHours(), a.getTotalHours()));
+        return rows;
+    }
+
+    /**
+     * US28: individual member's log entries over a date range, sorted by date desc.
+     *
+     * @param userId The member's ID
+     * @param from   Start date (inclusive)
+     * @param to     End date (inclusive)
+     * @return       That member's logs in the range
+     */
+    public List<TimeLog> getLogsForUserInRange(Long userId, LocalDate from, LocalDate to) {
+        return timeLogRepository.findByUserId(userId).stream()
+                .filter(l -> l.getDate() != null)
+                .filter(l -> !l.getDate().isBefore(from) && !l.getDate().isAfter(to))
+                .sorted((a, b) -> b.getDate().compareTo(a.getDate()))
+                .collect(Collectors.toList());
     }
 }

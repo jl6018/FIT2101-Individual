@@ -1,6 +1,7 @@
 package webapplication.controller;
 
 import webapplication.dto.TimeLogRequest;
+import webapplication.dto.TimeLogSummary;
 import webapplication.model.TimeLog;
 import webapplication.service.TimeLogService;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +12,6 @@ import java.util.List;
 
 /**
  * Exposes REST endpoints for managing time logs.
- * Handles logging hours, retrieving logs by user or task, and calculating totals.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -33,13 +33,6 @@ public class TimeLogController {
         return timeLogService.getAllTimeLogs();
     }
 
-    /**
-     * Logs hours against a task for a user.
-     * Accepts a lightweight DTO and resolves taskId/userId server-side.
-     *
-     * @param request The time-log request payload
-     * @return        A ResponseEntity with the saved TimeLog on success
-     */
     @PostMapping
     public ResponseEntity<?> logHours(@RequestBody TimeLogRequest request) {
         try {
@@ -74,19 +67,36 @@ public class TimeLogController {
             @PathVariable Long userId,
             @RequestParam String start,
             @RequestParam String end) {
-
         return timeLogService.getTotalHoursForUserInRange(
                 userId, LocalDate.parse(start), LocalDate.parse(end));
     }
 
-    /**
-     * Calculates the total hours logged across every task in a sprint.
-     *
-     * @param sprintId The ID of the sprint
-     * @return         The total hours logged in that sprint
-     */
     @GetMapping("/sprint/{sprintId}/total")
     public double getTotalHoursForSprint(@PathVariable Long sprintId) {
         return timeLogService.getTotalHoursForSprint(sprintId);
+    }
+
+    /**
+     * US26 / US27: per-member summary over a date range.
+     * Example: GET /api/timelogs/summary?from=2026-10-01&to=2026-10-07
+     */
+    @GetMapping("/summary")
+    public List<TimeLogSummary> getSummary(
+            @RequestParam String from,
+            @RequestParam String to) {
+        return timeLogService.getSummaryByRange(LocalDate.parse(from), LocalDate.parse(to));
+    }
+
+    /**
+     * US28: a single member's logs over a date range.
+     * Example: GET /api/timelogs/user/3/range?from=2026-10-01&to=2026-10-07
+     */
+    @GetMapping("/user/{userId}/range")
+    public List<TimeLog> getLogsForUserInRange(
+            @PathVariable Long userId,
+            @RequestParam String from,
+            @RequestParam String to) {
+        return timeLogService.getLogsForUserInRange(
+                userId, LocalDate.parse(from), LocalDate.parse(to));
     }
 }
