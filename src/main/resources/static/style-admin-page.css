@@ -1501,3 +1501,114 @@ textarea {
     color: #e3e6fa;
     flex-shrink: 0;
 }
+
+/* ===================== US24: LOG TIME BUTTON ===================== */
+
+.logtime-icon {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    margin-left: 6px;
+    padding: 2px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+}
+
+.card:hover .logtime-icon,
+.card-detailed .logtime-icon,
+.logtime-icon:focus-visible {
+    opacity: 0.9;
+}
+
+.logtime-icon:hover {
+    opacity: 1;
+}
+
+/* ===================== US24: LOG-TIME MODAL ===================== */
+
+#logTimeOverlay .modal-narrow {
+    max-width: 480px;
+    text-align: left;
+    padding: 28px;
+}
+
+#logTimeOverlay .modal-title {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 4px;
+    color: #1a1a1a;
+}
+
+#logTimeOverlay .modal-subtitle {
+    font-size: 13px;
+    color: #6B7280;
+    margin: 0 0 20px;
+    line-height: 1.5;
+}
+
+#logTimeOverlay .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 18px;
+    background: none;
+    border: none;
+    font-size: 16px;
+    color: #6B7280;
+    cursor: pointer;
+}
+
+#logTimeOverlay .form-field {
+    margin-bottom: 16px;
+}
+
+#logTimeOverlay label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+#logTimeOverlay input[type="date"],
+#logTimeOverlay input[type="time"],
+#logTimeOverlay input[type="number"],
+#logTimeOverlay input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #E5E7EB;
+    font-size: 14px;
+    background: #fff;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+#logTimeOverlay .btn-primary {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 10px;
+    background: #111;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+#logTimeOverlay .error-banner {
+    background: #FDE8E8;
+    color: #C0392B;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 16px;
+}
+
+#logTimeOverlay .error-banner[hidden] {
+    display: none;
+}

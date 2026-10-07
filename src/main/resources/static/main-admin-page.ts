@@ -7,7 +7,8 @@
  * Handles all interactive behaviour for the admin Kanban board, including
  * authentication guards, task CRUD, drag-and-drop reordering, sprint tabs,
  * team filtering, tag filtering/sorting (US14), search, the task modal with
- * progress editing (US16), sprint start/end controls, and tag management (US13).
+ * progress editing (US16), log-time modal (US24), sprint start/end controls,
+ * and tag management (US13).
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -57,22 +58,13 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     });
 
     // ===================== TYPES =====================
-    /** Identifiers for the five board columns. */
     type ColumnId = "PRODUCT_BACKLOG" | "TO_DO" | "IN_PROGRESS" | "IN_REVIEW" | "COMPLETED";
-
-    /** Priority levels for a task, or an empty string for no priority. */
     type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT" | "";
-
-    /** Assignee of a task — a single team, multiple teams, or specific employees. */
     type Assignee =
         | { kind: "team"; teamId: string }
         | { kind: "teams"; teamIds: string[] }
         | { kind: "employees"; employeeIds: string[] };
-
-    /** A tag that can be attached to a task. */
     type Tag = { id: number; name: string };
-
-    /** Front-end representation of a task on the board. */
     type Task = {
         id: string;
         sprintId: string;
@@ -87,14 +79,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         tags: Tag[];
         progress: number;
     };
-
-    /** Reference data for a team. */
     type Team = { id: string; name: string };
-
-    /** Reference data for an employee. */
     type Employee = { id: string; name: string; team: string };
-
-    /** Shape of a task as returned by the backend API. */
     type BackendTask = {
         id: number;
         name: string;
@@ -109,8 +95,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         tags?: { id: number; name: string }[] | null;
         progress?: number | null;
     };
-
-    /** Shape of a user as returned by the backend API. */
     type BackendUser = {
         id: number;
         name: string;
@@ -118,8 +102,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         role: string;
         team?: { name: string } | null;
     };
-
-    /** Shape of a sprint as returned by the backend API. */
     type Sprint = {
         id: number;
         name: string;
@@ -134,12 +116,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const USERS_API = "http://localhost:8080/api/users";
     const SPRINTS_API = "http://localhost:8080/api/sprints";
     const TAGS_API = "http://localhost:8080/api/tags";
-    const PROGRESS_API = "http://localhost:8080/api/tasks";
+    const TIMELOGS_API = "http://localhost:8080/api/timelogs";
 
-    /** Tag filter sentinel value for "no tag filter". */
     const TAG_FILTER_ALL = "all";
 
-    /** Maps sprint tab IDs to the sprint names stored in the backend. */
     const SPRINT_TAB_NAMES: Record<string, string> = {
         "1": "Sprint 1",
         "2": "Sprint 2",
@@ -155,9 +135,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     let EMPLOYEES: Employee[] = [];
 
-    /**
-     * Loads all employees from the backend and caches them in EMPLOYEES.
-     */
     async function loadEmployeesFromBackend(): Promise<void> {
         try {
             const res = await fetch(USERS_API);
@@ -185,13 +162,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         { id: "COMPLETED", name: "Completed" },
     ];
 
-    /**
-     * Creates a blank draft task for the given sprint and column.
-     *
-     * @param sprintId The sprint ID to attach the task to
-     * @param column   The board column the task belongs to
-     * @returns        A blank Task object
-     */
     function blankTask(sprintId: string, column: ColumnId): Task {
         return {
             id: "",
@@ -276,19 +246,11 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     }
 
     function readSetting(key: string): string {
-        try {
-            return window.localStorage.getItem(key) ?? "";
-        } catch {
-            return "";
-        }
+        try { return window.localStorage.getItem(key) ?? ""; } catch { return ""; }
     }
 
     function writeSetting(key: string, value: string): void {
-        try {
-            window.localStorage.setItem(key, value);
-        } catch {
-            /* ignore */
-        }
+        try { window.localStorage.setItem(key, value); } catch { /* ignore */ }
     }
 
     const SPRINT_KEY = "symph.currentSprint";
@@ -338,7 +300,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         if (el) el.classList.remove("visible");
     }
 
-    // -------- No-Sprint modal --------
     function showNoSprintModal(): void {
         showOverlay("noSprintOverlay");
     }
@@ -347,7 +308,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         if (e.target === document.getElementById("noSprintOverlay")) hideOverlay("noSprintOverlay");
     });
 
-    // -------- Generic Confirm modal --------
     let confirmResolver: ((value: boolean) => void) | null = null;
 
     function showConfirmModal(opts: {
@@ -389,7 +349,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         if (e.target === document.getElementById("confirmOverlay")) closeConfirmModal(false);
     });
 
-    // -------- Generic Alert modal --------
     function showAlertModal(title: string, message: string): void {
         const titleEl = document.getElementById("alertTitle");
         const msgEl = document.getElementById("alertMessage");
@@ -403,7 +362,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         if (e.target === document.getElementById("alertOverlay")) hideOverlay("alertOverlay");
     });
 
-    // -------- Invite Product Owner (Share button) --------
     const shareBtn = document.getElementById("shareBtn");
     const inviteOverlay = document.getElementById("inviteOverlay");
     const closeInviteBtn = document.getElementById("closeInviteBtn");
@@ -576,26 +534,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
     }
 
-    /**
-     * Updates just the progress of a task via the dedicated /progress endpoint.
-     */
-    async function apiUpdateProgress(taskId: string, progress: number): Promise<boolean> {
-        try {
-            const numericId = Number(taskId);
-            if (!Number.isFinite(numericId) || numericId <= 0) return false;
-            const safe = Math.max(0, Math.min(100, Math.round(progress)));
-
-            const res = await fetch(`${PROGRESS_API}/${numericId}/progress?progress=${safe}`, {
-                method: "PUT",
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return true;
-        } catch (err) {
-            console.error("Progress update failed:", err);
-            return false;
-        }
-    }
-
     async function apiDelete(id: string): Promise<boolean> {
         try {
             const numericId = Number(id);
@@ -652,9 +590,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const PENCIL_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-1L19 8l-3-3L5 16l-1 4z"/></svg>`;
     const CLOCK_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>`;
 
-    /**
-     * Renders the progress bar for a task card (US16).
-     */
     function renderProgressBar(task: Task): string {
         const pct = Math.max(0, Math.min(100, Number(task.progress) || 0));
         if (pct <= 0) return "";
@@ -693,6 +628,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
       <div class="card${footerHtml || progressHtml ? " card-detailed" : ""}" draggable="true" data-task="${escapeHtml(task.id)}">
         <div class="card-title-row">
           <span class="card-title">${escapeHtml(task.title)}</span>
+          <button type="button" class="logtime-icon" data-logtime="${escapeHtml(task.id)}" title="Log time on this task" aria-label="Log time on ${escapeHtml(task.title)}">${CLOCK_ICON}</button>
           <button type="button" class="edit-icon" data-edit="${escapeHtml(task.id)}" title="Edit task details" aria-label="Edit ${escapeHtml(task.title)}">${PENCIL_ICON}</button>
         </div>
         ${progressHtml}
@@ -725,6 +661,15 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     board.addEventListener("click", (event: MouseEvent) => {
         const target = event.target as HTMLElement;
 
+        const logBtn = target.closest<HTMLElement>("[data-logtime]");
+        if (logBtn) {
+            const taskId = logBtn.dataset["logtime"];
+            const task = tasks.find((t) => t.id === taskId);
+            if (!task) return;
+            openLogTimeModal(task);
+            return;
+        }
+
         const editBtn = target.closest<HTMLElement>("[data-edit]");
         if (editBtn) {
             const task = tasks.find((t) => t.id === editBtn.dataset["edit"]);
@@ -742,6 +687,99 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                 draftTask.assignee = { kind: "team", teamId: currentTeamId };
             }
             openModal(draftTask);
+        }
+    });
+
+    // ===================== US24: LOG TIME MODAL =====================
+    const logTimeOverlay = requireElement<HTMLDivElement>("logTimeOverlay");
+    const closeLogTimeBtn = requireElement<HTMLButtonElement>("closeLogTimeBtn");
+    const logTimeForm = requireElement<HTMLFormElement>("logTimeForm");
+    const logDate = requireElement<HTMLInputElement>("logDate");
+    const logStartTime = requireElement<HTMLInputElement>("logStartTime");
+    const logHours = requireElement<HTMLInputElement>("logHours");
+    const logDescription = requireElement<HTMLInputElement>("logDescription");
+    const logTimeTaskContext = requireElement<HTMLParagraphElement>("logTimeTaskContext");
+    const logTimeError = requireElement<HTMLDivElement>("logTimeError");
+    const logTimeErrorText = requireElement<HTMLSpanElement>("logTimeErrorText");
+    const logTimeSubmitBtn = requireElement<HTMLButtonElement>("logTimeSubmitBtn");
+
+    let logTimeTaskId: string | null = null;
+
+    function openLogTimeModal(task: Task): void {
+        if (!task || !task.id) return;
+        logTimeTaskId = task.id;
+
+        logTimeTaskContext.textContent =
+            `Record your start time, time spent, and date for "${task.title}".`;
+
+        logDate.value = new Date().toISOString().split("T")[0];
+        logStartTime.value = "";
+        logHours.value = "";
+        logDescription.value = "";
+        logTimeError.hidden = true;
+
+        logTimeSubmitBtn.disabled = false;
+        logTimeSubmitBtn.textContent = "Save log";
+
+        logTimeOverlay.classList.add("visible");
+        logDate.focus();
+    }
+
+    function closeLogTimeModal(): void {
+        logTimeOverlay.classList.remove("visible");
+        logTimeTaskId = null;
+    }
+
+    closeLogTimeBtn.addEventListener("click", closeLogTimeModal);
+    logTimeOverlay.addEventListener("click", (e: MouseEvent) => {
+        if (e.target === logTimeOverlay) closeLogTimeModal();
+    });
+
+    logTimeForm.addEventListener("submit", async (e: SubmitEvent) => {
+        e.preventDefault();
+        logTimeError.hidden = true;
+
+        const userId = sessionStorage.getItem("userId");
+
+        const payload = {
+            date: logDate.value,
+            startTime: logStartTime.value,
+            hours: Number(logHours.value),
+            description: logDescription.value.trim() || null,
+            taskId: logTimeTaskId ? Number(logTimeTaskId) : null,
+            userId: userId ? Number(userId) : null,
+        };
+
+        if (!payload.date) { logTimeErrorText.textContent = "Please pick a date."; logTimeError.hidden = false; return; }
+        if (!payload.startTime) { logTimeErrorText.textContent = "Please pick a start time."; logTimeError.hidden = false; return; }
+        if (!payload.hours || payload.hours <= 0) { logTimeErrorText.textContent = "Hours must be greater than 0."; logTimeError.hidden = false; return; }
+        if (!payload.taskId) { logTimeErrorText.textContent = "Missing task ID."; logTimeError.hidden = false; return; }
+        if (!payload.userId) { logTimeErrorText.textContent = "You must be signed in."; logTimeError.hidden = false; return; }
+
+        logTimeSubmitBtn.disabled = true;
+        logTimeSubmitBtn.textContent = "Saving…";
+
+        try {
+            const res = await fetch(TIMELOGS_API, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || `HTTP ${res.status}`);
+            }
+
+            closeLogTimeModal();
+            showToast(`Logged ${payload.hours}h on this task`);
+        } catch (err) {
+            console.error("Log time failed:", err);
+            logTimeErrorText.textContent =
+                err instanceof Error ? err.message : "Could not save the time log.";
+            logTimeError.hidden = false;
+            logTimeSubmitBtn.disabled = false;
+            logTimeSubmitBtn.textContent = "Save log";
         }
     });
 
@@ -826,12 +864,20 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
 
         const from = COLUMNS.find((c) => c.id === moved.column)?.name ?? "";
+        const wasCompleted = from === "Completed";
+
         moved.column = targetColumn;
         moved.position = newPosition;
 
-        // Auto-progress: moving to Completed sets progress to 100
         if (targetColumn === "COMPLETED" && (moved.progress ?? 0) < 100) {
             moved.progress = 100;
+        } else if (
+            wasCompleted &&
+            (targetColumn === "TO_DO" ||
+             targetColumn === "IN_PROGRESS" ||
+             targetColumn === "IN_REVIEW")
+        ) {
+            moved.progress = 0;
         }
 
         const ok = await apiUpdate(moved);
@@ -1053,13 +1099,11 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const estimateInput = requireElement<HTMLInputElement>("estimateInput");
     const prioritySelect = requireElement<HTMLSelectElement>("prioritySelect");
 
-    // ----- Tags (US13) -----
     const tagInput = requireElement<HTMLInputElement>("tagInput");
     const addTagBtn = requireElement<HTMLButtonElement>("addTagBtn");
     const tagChips = requireElement<HTMLDivElement>("tagChips");
     const tagEmpty = requireElement<HTMLParagraphElement>("tagEmpty");
 
-    // ----- Progress (US16) -----
     const progressInput = requireElement<HTMLInputElement>("progressInput");
     const progressValue = requireElement<HTMLSpanElement>("progressValue");
     const progressSlider = requireElement<HTMLInputElement>("progressSlider");
@@ -1081,7 +1125,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         prioritySelect.value = draft.priority;
         tagInput.value = "";
 
-        // Progress
         const pct = Number(draft.progress) || 0;
         progressInput.value = String(pct);
         progressSlider.value = String(pct);
@@ -1253,7 +1296,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         showToast(isNew ? "Task created" : "Changes saved");
     }
 
-    // ----- Delete -----
     let deleteArmed = false;
 
     function setDeleteArmed(armed: boolean): void {
@@ -1279,7 +1321,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     deleteBtn.addEventListener("blur", () => setDeleteArmed(false));
 
-    // ----- Popovers -----
     function closePopovers(): void {
         overlay
             .querySelectorAll<HTMLElement>(".popover.visible")
@@ -1304,7 +1345,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         popover.addEventListener("click", (event: MouseEvent) => event.stopPropagation());
     });
 
-    // ----- Due date -----
     dueDateInput.addEventListener("change", () => {
         if (!draft) return;
         draft.dueDate = dueDateInput.value;
@@ -1318,7 +1358,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderDraft();
     });
 
-    // ----- Estimate -----
     estimateInput.addEventListener("input", () => {
         if (!draft) return;
         const hours = Number(estimateInput.value);
@@ -1333,7 +1372,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderDraft();
     });
 
-    // ----- Priority -----
     prioritySelect.addEventListener("change", () => {
         if (!draft) return;
         draft.priority = prioritySelect.value as Priority;
@@ -1347,7 +1385,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderDraft();
     });
 
-    // ----- Progress (US16) -----
     function syncProgress(value: string | number): void {
         const pct = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
         if (draft) draft.progress = pct;
@@ -1365,7 +1402,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderDraft();
     });
 
-    // ----- Assignee -----
     document.querySelectorAll<HTMLButtonElement>("[data-assign-kind]").forEach((segment) => {
         segment.addEventListener("click", () => {
             assignKind = segment.dataset["assignKind"] === "employees" ? "employees" : "team";
@@ -1399,7 +1435,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderDraft();
     });
 
-    // ----- Tags events (US13) -----
     addTagBtn.addEventListener("click", () => {
         void addTagToDraft();
     });
@@ -1417,7 +1452,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         void removeTagFromDraft(Number(btn.dataset["removeTag"]));
     });
 
-    // ----- Open / close wiring -----
     saveBtn.addEventListener("click", () => {
         void saveModal();
     });
@@ -1435,6 +1469,12 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     document.addEventListener("keydown", (event: KeyboardEvent) => {
         if (event.key !== "Escape") return;
+
+        if (logTimeOverlay.classList.contains("visible")) {
+            closeLogTimeModal();
+            return;
+        }
+
         setTeamFilterOpen(false);
         setTagFilterOpen(false);
         if (!overlay.classList.contains("visible")) return;
