@@ -4,8 +4,9 @@
 
 /**
  * Login Page — Symph Web Application
- * Handles user authentication, demo mode login, session storage, and
- * role-based redirects to the admin or employee board.
+ * Handles user authentication, session storage, and role-based redirects.
+ * Product Owners who weren't invited see a "no invitation" modal instead
+ * of being logged in.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -45,6 +46,9 @@ const errorBanner = requireElement<HTMLDivElement>('errorBanner');
 const errorText = requireElement<HTMLSpanElement>('errorText');
 const dismissError = requireElement<HTMLButtonElement>('dismissError');
 const submitBtn = requireElement<HTMLButtonElement>('submitBtn');
+const noInviteOverlay = document.getElementById('noInviteOverlay');
+const noInviteEmail = document.getElementById('noInviteEmail');
+const logoutNoInviteBtn = document.getElementById('logoutNoInviteBtn');
 
 function showError(message: string): void {
     errorText.textContent = message;
@@ -59,14 +63,35 @@ dismissError.addEventListener('click', hideError);
 userIdInput.addEventListener('input', hideError);
 passwordInput.addEventListener('input', hideError);
 
+function showNoInviteModal(email: string): void {
+    if (noInviteEmail) noInviteEmail.textContent = email;
+    noInviteOverlay?.classList.add('visible');
+}
+
+/**
+ * Logs the user out (clears any session) and returns them to the login page.
+ * Used by the "No invitation" modal — the user never entered the app.
+ */
+function dismissNoInviteModal(): void {
+    sessionStorage.clear();
+    if (noInviteOverlay) noInviteOverlay.classList.remove('visible');
+    if (passwordInput) passwordInput.value = '';
+    if (userIdInput) userIdInput.value = '';
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Log in';
+    }
+}
+
+logoutNoInviteBtn?.addEventListener('click', dismissNoInviteModal);
+noInviteOverlay?.addEventListener('click', (e: MouseEvent) => {
+    if (e.target === noInviteOverlay) dismissNoInviteModal();
+});
+
 async function handleLoginDemo(userId: string, password: string): Promise<LoginResponse> {
     await new Promise((resolve) => setTimeout(resolve, 400));
-
     const success = userId === 'admin' && password === 'admin';
-    if (!success) {
-        throw new Error('Incorrect user ID or password.');
-    }
-
+    if (!success) throw new Error('Incorrect user ID or password.');
     return {
         id: 1,
         name: 'Admin',
@@ -98,6 +123,16 @@ async function handleLoginReal(userId: string, password: string): Promise<LoginR
     return data;
 }
 
+async function checkInvited(email: string): Promise<boolean> {
+    try {
+        const res = await fetch(`/api/invites/check?email=${encodeURIComponent(email)}`);
+        return res.ok;
+    } catch (err) {
+        console.error('Failed to check invite:', err);
+        return false;
+    }
+}
+
 form.addEventListener('submit', async (e: SubmitEvent) => {
     e.preventDefault();
 
@@ -118,6 +153,17 @@ form.addEventListener('submit', async (e: SubmitEvent) => {
             ? await handleLoginDemo(userId, password)
             : await handleLoginReal(userId, password);
 
+        if (data.role === 'PRODUCT_OWNER') {
+            const invited = await checkInvited(data.email || userId);
+            if (!invited) {
+                showNoInviteModal(data.email || userId);
+                passwordInput.value = '';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Log in';
+                return;
+            }
+        }
+
         if (data.token) {
             localStorage.setItem('authToken', data.token);
         }
@@ -129,7 +175,6 @@ form.addEventListener('submit', async (e: SubmitEvent) => {
         sessionStorage.setItem('userId', String(data.id ?? ''));
         sessionStorage.setItem('team', data.team || '');
 
-        // US22: Product Owners land on the admin board too.
         if (data.role === 'ADMIN' || data.role === 'PRODUCT_OWNER') {
             window.location.href = 'index-admin-page.html';
         } else {
@@ -142,7 +187,9 @@ form.addEventListener('submit', async (e: SubmitEvent) => {
         passwordInput.value = '';
         passwordInput.focus();
     } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Log in';
+        if (!noInviteOverlay?.classList.contains('visible')) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Log in';
+        }
     }
 });

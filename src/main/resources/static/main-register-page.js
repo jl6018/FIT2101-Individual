@@ -7,20 +7,12 @@
  * @version 17.0.16
  */
 
-/**
- * Retrieves a DOM element by its ID and throws if not found.
- *
- * @param {string} id      The ID of the element to retrieve
- * @returns {HTMLElement}  The matching DOM element
- * @throws {Error}         if no element with the given ID exists
- */
 function requireElement(id) {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Missing element: ${id}`);
     return el;
 }
 
-// ===================== ELEMENTS =====================
 const form = requireElement('registerForm');
 const nameInput = requireElement('name');
 const emailInput = requireElement('email');
@@ -32,10 +24,16 @@ const errorText = requireElement('errorText');
 const dismissError = requireElement('dismissError');
 
 /**
- * Displays an error message in the banner.
+ * Basic email shape check: something@something.tld
+ * Requires a dot and a TLD of 2 or more letters.
  *
- * @param {string} message The error message to show
+ * @param {string} email The email to validate
+ * @returns {boolean}    True if the shape looks valid
  */
+function isValidEmailShape(email) {
+    return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email);
+}
+
 function showError(message) {
     errorText.textContent = message;
     errorBanner.classList.add('visible');
@@ -43,11 +41,6 @@ function showError(message) {
     errorBanner.style.color = '#C0392B';
 }
 
-/**
- * Displays a success message in the banner.
- *
- * @param {string} message The success message to show
- */
 function showSuccess(message) {
     errorText.textContent = message;
     errorBanner.classList.add('visible');
@@ -55,23 +48,19 @@ function showSuccess(message) {
     errorBanner.style.color = '#065F46';
 }
 
-/**
- * Hides the error banner.
- */
 function hideBanner() {
     errorBanner.classList.remove('visible');
 }
 
 dismissError.addEventListener('click', hideBanner);
 
-// ===================== FORM SUBMIT =====================
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     hideBanner();
 
     const payload = {
         name: nameInput.value.trim(),
-        email: emailInput.value.trim(),
+        email: emailInput.value.trim().toLowerCase(),
         password: passwordInput.value,
         role: roleSelect.value,
     };
@@ -84,8 +73,8 @@ form.addEventListener('submit', async (e) => {
         showError('Password must be at least 8 characters.');
         return;
     }
-    if (!payload.email.includes('@')) {
-        showError('Please enter a valid email address.');
+    if (!isValidEmailShape(payload.email)) {
+        showError('Please enter a valid email address (e.g. user@example.com).');
         return;
     }
 
@@ -101,13 +90,17 @@ form.addEventListener('submit', async (e) => {
 
         if (!res.ok) {
             const text = await res.text();
-            if (text.toLowerCase().includes('already') || text.toLowerCase().includes('duplicate')) {
+            const lower = text.toLowerCase();
+
+            if (lower.includes('already registered') || lower.includes('duplicate')) {
                 throw new Error('This email is already registered. Please log in.');
+            }
+            if (lower.includes('valid email')) {
+                throw new Error('Please enter a valid email address (e.g. user@example.com).');
             }
             throw new Error(text || 'Registration failed');
         }
 
-        // ✅ Success — green banner, no alert popup
         showSuccess('Account successfully registered! Redirecting to login...');
         submitBtn.textContent = 'Registered ✅';
 

@@ -1,7 +1,8 @@
 <!--
     Login Page — Symph Web Application
     Provides the sign-in form for existing users. Includes an error banner
-    for invalid credentials and a link to the registration page.
+    for invalid credentials, a "no invitation" modal for uninvited Product
+    Owners, and a link to the registration page.
 
     @author Lim Jia Li
     @version 17.0.16
@@ -19,18 +20,15 @@
 <body>
 
 <div class="login-wrap">
-    <!-- Branding -->
     <div class="logo"><img src="images/symph-logo.png" alt="Symph" /></div>
     <h1>Welcome to Symph</h1>
 
     <div class="card">
-        <!-- Error banner shown when login fails -->
         <div class="error-banner" id="errorBanner">
             <span id="errorText">Incorrect user ID or password.</span>
             <button class="close-x" id="dismissError" aria-label="Dismiss error">✕</button>
         </div>
 
-        <!-- Login form -->
         <form id="loginForm" novalidate>
             <div class="field">
                 <label for="userId">User ID</label>
@@ -47,14 +45,27 @@
             <button type="submit" class="submit" id="submitBtn">Log in</button>
         </form>
 
-        <!-- Registration link -->
         <p style="text-align:center;margin-top:16px;font-size:14px;">
             Don't have an account? <a href="index-register-page.html">Register</a>
         </p>
     </div>
 </div>
 
-<!-- login.js is the compiled output of login.ts -->
+<!-- ===================== MODAL: No Invitation ===================== -->
+<div class="modal-overlay" id="noInviteOverlay">
+    <div class="modal modal-narrow" role="dialog" aria-modal="true">
+        <h2 class="modal-title">No invitation found</h2>
+        <p class="modal-subtitle">
+            You don't have an invitation to this product. Please ask an admin
+            to invite <strong id="noInviteEmail">your email</strong> before
+            logging in as a Product Owner.
+        </p>
+        <div class="modal-actions">
+            <button id="logoutNoInviteBtn" class="btn-primary full-width" type="button">Log out</button>
+        </div>
+    </div>
+</div>
+
 <script src="main-login-page.js" type="module" defer></script>
 </body>
 
