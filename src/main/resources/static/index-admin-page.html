@@ -171,7 +171,7 @@
             </div>
             <p class="modal-error" id="modalError" role="alert"></p>
 
-            <!-- Task metadata toolbar (dates, estimate, members, priority, tags) -->
+            <!-- Task metadata toolbar (dates, estimate, members, priority, tags, progress) -->
             <div class="modal-toolbar">
                 <div class="toolbar-group">
                     <div class="pill-wrap">
@@ -256,6 +256,27 @@
                             </div>
                             <div id="tagChips" class="tag-chip-list"></div>
                             <p class="employee-empty" id="tagEmpty">No tags yet.</p>
+                        </div>
+                    </div>
+
+                    <!-- ===== US16: PROGRESS ===== -->
+                    <div class="pill-wrap">
+                        <button class="pill" type="button" data-popover="progressPopover">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M3 12a9 9 0 1 1 9 9"/>
+                                <path d="M12 7v5l3 2"/>
+                            </svg>
+                            Progress
+                        </button>
+                        <div class="popover" id="progressPopover">
+                            <label class="popover-label" for="progressInput">Progress (%)</label>
+                            <div class="popover-row">
+                                <input type="number" id="progressInput" min="0" max="100" step="5" placeholder="0" />
+                                <span id="progressValue" class="progress-value-label">0%</span>
+                            </div>
+                            <input type="range" id="progressSlider" min="0" max="100" step="5" value="0"
+                                   class="progress-slider" aria-label="Progress slider" />
+                            <button class="popover-btn popover-btn-quiet" id="progressClearBtn" type="button">Reset to 0%</button>
                         </div>
                     </div>
                 </div>

@@ -6,8 +6,8 @@
  * Admin Board Page — Symph Web Application
  * Handles all interactive behaviour for the admin Kanban board, including
  * authentication guards, task CRUD, drag-and-drop reordering, sprint tabs,
- * team filtering, tag filtering/sorting (US14), search, the task modal,
- * sprint start/end controls, and tag management (US13).
+ * team filtering, tag filtering/sorting (US14), search, the task modal with
+ * progress editing (US16), sprint start/end controls, and tag management (US13).
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -85,6 +85,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         priority: Priority;
         position: number;
         tags: Tag[];
+        progress: number;
     };
 
     /** Reference data for a team. */
@@ -106,6 +107,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         priority?: Priority | null;
         position?: number | null;
         tags?: { id: number; name: string }[] | null;
+        progress?: number | null;
     };
 
     /** Shape of a user as returned by the backend API. */
@@ -132,6 +134,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const USERS_API = "http://localhost:8080/api/users";
     const SPRINTS_API = "http://localhost:8080/api/sprints";
     const TAGS_API = "http://localhost:8080/api/tags";
+    const PROGRESS_API = "http://localhost:8080/api/tasks";
 
     /** Tag filter sentinel value for "no tag filter". */
     const TAG_FILTER_ALL = "all";
@@ -202,28 +205,17 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             priority: "",
             position: 0,
             tags: [],
+            progress: 0,
         };
     }
 
     // ===================== HELPERS =====================
-    /**
-     * Retrieves a DOM element by its ID and throws if not found.
-     *
-     * @param id The ID of the element to retrieve
-     * @returns  The element cast to the expected type
-     */
     function requireElement<T extends HTMLElement>(id: string): T {
         const el = document.getElementById(id);
         if (!el) throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
         return el as T;
     }
 
-    /**
-     * Escapes HTML special characters to prevent XSS injection.
-     *
-     * @param text The raw string to escape
-     * @returns    The escaped string
-     */
     function escapeHtml(text: string): string {
         return text
             .replace(/&/g, "&amp;")
@@ -233,12 +225,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             .replace(/'/g, "&#39;");
     }
 
-    /**
-     * Extracts the initials from a name (up to 2 characters).
-     *
-     * @param name The full name to extract initials from
-     * @returns    The uppercase initials
-     */
     function initials(name: string): string {
         return name
             .split(/\s+/)
@@ -248,32 +234,14 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             .join("");
     }
 
-    /**
-     * Resolves a team ID to its display name.
-     *
-     * @param teamId The team ID to resolve
-     * @returns       The team name, or an empty string if not found
-     */
     function teamName(teamId: string): string {
         return TEAMS.find((team) => team.id === teamId)?.name ?? "";
     }
 
-    /**
-     * Looks up an employee by their ID.
-     *
-     * @param employeeId The employee ID to look up
-     * @returns           The Employee object, or undefined if not found
-     */
     function findEmployee(employeeId: string): Employee | undefined {
         return EMPLOYEES.find((employee) => employee.id === employeeId);
     }
 
-    /**
-     * Returns the list of employees assigned to a task.
-     *
-     * @param assignee The task's assignee
-     * @returns        An array of Employee objects
-     */
     function assignedEmployees(assignee: Assignee | null): Employee[] {
         if (assignee?.kind !== "employees") return [];
         return assignee.employeeIds
@@ -281,12 +249,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             .filter((employee): employee is Employee => employee !== undefined);
     }
 
-    /**
-     * Returns the team IDs a task is assigned to.
-     *
-     * @param task The task to inspect
-     * @returns    An array of team IDs
-     */
     function teamsOfTask(task: Task): string[] {
         if (!task.assignee) return [];
         if (task.assignee.kind === "team") return [task.assignee.teamId];
@@ -296,12 +258,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             .filter(Boolean);
     }
 
-    /**
-     * Returns a human-readable label for a task's assignee.
-     *
-     * @param assignee The task's assignee
-     * @returns        A display string such as "Team Alpha" or "Unassigned"
-     */
     function assigneeLabel(assignee: Assignee | null): string {
         if (!assignee) return "Unassigned";
         if (assignee.kind === "team") return teamName(assignee.teamId) || "Team";
@@ -310,33 +266,15 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         return names.length > 0 ? names.join(", ") : "Unassigned";
     }
 
-    /**
-     * Formats an estimate in hours for display.
-     *
-     * @param hours The number of hours
-     * @returns      A string such as "4h"
-     */
     function formatEstimate(hours: number): string {
         return `${hours}h`;
     }
 
-    /**
-     * Formats an ISO date string into a short badge label.
-     *
-     * @param isoDate The ISO date string (YYYY-MM-DD)
-     * @returns        A string such as "5 Sep"
-     */
     function formatDateBadge(isoDate: string): string {
         const date = new Date(`${isoDate}T00:00:00`);
         return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
     }
 
-    /**
-     * Reads a value from localStorage, returning an empty string on failure.
-     *
-     * @param key The localStorage key
-     * @returns    The stored value, or an empty string
-     */
     function readSetting(key: string): string {
         try {
             return window.localStorage.getItem(key) ?? "";
@@ -345,12 +283,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
     }
 
-    /**
-     * Writes a value to localStorage, silently ignoring failures.
-     *
-     * @param key   The localStorage key
-     * @param value The value to store
-     */
     function writeSetting(key: string, value: string): void {
         try {
             window.localStorage.setItem(key, value);
@@ -361,20 +293,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     const SPRINT_KEY = "symph.currentSprint";
 
-    /**
-     * Reads the persisted sprint ID, defaulting to "1".
-     *
-     * @returns The stored sprint ID
-     */
     function readSprintSetting(): string {
         return readSetting(SPRINT_KEY) || "1";
     }
 
-    /**
-     * Persists the current sprint ID.
-     *
-     * @param sprintId The sprint ID to save
-     */
     function writeSprintSetting(sprintId: string): void {
         writeSetting(SPRINT_KEY, sprintId);
     }
@@ -383,18 +305,12 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     let tasks: Task[] = [];
     let currentSprintId = readSprintSetting();
     let currentTeamId = "all";
-    let currentTagName: string = TAG_FILTER_ALL;   // "all" or a specific tag name
+    let currentTagName: string = TAG_FILTER_ALL;
     let sortByTag = false;
     let searchTerm = "";
 
     const board = requireElement<HTMLElement>("board");
 
-    /**
-     * Converts a front-end assignee into the backend's payload format.
-     *
-     * @param assignee The assignee to convert
-     * @returns        An object with assignedTeams and assignedEmployeeIds
-     */
     function assigneeToBackendPayload(assignee: Assignee | null): {
         assignedTeams: string | null;
         assignedEmployeeIds: string | null;
@@ -412,30 +328,17 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     }
 
     // ===================== CUSTOM MODALS =====================
-    /**
-     * Shows a modal overlay by adding the "visible" class.
-     *
-     * @param id The ID of the overlay to show
-     */
     function showOverlay(id: string): void {
         const el = document.getElementById(id);
         if (el) el.classList.add("visible");
     }
 
-    /**
-     * Hides a modal overlay by removing the "visible" class.
-     *
-     * @param id The ID of the overlay to hide
-     */
     function hideOverlay(id: string): void {
         const el = document.getElementById(id);
         if (el) el.classList.remove("visible");
     }
 
     // -------- No-Sprint modal --------
-    /**
-     * Displays the "No sprint found" modal.
-     */
     function showNoSprintModal(): void {
         showOverlay("noSprintOverlay");
     }
@@ -447,16 +350,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     // -------- Generic Confirm modal --------
     let confirmResolver: ((value: boolean) => void) | null = null;
 
-    /**
-     * Shows a generic confirmation modal and returns a promise resolving to the user's choice.
-     *
-     * @param opts               The options for the modal
-     * @param opts.title         The modal title
-     * @param opts.message       The modal message body
-     * @param opts.confirmText   The confirm button label
-     * @param opts.danger        Whether the action is destructive
-     * @returns                  A promise resolving to true (confirmed) or false (cancelled)
-     */
     function showConfirmModal(opts: {
         title: string;
         message: string;
@@ -482,11 +375,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         });
     }
 
-    /**
-     * Closes the confirm modal and resolves the pending promise.
-     *
-     * @param result The result to resolve the promise with
-     */
     function closeConfirmModal(result: boolean): void {
         hideOverlay("confirmOverlay");
         if (confirmResolver) {
@@ -502,12 +390,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     });
 
     // -------- Generic Alert modal --------
-    /**
-     * Shows a generic alert modal with a title and message.
-     *
-     * @param title   The alert title
-     * @param message The alert message
-     */
     function showAlertModal(title: string, message: string): void {
         const titleEl = document.getElementById("alertTitle");
         const msgEl = document.getElementById("alertMessage");
@@ -566,11 +448,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     });
 
     // ===================== BACKEND SYNC =====================
-    /**
-     * Fetches all tasks from the backend and maps them into the front-end Task shape.
-     *
-     * @returns A promise resolving to an array of Tasks
-     */
     async function fetchTasks(): Promise<Task[]> {
         try {
             const res = await fetch(API_BASE);
@@ -614,6 +491,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     priority: (t.priority ?? "") as Priority,
                     position: t.position ?? 0,
                     tags: Array.isArray(t.tags) ? t.tags : [],
+                    progress: typeof t.progress === "number" ? t.progress : 0,
                 };
             });
         } catch (err) {
@@ -622,9 +500,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
     }
 
-    /**
-     * Refreshes the task list and re-renders the board, team filter, and tag filter.
-     */
     async function refreshFromBackend(): Promise<void> {
         tasks = await fetchTasks();
         renderBoard();
@@ -632,12 +507,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderTagFilter();
     }
 
-    /**
-     * Creates a new task on the backend.
-     *
-     * @param task The task to create
-     * @returns    A promise resolving to the created task, or null on failure
-     */
     async function apiCreate(task: Task): Promise<Task | null> {
         try {
             const payload = assigneeToBackendPayload(task.assignee);
@@ -654,6 +523,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     estimateHours: task.estimateHours,
                     priority: task.priority || null,
                     position: task.position,
+                    progress: task.progress ?? 0,
                     sprint: { id: Number(currentSprintId) },
                 }),
             });
@@ -666,12 +536,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
     }
 
-    /**
-     * Updates an existing task on the backend.
-     *
-     * @param task The task to update
-     * @returns    A promise resolving to true on success, false on failure
-     */
     async function apiUpdate(task: Task): Promise<boolean> {
         try {
             const numericId = Number(task.id);
@@ -692,6 +556,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                 estimateHours: task.estimateHours,
                 priority: task.priority || null,
                 position: task.position,
+                progress: task.progress ?? 0,
                 sprint: { id: Number(currentSprintId) },
             };
 
@@ -712,11 +577,25 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     }
 
     /**
-     * Deletes a task from the backend by its ID.
-     *
-     * @param id The ID of the task to delete
-     * @returns  A promise resolving to true on success, false on failure
+     * Updates just the progress of a task via the dedicated /progress endpoint.
      */
+    async function apiUpdateProgress(taskId: string, progress: number): Promise<boolean> {
+        try {
+            const numericId = Number(taskId);
+            if (!Number.isFinite(numericId) || numericId <= 0) return false;
+            const safe = Math.max(0, Math.min(100, Math.round(progress)));
+
+            const res = await fetch(`${PROGRESS_API}/${numericId}/progress?progress=${safe}`, {
+                method: "PUT",
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return true;
+        } catch (err) {
+            console.error("Progress update failed:", err);
+            return false;
+        }
+    }
+
     async function apiDelete(id: string): Promise<boolean> {
         try {
             const numericId = Number(id);
@@ -733,11 +612,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     }
 
     // ===================== RENDER =====================
-    /**
-     * Filters tasks by the current sprint, team, tag filter, and search term.
-     *
-     * @returns An array of visible tasks
-     */
     function visibleTasks(): Task[] {
         const term = searchTerm.toLowerCase();
         return tasks.filter((task) => {
@@ -757,12 +631,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         });
     }
 
-    /**
-     * Renders the assignee chips or avatars for a task card.
-     *
-     * @param task The task to render assignees for
-     * @returns    An HTML string
-     */
     function renderAssignee(task: Task): string {
         if (!task.assignee) return "";
         if (task.assignee.kind === "team") {
@@ -785,11 +653,18 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const CLOCK_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>`;
 
     /**
-     * Renders a single task card as HTML.
-     *
-     * @param task The task to render
-     * @returns    The card's HTML string
+     * Renders the progress bar for a task card (US16).
      */
+    function renderProgressBar(task: Task): string {
+        const pct = Math.max(0, Math.min(100, Number(task.progress) || 0));
+        if (pct <= 0) return "";
+        return `
+      <div class="progress-wrap" title="Progress: ${pct}%">
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <span class="progress-text">${pct}%</span>
+      </div>`;
+    }
+
     function renderCard(task: Task): string {
         const priorityBadge = task.priority
             ? `<span class="priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>`
@@ -812,21 +687,19 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                 ? `<div class="card-footer-row"><div class="card-badges">${badges}${tagBadges}</div><div class="tag-avatars">${assigneeHtml}</div></div>`
                 : "";
 
+        const progressHtml = renderProgressBar(task);
+
         return `
-      <div class="card${footerHtml ? " card-detailed" : ""}" draggable="true" data-task="${escapeHtml(task.id)}">
+      <div class="card${footerHtml || progressHtml ? " card-detailed" : ""}" draggable="true" data-task="${escapeHtml(task.id)}">
         <div class="card-title-row">
           <span class="card-title">${escapeHtml(task.title)}</span>
           <button type="button" class="edit-icon" data-edit="${escapeHtml(task.id)}" title="Edit task details" aria-label="Edit ${escapeHtml(task.title)}">${PENCIL_ICON}</button>
         </div>
+        ${progressHtml}
         ${footerHtml}
       </div>`;
     }
 
-    /**
-     * Renders the full board with all columns and their cards.
-     * Card order follows board position, unless "Sort by tag" is enabled —
-     * in which case cards are ordered by their first tag name, then position.
-     */
     function renderBoard(): void {
         const shown = visibleTasks();
         board.innerHTML = COLUMNS.map((column) => {
@@ -875,22 +748,12 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     // ===================== DRAG AND DROP =====================
     let draggedTaskId: string | null = null;
 
-    /**
-     * Removes all drop-target and drop-before markers from the board.
-     */
     function clearDropMarkers(): void {
         board.querySelectorAll(".drop-target, .drop-before").forEach((el) => {
             el.classList.remove("drop-target", "drop-before");
         });
     }
 
-    /**
-     * Returns the card directly after the pointer's Y position in a column.
-     *
-     * @param column   The column to search in
-     * @param pointerY The pointer's Y coordinate
-     * @returns         The card after the pointer, or null
-     */
     function cardAfterPointer(column: HTMLElement, pointerY: number): HTMLElement | null {
         const cards = Array.from(
             column.querySelectorAll<HTMLElement>(".card:not(.dragging)")
@@ -966,6 +829,11 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         moved.column = targetColumn;
         moved.position = newPosition;
 
+        // Auto-progress: moving to Completed sets progress to 100
+        if (targetColumn === "COMPLETED" && (moved.progress ?? 0) < 100) {
+            moved.progress = 100;
+        }
+
         const ok = await apiUpdate(moved);
         if (ok) {
             const to = COLUMNS.find((c) => c.id === moved.column)?.name ?? "";
@@ -984,9 +852,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     });
 
     // ===================== SPRINT TABS + SEARCH =====================
-    /**
-     * Wires up click handlers for the sprint tab buttons.
-     */
     function initSprintTabs(): void {
         const tabs = document.querySelectorAll<HTMLButtonElement>(".sprint-tab");
         tabs.forEach((tab) => {
@@ -1006,9 +871,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         });
     }
 
-    /**
-     * Highlights the sprint tab matching the persisted sprint ID.
-     */
     function highlightSavedSprintTab(): void {
         const tabs = document.querySelectorAll<HTMLButtonElement>(".sprint-tab");
         tabs.forEach((tab) => {
@@ -1026,9 +888,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const teamFilterMenu = requireElement<HTMLDivElement>("teamFilterMenu");
     const teamFilterLabel = requireElement<HTMLSpanElement>("teamFilterLabel");
 
-    /**
-     * Renders the team filter dropdown with counts per team.
-     */
     function renderTeamFilter(): void {
         const inSprint = tasks.filter((t) => t.sprintId === currentSprintId);
         const options = [
@@ -1059,11 +918,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         teamFilterBtn.classList.toggle("filtered", currentTeamId !== "all");
     }
 
-    /**
-     * Opens or closes the team filter dropdown.
-     *
-     * @param open Whether the dropdown should be open
-     */
     function setTeamFilterOpen(open: boolean): void {
         teamFilterMenu.classList.toggle("visible", open);
         teamFilterBtn.setAttribute("aria-expanded", String(open));
@@ -1092,10 +946,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const tagFilterMenu = requireElement<HTMLDivElement>("tagFilterMenu");
     const tagFilterLabel = requireElement<HTMLSpanElement>("tagFilterLabel");
 
-    /**
-     * Collects every unique tag name across all tasks in the current sprint,
-     * sorted alphabetically (case-insensitive).
-     */
     function availableTagNames(): string[] {
         const names = new Set<string>();
         tasks
@@ -1104,10 +954,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         return Array.from(names).sort((a, b) => a.localeCompare(b));
     }
 
-    /**
-     * Renders the tag filter dropdown with a "Sort by tag" toggle, an
-     * "All tags" row, and one row per distinct tag in the sprint.
-     */
     function renderTagFilter(): void {
         if (!tagFilterMenu) return;
 
@@ -1143,7 +989,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         tagFilterMenu.innerHTML =
             `<span class="popover-label">Filter by tag</span>` + header + rows;
 
-        // Update the button label
         if (sortByTag && currentTagName === TAG_FILTER_ALL) {
             tagFilterLabel.textContent = "Sorted by tag";
         } else if (currentTagName === TAG_FILTER_ALL) {
@@ -1158,11 +1003,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         );
     }
 
-    /**
-     * Opens or closes the tag filter dropdown.
-     *
-     * @param open Whether the dropdown should be open
-     */
     function setTagFilterOpen(open: boolean): void {
         tagFilterMenu.classList.toggle("visible", open);
         tagFilterBtn.setAttribute("aria-expanded", String(open));
@@ -1219,14 +1059,15 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const tagChips = requireElement<HTMLDivElement>("tagChips");
     const tagEmpty = requireElement<HTMLParagraphElement>("tagEmpty");
 
+    // ----- Progress (US16) -----
+    const progressInput = requireElement<HTMLInputElement>("progressInput");
+    const progressValue = requireElement<HTMLSpanElement>("progressValue");
+    const progressSlider = requireElement<HTMLInputElement>("progressSlider");
+    const progressClearBtn = requireElement<HTMLButtonElement>("progressClearBtn");
+
     let draft: Task | null = null;
     let assignKind: "team" | "teams" | "employees" = "team";
 
-    /**
-     * Opens the task modal with the given task (existing or blank).
-     *
-     * @param task The task to edit or create
-     */
     function openModal(task: Task): void {
         draft = JSON.parse(JSON.stringify(task)) as Task;
         assignKind = draft.assignee?.kind ?? "team";
@@ -1239,6 +1080,13 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             draft.estimateHours > 0 ? String(draft.estimateHours) : "";
         prioritySelect.value = draft.priority;
         tagInput.value = "";
+
+        // Progress
+        const pct = Number(draft.progress) || 0;
+        progressInput.value = String(pct);
+        progressSlider.value = String(pct);
+        progressValue.textContent = `${pct}%`;
+
         errorText.textContent = "";
         saveBtn.textContent = draft.id ? "Save" : "Create task";
         deleteBtn.hidden = draft.id === "";
@@ -1251,11 +1099,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         titleInput.focus();
     }
 
-    /**
-     * Closes the task modal and clears the draft.
-     * If the modal was opened on an existing task, refreshes the board so any
-     * tag changes (added or removed) appear on the card immediately.
-     */
     function closeModal(): void {
         overlay.classList.remove("visible");
         closePopovers();
@@ -1266,9 +1109,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         if (wasSavedTask) void refreshFromBackend();
     }
 
-    /**
-     * Re-renders the summary chips and assignment controls from the current draft.
-     */
     function renderDraft(): void {
         if (!draft) return;
         const chips: string[] = [
@@ -1276,14 +1116,12 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             `<span class="summary-chip"><b>Due</b> ${draft.dueDate ? formatDateBadge(draft.dueDate) : "No due date"}</span>`,
             `<span class="summary-chip"><b>Estimate</b> ${draft.estimateHours > 0 ? formatEstimate(draft.estimateHours) : "Not set"}</span>`,
             `<span class="summary-chip"><b>Priority</b> ${draft.priority || "None"}</span>`,
+            `<span class="summary-chip"><b>Progress</b> ${Math.max(0, Math.min(100, Number(draft.progress) || 0))}%</span>`,
         ];
         summary.innerHTML = chips.join("");
         renderAssignControls();
     }
 
-    /**
-     * Renders the team/employee assignment controls from the current draft.
-     */
     function renderAssignControls(): void {
         if (!draft) return;
 
@@ -1324,9 +1162,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     }
 
     // ===================== TAGS (US13) =====================
-    /**
-     * Renders the tag chips for the current draft.
-     */
     function renderTags(): void {
         if (!draft) return;
         const tags = draft.tags ?? [];
@@ -1343,22 +1178,17 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             .join("");
     }
 
-    /**
-     * Persists a new tag on the backend, then updates the draft.
-     */
     async function addTagToDraft(): Promise<void> {
         if (!draft) return;
 
         const name = tagInput.value.trim().toLowerCase();
         if (!name) return;
 
-        // Guard against duplicates in the draft
         if ((draft.tags ?? []).some((t) => t.name.toLowerCase() === name)) {
             tagInput.value = "";
             return;
         }
 
-        // New tasks have no backend ID yet — we can only tag after the task exists.
         if (!draft.id) {
             showToast("Save the task first, then add tags.");
             return;
@@ -1382,11 +1212,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
     }
 
-    /**
-     * Removes a tag from the current draft on the backend.
-     *
-     * @param tagId The ID of the tag to remove
-     */
     async function removeTagFromDraft(tagId: number): Promise<void> {
         if (!draft || !draft.id) return;
         try {
@@ -1404,9 +1229,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
     }
 
-    /**
-     * Validates and saves the current draft to the backend.
-     */
     async function saveModal(): Promise<void> {
         if (!draft) return;
 
@@ -1420,6 +1242,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         draft.title = title;
         draft.description = descriptionBox.value.trim();
         draft.column = columnSelect.value as ColumnId;
+        draft.progress = Math.max(0, Math.min(100, Number(progressInput.value) || 0));
 
         const isNew = draft.id === "";
         const ok = isNew ? (await apiCreate(draft)) !== null : await apiUpdate(draft);
@@ -1433,11 +1256,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     // ----- Delete -----
     let deleteArmed = false;
 
-    /**
-     * Arms or disarms the delete button (two-click confirmation).
-     *
-     * @param armed Whether the button should be armed
-     */
     function setDeleteArmed(armed: boolean): void {
         deleteArmed = armed;
         deleteBtn.textContent = armed ? "Click again to delete" : "Delete task";
@@ -1462,9 +1280,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     deleteBtn.addEventListener("blur", () => setDeleteArmed(false));
 
     // ----- Popovers -----
-    /**
-     * Closes all open popovers inside the task modal.
-     */
     function closePopovers(): void {
         overlay
             .querySelectorAll<HTMLElement>(".popover.visible")
@@ -1529,6 +1344,24 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         if (!draft) return;
         draft.priority = "";
         prioritySelect.value = "";
+        renderDraft();
+    });
+
+    // ----- Progress (US16) -----
+    function syncProgress(value: string | number): void {
+        const pct = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+        if (draft) draft.progress = pct;
+        progressInput.value = String(pct);
+        progressSlider.value = String(pct);
+        progressValue.textContent = `${pct}%`;
+    }
+
+    progressInput.addEventListener("input", () => syncProgress(progressInput.value));
+    progressSlider.addEventListener("input", () => syncProgress(progressSlider.value));
+
+    progressClearBtn.addEventListener("click", () => {
+        if (!draft) return;
+        syncProgress(0);
         renderDraft();
     });
 
@@ -1613,11 +1446,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const toast = requireElement<HTMLDivElement>("toast");
     let toastTimeoutId: number | undefined;
 
-    /**
-     * Displays a toast notification for 3 seconds.
-     *
-     * @param message The message to display
-     */
     function showToast(message: string): void {
         toast.textContent = message;
         toast.classList.add("visible");
@@ -1630,9 +1458,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const projectNameInput = requireElement<HTMLInputElement>("projectName");
     let projectName = readSetting(PROJECT_NAME_KEY) || "Project Name";
 
-    /**
-     * Auto-sizes the project name input to fit its content.
-     */
     function fitProjectName(): void {
         const sizer = document.createElement("span");
         sizer.className = "project-name-sizer";
@@ -1642,9 +1467,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         sizer.remove();
     }
 
-    /**
-     * Commits the typed project name and persists it.
-     */
     function commitProjectName(): void {
         const typed = projectNameInput.value.trim();
         if (typed) {
@@ -1674,11 +1496,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const appShell = requireElement<HTMLDivElement>("appShell");
     const sidebarToggle = requireElement<HTMLButtonElement>("sidebarToggle");
 
-    /**
-     * Collapses or expands the sidebar.
-     *
-     * @param collapsed Whether the sidebar should be collapsed
-     */
     function setSidebarCollapsed(collapsed: boolean): void {
         appShell.classList.toggle("sidebar-collapsed", collapsed);
         sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
@@ -1699,12 +1516,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     let currentSprintStatus: Sprint["status"] | null = null;
     let currentSprintNumericId: number | null = null;
 
-    /**
-     * Fetches the sprint matching the given tab ID from the backend.
-     *
-     * @param tabId The sprint tab ID ("1", "2", or "3")
-     * @returns      A promise resolving to the Sprint, or null if not found
-     */
     async function fetchSprintStatus(tabId: string): Promise<Sprint | null> {
         const name = SPRINT_TAB_NAMES[tabId];
         if (!name) return null;
@@ -1719,11 +1530,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
     }
 
-    /**
-     * Renders the sprint start/end button based on sprint status.
-     *
-     * @param status The current sprint status, or null
-     */
     function renderSprintButton(status: Sprint["status"] | null): void {
         if (!startSprintBtn) return;
 
@@ -1747,9 +1553,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
     }
 
-    /**
-     * Refreshes the current sprint's status and updates the button.
-     */
     async function refreshSprintButton(): Promise<void> {
         const sprint = await fetchSprintStatus(currentSprintId);
         currentSprintStatus = sprint?.status ?? null;
@@ -1808,9 +1611,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     });
 
     // ===================== INIT =====================
-    /**
-     * Initializes the admin board page by loading data and wiring UI.
-     */
     async function init(): Promise<void> {
         await loadEmployeesFromBackend();
         highlightSavedSprintTab();

@@ -1455,3 +1455,49 @@ textarea {
     .tag-filter { right: 160px; }
     .search-bar input { padding-right: 300px; }
 }
+
+/* ===================== US16: PROGRESS ===================== */
+
+.progress-value-label {
+    font-weight: 700;
+    font-size: 0.85rem;
+    min-width: 40px;
+    text-align: right;
+    padding: 8px 0;
+}
+
+.progress-slider {
+    width: 100%;
+    accent-color: #6672c8;
+    margin-top: 4px;
+}
+
+/* Progress bar on task cards */
+.progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 8px;
+}
+
+.progress-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: #4ade80;   /* green */
+    border-radius: 3px;
+    transition: width 0.25s ease;
+}
+
+.progress-text {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #e3e6fa;
+    flex-shrink: 0;
+}
