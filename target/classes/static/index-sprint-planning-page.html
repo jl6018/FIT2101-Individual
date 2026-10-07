@@ -1,8 +1,8 @@
 <!--
     Sprint Planning Page — Symph Web Application
-    Provides the interface for starting sprint planning. Includes a form
-    for sprint name, start date, duration, and member selection, plus a
-    table of past sprints and modals for logout and sprint deletion.
+    Provides the interface for starting sprint planning, including the sprint
+    details form and a task list builder so the Product Owner can add tasks
+    with a name, description, and due date. Also shows past sprints.
 
     @author Lim Jia Li
     @version 17.0.16
@@ -16,7 +16,6 @@
     <title>Symph — Sprint Planning</title>
     <link rel="stylesheet" href="style-sprint-planning-page.css">
 
-    <!-- Prevent caching so the page always reflects the latest data -->
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -29,7 +28,6 @@
     <aside class="sidebar">
         <a class="logo" href="index-admin-page.html"><img src="images/symph-logo.png" alt="Symph" /></a>
 
-        <!-- Primary navigation menu -->
         <nav class="nav">
             <a href="index-admin-page.html" class="nav-item">
                 <span class="dot"></span> Sprint Board
@@ -45,7 +43,6 @@
             </a>
         </nav>
 
-        <!-- Signed-in user info and logout -->
         <div class="sidebar-footer">
             <div class="signed-in">Signed in as <strong id="signedInName">Admin</strong></div>
             <button id="logoutBtn" class="switch-account-btn">Log out</button>
@@ -56,14 +53,13 @@
     <main class="main">
         <h1>Sprint Planning</h1>
 
-        <!-- Panel: Start sprint planning -->
         <section class="panel">
             <h2>Start Sprint Planning</h2>
-            <p class="muted">Choose who's involved in the next sprint and pick its duration. Sprints can run up to 3 weeks.</p>
+            <p class="muted">Choose who's involved in the next sprint, pick its duration,
+                and add the tasks to be delivered.</p>
             <button id="startSprintPlanningBtn" class="btn-primary">Start Sprint Planning</button>
         </section>
 
-        <!-- Panel: Past sprints table -->
         <section class="panel">
             <h2>Past Sprints</h2>
             <table class="sprints-table">
@@ -76,9 +72,7 @@
                     <th></th>
                 </tr>
                 </thead>
-                <tbody id="pastSprintsBody">
-                <!-- Filled dynamically from GET /api/sprints -->
-                </tbody>
+                <tbody id="pastSprintsBody"></tbody>
             </table>
         </section>
     </main>
@@ -86,18 +80,15 @@
 
 <!-- ===================== MODAL: Start Sprint Planning ===================== -->
 <div class="modal-overlay" id="sprintPlanningOverlay">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sprintPlanningTitle">
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="sprintPlanningTitle">
         <button class="modal-close" id="closeSprintPlanningBtn" aria-label="Close">✕</button>
         <h2 id="sprintPlanningTitle" class="modal-title">Sprint Planning</h2>
         <p class="modal-subtitle">Sprints can run up to 3 weeks</p>
 
-        <!-- Sprint planning form -->
         <form id="sprintPlanningForm">
             <div class="form-field">
                 <label for="sprintName">Sprint name</label>
-                <select id="sprintName" name="sprintName" required>
-                    <!-- Options filled dynamically -->
-                </select>
+                <select id="sprintName" name="sprintName" required></select>
             </div>
 
             <div class="form-row">
@@ -121,13 +112,25 @@
                 <input type="date" id="sprintEndDate" name="sprintEndDate" readonly>
             </div>
 
-            <!-- Member selection list -->
             <div class="form-field">
                 <label>Members involved</label>
-                <!-- Filled dynamically from GET /api/users -->
                 <div class="members-list" id="membersList">
                     <p class="muted">Loading members…</p>
                 </div>
+            </div>
+
+            <!-- ============ US22: TASK LIST BUILDER ============ -->
+            <div class="form-field">
+                <label>Tasks in this sprint</label>
+                <p class="muted" style="margin-top:0;margin-bottom:8px;">
+                    Add each task's name, description, and due date.
+                </p>
+
+                <div id="taskList" class="task-list"></div>
+
+                <button type="button" id="addTaskRowBtn" class="btn-secondary add-task-row">
+                    + Add task
+                </button>
             </div>
 
             <button type="submit" class="btn-primary full-width">Create sprint</button>
@@ -149,8 +152,8 @@
 
 <!-- ===================== MODAL: Delete Sprint ===================== -->
 <div class="modal-overlay" id="deleteSprintOverlay">
-    <div class="modal modal-narrow" role="dialog" aria-modal="true" aria-labelledby="deleteSprintTitle">
-        <h2 id="deleteSprintTitle" class="modal-title">Delete sprint?</h2>
+    <div class="modal modal-narrow" role="dialog" aria-modal="true">
+        <h2 class="modal-title">Delete sprint?</h2>
         <p class="modal-subtitle">
             <strong id="deleteSprintName">Sprint 1</strong> will be permanently removed. This cannot be undone.
         </p>
@@ -161,7 +164,6 @@
     </div>
 </div>
 
-<!-- ===================== TOAST NOTIFICATION ===================== -->
 <div class="toast" id="toast"></div>
 
 <script src="main-sprint-planning-page.js" type="module" defer></script>

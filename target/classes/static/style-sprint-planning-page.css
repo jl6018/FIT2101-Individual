@@ -459,3 +459,98 @@ select:focus {
 .delete-sprint-btn:hover {
     background: #FEE2E2;
 }
+
+/* ===================== US22: TASK LIST BUILDER ===================== */
+
+.modal-wide {
+    max-width: 640px;
+}
+
+.task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.task-row {
+    background: #f6f7fd;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.task-row-top {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.task-row-name {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #E5E7EB;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fff;
+}
+
+.task-row-date {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #E5E7EB;
+    font-size: 13px;
+    font-family: inherit;
+    background: #fff;
+    width: 150px;
+}
+
+.task-row-remove {
+    background: none;
+    border: none;
+    color: #C0392B;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-family: inherit;
+}
+
+.task-row-remove:hover {
+    background: #FEE2E2;
+}
+
+.task-row-desc {
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #E5E7EB;
+    font-size: 13px;
+    font-family: inherit;
+    background: #fff;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.add-task-row {
+    width: 100%;
+    padding: 10px;
+    border: 1px dashed #9CA3AF;
+    border-radius: 8px;
+    background: #fff;
+    color: #111;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.add-task-row:hover {
+    background: #F3F4F6;
+    border-color: #6B7280;
+}
