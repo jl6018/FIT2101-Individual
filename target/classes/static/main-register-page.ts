@@ -6,20 +6,12 @@
  * @version 17.0.16
  */
 
-/**
- * Retrieves a DOM element by its ID and throws if not found.
- *
- * @param id The ID of the element to retrieve
- * @returns  The element cast to the expected type
- * @throws Error if no element with the given ID exists
- */
 function requireElement<T extends HTMLElement>(id: string): T {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Missing element: ${id}`);
     return el as T;
 }
 
-// ===================== ELEMENTS =====================
 const form = requireElement<HTMLFormElement>('registerForm');
 const nameInput = requireElement<HTMLInputElement>('name');
 const emailInput = requireElement<HTMLInputElement>('email');
@@ -30,32 +22,37 @@ const errorBanner = requireElement<HTMLDivElement>('errorBanner');
 const errorText = requireElement<HTMLSpanElement>('errorText');
 const dismissError = requireElement<HTMLButtonElement>('dismissError');
 
-/**
- * Displays an error message in the banner.
- *
- * @param message The error message to show
- */
+function isValidEmailShape(email: string): boolean {
+    return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email);
+}
+
 function showError(message: string): void {
     errorText.textContent = message;
     errorBanner.classList.add('visible');
+    errorBanner.style.background = '#FDE8E8';
+    errorBanner.style.color = '#C0392B';
 }
 
-/**
- * Hides the error banner.
- */
-function hideError(): void {
+function showSuccess(message: string): void {
+    errorText.textContent = message;
+    errorBanner.classList.add('visible');
+    errorBanner.style.background = '#D1FAE5';
+    errorBanner.style.color = '#065F46';
+}
+
+function hideBanner(): void {
     errorBanner.classList.remove('visible');
 }
 
-dismissError.addEventListener('click', hideError);
+dismissError.addEventListener('click', hideBanner);
 
-// ===================== FORM SUBMIT =====================
-form.addEventListener('submit', async (e) => {
+form.addEventListener('submit', async (e: SubmitEvent) => {
     e.preventDefault();
+    hideBanner();
 
     const payload = {
         name: nameInput.value.trim(),
-        email: emailInput.value.trim(),
+        email: emailInput.value.trim().toLowerCase(),
         password: passwordInput.value,
         role: roleSelect.value,
     };
@@ -66,6 +63,10 @@ form.addEventListener('submit', async (e) => {
     }
     if (payload.password.length < 8) {
         showError('Password must be at least 8 characters.');
+        return;
+    }
+    if (!isValidEmailShape(payload.email)) {
+        showError('Please enter a valid email address (e.g. user@example.com).');
         return;
     }
 
@@ -80,18 +81,28 @@ form.addEventListener('submit', async (e) => {
         });
 
         if (!res.ok) {
-            const message = await res.text();
-            throw new Error(message || 'Registration failed');
+            const text = await res.text();
+            const lower = text.toLowerCase();
+
+            if (lower.includes('already registered') || lower.includes('duplicate')) {
+                throw new Error('This email is already registered. Please log in.');
+            }
+            if (lower.includes('valid email')) {
+                throw new Error('Please enter a valid email address (e.g. user@example.com).');
+            }
+            throw new Error(text || 'Registration failed');
         }
 
-        // Success — show message then redirect
-        alert('Account successfully registered! Please log in.');
-        window.location.href = 'index-login-page.html';
+        showSuccess('Account successfully registered! Redirecting to login...');
+        submitBtn.textContent = 'Registered ✅';
+
+        setTimeout(() => {
+            window.location.href = 'index-login-page.html';
+        }, 1500);
 
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Registration failed';
         showError(message);
-    } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Register';
     }

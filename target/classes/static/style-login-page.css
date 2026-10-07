@@ -183,3 +183,81 @@ button.submit:disabled {
 .login-wrap p a:hover {
   color: #4F46E5;
 }
+
+/* ===================== US20 + US22: NO-INVITE MODAL ===================== */
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 17, 17, 0.4);
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 16px;
+}
+
+.modal-overlay.visible {
+    display: flex;
+}
+
+.modal-narrow {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 28px;
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+.modal-narrow .modal-title {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #111111;
+    margin: 0 0 8px;
+    letter-spacing: -0.3px;
+}
+
+.modal-narrow .modal-subtitle {
+    font-size: 14px;
+    color: #6B7280;
+    margin: 0 0 24px;
+    line-height: 1.5;
+}
+
+.modal-narrow .modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.modal-narrow .btn-primary {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 12px;
+    background: #111;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.modal-narrow .btn-primary:hover {
+    background: #2a2a2a;
+}
+
+.modal-narrow .btn-primary.full-width {
+    width: 100%;
+}
+
+.modal-narrow::before {
+    content: "🔒";
+    display: block;
+    font-size: 36px;
+    line-height: 1;
+    margin-bottom: 16px;
+}
