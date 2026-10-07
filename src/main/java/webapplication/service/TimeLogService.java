@@ -109,4 +109,16 @@ public class TimeLogService {
                 .mapToDouble(TimeLog::getHours)
                 .sum();
     }
+
+    /**
+     * Calculates the total hours logged against every task in the given sprint.
+     *
+     * @param sprintId The ID of the sprint
+     * @return         The total hours logged in that sprint
+     */
+    public double getTotalHoursForSprint(Long sprintId) {
+        return timeLogRepository.findByTaskSprintId(sprintId).stream()
+                .mapToDouble(TimeLog::getHours)
+                .sum();
+    }
 }

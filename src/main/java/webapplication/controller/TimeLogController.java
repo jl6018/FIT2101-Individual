@@ -78,4 +78,15 @@ public class TimeLogController {
         return timeLogService.getTotalHoursForUserInRange(
                 userId, LocalDate.parse(start), LocalDate.parse(end));
     }
+
+    /**
+     * Calculates the total hours logged across every task in a sprint.
+     *
+     * @param sprintId The ID of the sprint
+     * @return         The total hours logged in that sprint
+     */
+    @GetMapping("/sprint/{sprintId}/total")
+    public double getTotalHoursForSprint(@PathVariable Long sprintId) {
+        return timeLogService.getTotalHoursForSprint(sprintId);
+    }
 }
