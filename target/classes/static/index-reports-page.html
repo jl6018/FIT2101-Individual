@@ -1,7 +1,8 @@
 <!--
     Reports Page — Symph Web Application
-    Displays time contribution per member (US26/27/28) and a line chart of
-    hours per task (US29) over a selectable time range.
+    Displays per-member time contribution (US26/27/28), a line chart of
+    hours per task (US29), and a sprint burndown chart (US30) over a
+    selectable time range.
 
     @author Lim Jia Li
     @version 17.0.16
@@ -21,7 +22,6 @@
 <body>
 
 <div class="app-shell">
-    <!-- ===================== SIDEBAR ===================== -->
     <aside class="sidebar">
         <a class="logo" href="index-admin-page.html">
             <img src="images/symph-logo.png" alt="Symph" />
@@ -48,7 +48,6 @@
         </div>
     </aside>
 
-    <!-- ===================== MAIN CONTENT ===================== -->
     <main class="main">
         <div class="top-bar">
             <span class="top-bar-badge">Admin</span>
@@ -64,7 +63,6 @@
         <h1>Reports</h1>
         <p class="page-subtitle">Time contribution, hours per task, and sprint burndown</p>
 
-        <!-- ===================== TIME RANGE ===================== -->
         <section class="panel">
             <h2>Time range</h2>
             <div class="time-range-row" id="timeRangeRow">
@@ -74,7 +72,7 @@
             </div>
         </section>
 
-        <!-- ===================== TEAM CONTRIBUTION (US26 / US27 / US28) ===================== -->
+        <!-- US26 / US27 / US28 -->
         <section class="panel">
             <h2 id="contributionTitle">Team contribution</h2>
             <p class="muted">Average hours per day = total hours logged in this range ÷ days that member
@@ -93,7 +91,7 @@
             </table>
         </section>
 
-        <!-- ===================== HOURS PER TASK (US29) ===================== -->
+        <!-- US29 -->
         <section class="panel">
             <h2>Hours per task</h2>
             <p class="muted">Total logged hours against each task in this range, ordered from
@@ -104,10 +102,27 @@
             </div>
             <p id="taskChartEmpty" class="muted" style="display:none;">No hours logged in this range yet.</p>
         </section>
+
+        <!-- US30: Sprint burndown -->
+        <section class="panel">
+            <h2>Sprint burndown</h2>
+            <p class="muted">Actual vs projected remaining work for the sprint you selected on the
+                Sprint Board. Projected line assumes even progress from total estimate down to zero.</p>
+            <div class="burndown-wrap">
+                <svg id="burndownChart" viewBox="0 0 720 320" class="burndown-svg"></svg>
+            </div>
+            <p id="burndownEmpty" class="muted" style="display:none;">
+                No burndown data yet. Create a sprint with dated tasks that have estimates.
+            </p>
+            <div class="legend">
+                <span class="legend-item"><span class="legend-swatch projected"></span> Projected</span>
+                <span class="legend-item"><span class="legend-swatch actual"></span> Actual</span>
+            </div>
+        </section>
     </main>
 </div>
 
-<!-- ===================== MODAL: Member History ===================== -->
+<!-- Modal: Member History -->
 <div class="modal-overlay" id="memberOverlay">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="memberModalName">
         <button class="modal-close" id="closeMemberModalBtn" aria-label="Close">✕</button>
@@ -122,7 +137,7 @@
     </div>
 </div>
 
-<!-- ===================== MODAL: Logout ===================== -->
+<!-- Modal: Logout -->
 <div class="modal-overlay" id="logoutOverlay">
     <div class="modal modal-narrow" role="dialog" aria-modal="true">
         <h2 class="modal-title">Log out?</h2>
