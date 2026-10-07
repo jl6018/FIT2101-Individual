@@ -1,4 +1,4 @@
-package webapplication.login;
+package webapplication.dto;
 
 /**
  * Represents the response returned after a successful login to the Symph web application.

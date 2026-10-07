@@ -1,8 +1,8 @@
 package webapplication.controller;
 
 import jakarta.validation.Valid;
-import webapplication.login.LoginRequest;
-import webapplication.login.LoginResponse;
+import webapplication.dto.LoginRequest;
+import webapplication.dto.LoginResponse;
 import webapplication.model.User;
 import webapplication.service.UserService;
 import org.springframework.http.ResponseEntity;

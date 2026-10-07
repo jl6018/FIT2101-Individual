@@ -1,7 +1,9 @@
 package webapplication.controller;
 
+import webapplication.dto.TimeLogRequest;
 import webapplication.model.TimeLog;
 import webapplication.service.TimeLogService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -22,20 +24,10 @@ public class TimeLogController {
 
     private final TimeLogService timeLogService;
 
-    /**
-     * Parameterized constructor with the required TimeLogService dependency.
-     *
-     * @param timeLogService The service handling time log business logic
-     */
     public TimeLogController(TimeLogService timeLogService) {
         this.timeLogService = timeLogService;
     }
 
-    /**
-     * Retrieves all time logs from the database.
-     *
-     * @return A list of all time logs
-     */
     @GetMapping
     public List<TimeLog> getAllTimeLogs() {
         return timeLogService.getAllTimeLogs();
@@ -43,45 +35,40 @@ public class TimeLogController {
 
     /**
      * Logs hours against a task for a user.
+     * Accepts a lightweight DTO and resolves taskId/userId server-side.
      *
-     * @param timeLog The TimeLog object to save
-     * @return        The saved TimeLog object with its assigned ID
+     * @param request The time-log request payload
+     * @return        A ResponseEntity with the saved TimeLog on success
      */
     @PostMapping
-    public TimeLog logHours(@RequestBody TimeLog timeLog) {
-        return timeLogService.logHours(timeLog);
+    public ResponseEntity<?> logHours(@RequestBody TimeLogRequest request) {
+        try {
+            TimeLog saved = timeLogService.logHours(
+                    request.getDate(),
+                    request.getStartTime(),
+                    request.getHours(),
+                    request.getDescription(),
+                    request.getTaskId(),
+                    request.getUserId()
+            );
+            return ResponseEntity.ok(saved);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
-    /**
-     * Retrieves all time logs for a specific user.
-     *
-     * @param userId The ID of the user
-     * @return       A list of time logs belonging to the user
-     */
     @GetMapping("/user/{userId}")
     public List<TimeLog> getLogsByUser(@PathVariable Long userId) {
         return timeLogService.getLogsByUser(userId);
     }
 
-    /**
-     * Retrieves all time logs for a specific task.
-     *
-     * @param taskId The ID of the task
-     * @return       A list of time logs belonging to the task
-     */
     @GetMapping("/task/{taskId}")
     public List<TimeLog> getLogsByTask(@PathVariable Long taskId) {
         return timeLogService.getLogsByTask(taskId);
     }
 
-    /**
-     * Calculates the total hours logged by a user within a date range.
-     *
-     * @param userId The ID of the user
-     * @param start  The start date in ISO format
-     * @param end    The end date in ISO format
-     * @return       The total hours logged within the range
-     */
     @GetMapping("/total/{userId}")
     public double getTotalHours(
             @PathVariable Long userId,

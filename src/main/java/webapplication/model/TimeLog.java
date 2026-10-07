@@ -2,6 +2,7 @@ package webapplication.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 /**
  * Represents a record of hours logged against a task by a user.
@@ -20,6 +21,9 @@ public class TimeLog {
     private Long id;
 
     private LocalDate date;
+
+    @Column(name = "start_time")
+    private LocalTime startTime;
 
     private double hours;
 
@@ -43,13 +47,16 @@ public class TimeLog {
      * Parameterized constructor with the time log's details.
      *
      * @param date        The date the hours were logged
+     * @param startTime   The time the work session started
      * @param hours       The number of hours logged
      * @param description A description of the work done
      * @param task        The task the hours were logged against
      * @param user        The user who logged the hours
      */
-    public TimeLog(LocalDate date, double hours, String description, Task task, User user) {
+    public TimeLog(LocalDate date, LocalTime startTime, double hours,
+                   String description, Task task, User user) {
         this.date = date;
+        this.startTime = startTime;
         this.hours = hours;
         this.description = description;
         this.task = task;
@@ -83,6 +90,20 @@ public class TimeLog {
      * @param date The log date
      */
     public void setDate(LocalDate date) { this.date = date; }
+
+    /**
+     * Gets the time the work session started.
+     *
+     * @return The start time
+     */
+    public LocalTime getStartTime() { return startTime; }
+
+    /**
+     * Sets the time the work session started.
+     *
+     * @param startTime The start time
+     */
+    public void setStartTime(LocalTime startTime) { this.startTime = startTime; }
 
     /**
      * Gets the number of hours logged.

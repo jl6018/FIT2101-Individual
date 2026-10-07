@@ -1,4 +1,4 @@
-package webapplication.login;
+package webapplication.dto;
 
 /**
  * Represents the request when a user attempts to log in to the Symph web application.
