@@ -3,8 +3,8 @@
  * Compiled output of main-admin-page.ts — do not hand-edit.
  * Handles all interactive behaviour for the admin Kanban board, including
  * authentication guards, task CRUD, drag-and-drop reordering, sprint tabs,
- * team filtering, search, the task modal, sprint start/end controls, and
- * tag management (US13).
+ * team filtering, tag filtering/sorting (US14), search, the task modal,
+ * sprint start/end controls, and tag management (US13).
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -61,6 +61,9 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const USERS_API = "http://localhost:8080/api/users";
     const SPRINTS_API = "http://localhost:8080/api/sprints";
     const TAGS_API = "http://localhost:8080/api/tags";
+
+    /** Tag filter sentinel values. */
+    const TAG_FILTER_ALL = "all";
 
     /** Maps sprint tab IDs to the sprint names stored in the backend. */
     const SPRINT_TAB_NAMES = {
@@ -296,6 +299,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     let tasks = [];
     let currentSprintId = readSprintSetting();
     let currentTeamId = "all";
+    let currentTagName = TAG_FILTER_ALL;   // "all" or a specific tag name
+    let sortByTag = false;
     let searchTerm = "";
 
     const board = requireElement("board");
@@ -519,12 +524,13 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     }
 
     /**
-     * Refreshes the task list and re-renders the board and team filter.
+     * Refreshes the task list and re-renders the board, team filter, and tag filter.
      */
     async function refreshFromBackend() {
         tasks = await fetchTasks();
         renderBoard();
         renderTeamFilter();
+        renderTagFilter();
     }
 
     /**
@@ -629,7 +635,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     // ===================== RENDER =====================
     /**
-     * Filters tasks by the current sprint, team, and search term.
+     * Filters tasks by the current sprint, team, tag filter, and search term.
      *
      * @returns {Array} An array of visible tasks
      */
@@ -638,6 +644,14 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         return tasks.filter((task) => {
             if (task.sprintId !== currentSprintId) return false;
             if (currentTeamId !== "all" && !teamsOfTask(task).includes(currentTeamId)) return false;
+
+            if (currentTagName !== TAG_FILTER_ALL) {
+                const hasTag = (task.tags ?? []).some(
+                    (t) => t.name.toLowerCase() === currentTagName.toLowerCase()
+                );
+                if (!hasTag) return false;
+            }
+
             if (term && !task.title.toLowerCase().includes(term)) return false;
             return true;
         });
@@ -703,14 +717,23 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     }
 
     /**
-     * Renders the full board with all columns and their cards sorted by position.
+     * Renders the full board with all columns and their cards.
+     * Card order follows board position, unless "Sort by tag" is enabled —
+     * in which case cards are ordered by their first tag name, then position.
      */
     function renderBoard() {
         const shown = visibleTasks();
         board.innerHTML = COLUMNS.map((column) => {
             const cards = shown
                 .filter((task) => task.column === column.id)
-                .sort((a, b) => a.position - b.position);
+                .sort((a, b) => {
+                    if (sortByTag) {
+                        const aTag = (a.tags ?? [])[0]?.name.toLowerCase() ?? "\uffff";
+                        const bTag = (b.tags ?? [])[0]?.name.toLowerCase() ?? "\uffff";
+                        if (aTag !== bTag) return aTag < bTag ? -1 : 1;
+                    }
+                    return a.position - b.position;
+                });
             return `
       <section class="column" data-column="${column.id}">
         <h2>${column.name}</h2>
@@ -863,6 +886,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     writeSprintSetting(sprintId);
                     renderBoard();
                     renderTeamFilter();
+                    renderTagFilter();
                     void refreshSprintButton();
                 }
             });
@@ -945,6 +969,119 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     document.addEventListener("click", () => setTeamFilterOpen(false));
 
+    // ===================== TAG FILTER (US14) =====================
+    const tagFilterBtn = requireElement("tagFilterBtn");
+    const tagFilterMenu = requireElement("tagFilterMenu");
+    const tagFilterLabel = requireElement("tagFilterLabel");
+
+    /**
+     * Collects every unique tag name across all tasks in the current sprint,
+     * sorted alphabetically (case-insensitive).
+     *
+     * @returns {Array<string>} A sorted list of tag names
+     */
+    function availableTagNames() {
+        const names = new Set();
+        tasks
+            .filter((t) => t.sprintId === currentSprintId)
+            .forEach((t) => (t.tags ?? []).forEach((tag) => names.add(tag.name)));
+        return Array.from(names).sort((a, b) => a.localeCompare(b));
+    }
+
+    /**
+     * Renders the tag filter dropdown with a "Sort by tag" toggle, an
+     * "All tags" row, and one row per distinct tag in the sprint.
+     */
+    function renderTagFilter() {
+        if (!tagFilterMenu) return;
+
+        const inSprint = tasks.filter((t) => t.sprintId === currentSprintId);
+        const names = availableTagNames();
+
+        const countFor = (name) =>
+            inSprint.filter((t) =>
+                (t.tags ?? []).some((tag) => tag.name.toLowerCase() === name.toLowerCase())
+            ).length;
+
+        const sortActive = sortByTag ? " active" : "";
+        const header = `
+            <button type="button" class="filter-option${sortActive}" data-tag-sort="1" role="menuitemradio" aria-checked="${sortByTag}">
+                <span>Sort by tag</span><span class="filter-count">${sortByTag ? "on" : "off"}</span>
+            </button>
+            <button type="button" class="filter-option${currentTagName === TAG_FILTER_ALL ? " active" : ""}" data-tag="${TAG_FILTER_ALL}" role="menuitemradio" aria-checked="${currentTagName === TAG_FILTER_ALL}">
+                <span>All tags</span><span class="filter-count">${inSprint.length}</span>
+            </button>`;
+
+        const rows = names.length === 0
+            ? `<p class="employee-empty">No tags in this sprint yet.</p>`
+            : names
+                  .map((name) => {
+                      const active = currentTagName.toLowerCase() === name.toLowerCase();
+                      return `
+            <button type="button" class="filter-option${active ? " active" : ""}" data-tag="${escapeHtml(name)}" role="menuitemradio" aria-checked="${active}">
+              <span>${escapeHtml(name)}</span><span class="filter-count">${countFor(name)}</span>
+            </button>`;
+                  })
+                  .join("");
+
+        tagFilterMenu.innerHTML =
+            `<span class="popover-label">Filter by tag</span>` + header + rows;
+
+        // Update the button label
+        if (sortByTag && currentTagName === TAG_FILTER_ALL) {
+            tagFilterLabel.textContent = "Sorted by tag";
+        } else if (currentTagName === TAG_FILTER_ALL) {
+            tagFilterLabel.textContent = "All tags";
+        } else {
+            tagFilterLabel.textContent = currentTagName;
+        }
+
+        tagFilterBtn.classList.toggle(
+            "filtered",
+            sortByTag || currentTagName !== TAG_FILTER_ALL
+        );
+    }
+
+    /**
+     * Opens or closes the tag filter dropdown.
+     *
+     * @param {boolean} open Whether the dropdown should be open
+     */
+    function setTagFilterOpen(open) {
+        tagFilterMenu.classList.toggle("visible", open);
+        tagFilterBtn.setAttribute("aria-expanded", String(open));
+    }
+
+    tagFilterBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        renderTagFilter();
+        setTagFilterOpen(!tagFilterMenu.classList.contains("visible"));
+    });
+
+    tagFilterMenu.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const target = event.target;
+
+        const sortBtn = target.closest("[data-tag-sort]");
+        if (sortBtn) {
+            sortByTag = !sortByTag;
+            setTagFilterOpen(false);
+            renderTagFilter();
+            renderBoard();
+            return;
+        }
+
+        const tagBtn = target.closest("[data-tag]");
+        if (!tagBtn) return;
+        const name = tagBtn.dataset["tag"] ?? TAG_FILTER_ALL;
+        currentTagName = name;
+        setTagFilterOpen(false);
+        renderTagFilter();
+        renderBoard();
+    });
+
+    document.addEventListener("click", () => setTagFilterOpen(false));
+
     // ===================== TASK MODAL =====================
     const overlay = requireElement("taskModalOverlay");
     const columnSelect = requireElement("modalColumn");
@@ -999,11 +1136,17 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     /**
      * Closes the task modal and clears the draft.
+     * If the modal was opened on an existing task, refreshes the board so any
+     * tag changes (added or removed) appear on the card immediately.
      */
     function closeModal() {
         overlay.classList.remove("visible");
         closePopovers();
+
+        const wasSavedTask = draft !== null && draft.id !== "";
         draft = null;
+
+        if (wasSavedTask) void refreshFromBackend();
     }
 
     /**
@@ -1323,6 +1466,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     document.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") return;
         setTeamFilterOpen(false);
+        setTagFilterOpen(false);
         if (!overlay.classList.contains("visible")) return;
         if (overlay.querySelector(".popover.visible")) closePopovers();
         else closeModal();
@@ -1532,8 +1676,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         highlightSavedSprintTab();
         initSprintTabs();
         renderTeamFilter();
+        renderTagFilter();
         await refreshSprintButton();
         await refreshFromBackend();
+        renderTagFilter();
     }
     void init();
 })();

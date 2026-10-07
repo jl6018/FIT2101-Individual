@@ -1401,3 +1401,57 @@ textarea {
     line-height: 1;
     padding: 0;
 }
+
+/* ===================== US13: TAG CHIPS ===================== */
+
+.tag-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #6672c8;
+    color: #fff;
+    border-radius: 12px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.tag-chip button {
+    background: none;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.85rem;
+    line-height: 1;
+    padding: 0;
+}
+
+/* ===================== US14: TAG FILTER ===================== */
+
+.tag-filter {
+    position: absolute;
+    right: 170px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.search-bar input {
+    padding-right: 320px;
+}
+
+@media (max-width: 900px) {
+    .tag-filter { right: 165px; }
+    .search-bar input { padding-right: 310px; }
+}
+
+@media (max-width: 720px) {
+    .tag-filter { right: 160px; }
+    .search-bar input { padding-right: 300px; }
+}

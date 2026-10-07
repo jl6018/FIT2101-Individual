@@ -1,8 +1,8 @@
 <!--
     Admin Board Page — Symph Web Application
     Provides the main Kanban board for administrators. Includes the sidebar
-    navigation, search and team filter, project header with sprint controls,
-    sprint tabs, and modals for task editing, logout, invites, and
+    navigation, search, team filter and tag filter, project header with sprint
+    controls, sprint tabs, and modals for task editing, logout, invites, and
     generic confirm/alert dialogs.
 
     @author Lim Jia Li
@@ -69,6 +69,19 @@
                     <circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/>
                 </svg>
                 <input type="text" id="searchInput" placeholder="Search" aria-label="Search tasks" />
+
+                <!-- Tag filter dropdown (US14) -->
+                <div class="tag-filter">
+                    <button id="tagFilterBtn" class="team-filter-btn" type="button" aria-haspopup="true"
+                            aria-expanded="false" title="Filter or sort by tag">
+                        <span id="tagFilterLabel">All tags</span>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M20 12l-8 8-9-9V4h7l10 8z"/>
+                            <circle cx="7.5" cy="7.5" r="1.2"/>
+                        </svg>
+                    </button>
+                    <div class="popover team-filter-menu" id="tagFilterMenu" role="menu"></div>
+                </div>
 
                 <!-- Team filter dropdown -->
                 <div class="team-filter">
