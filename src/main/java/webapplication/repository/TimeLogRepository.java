@@ -48,4 +48,15 @@ public interface TimeLogRepository extends JpaRepository<TimeLog, Long> {
      * @return         A list of time logs for every task in that sprint
      */
     List<TimeLog> findByTaskSprintId(Long sprintId);
+
+    /**
+     * US30: time logs for tasks in a sprint, within a date range.
+     * Used to compute the actual burndown line.
+     *
+     * @param sprintId The sprint ID
+     * @param start    Start date (inclusive)
+     * @param end      End date (inclusive)
+     * @return         Logs for tasks in the sprint within the range
+     */
+    List<TimeLog> findByTaskSprintIdAndDateBetween(Long sprintId, LocalDate start, LocalDate end);
 }

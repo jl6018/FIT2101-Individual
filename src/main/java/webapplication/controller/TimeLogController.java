@@ -1,7 +1,8 @@
 package webapplication.controller;
 
-import webapplication.dto.TimeLogRequest;
+import webapplication.dto.TaskHours;
 import webapplication.dto.TimeLogSummary;
+import webapplication.dto.TimeLogRequest;
 import webapplication.model.TimeLog;
 import webapplication.service.TimeLogService;
 import org.springframework.http.ResponseEntity;
@@ -76,10 +77,6 @@ public class TimeLogController {
         return timeLogService.getTotalHoursForSprint(sprintId);
     }
 
-    /**
-     * US26 / US27: per-member summary over a date range.
-     * Example: GET /api/timelogs/summary?from=2026-10-01&to=2026-10-07
-     */
     @GetMapping("/summary")
     public List<TimeLogSummary> getSummary(
             @RequestParam String from,
@@ -87,10 +84,6 @@ public class TimeLogController {
         return timeLogService.getSummaryByRange(LocalDate.parse(from), LocalDate.parse(to));
     }
 
-    /**
-     * US28: a single member's logs over a date range.
-     * Example: GET /api/timelogs/user/3/range?from=2026-10-01&to=2026-10-07
-     */
     @GetMapping("/user/{userId}/range")
     public List<TimeLog> getLogsForUserInRange(
             @PathVariable Long userId,
@@ -100,14 +93,23 @@ public class TimeLogController {
                 userId, LocalDate.parse(from), LocalDate.parse(to));
     }
 
-    /**
-     * US29: hours per task over a date range.
-     * Example: GET /api/timelogs/by-task?from=2026-10-01&to=2026-10-07
-     */
     @GetMapping("/by-task")
-    public java.util.List<webapplication.dto.TaskHours> getHoursPerTask(
+    public List<TaskHours> getHoursPerTask(
             @RequestParam String from,
             @RequestParam String to) {
         return timeLogService.getHoursPerTask(LocalDate.parse(from), LocalDate.parse(to));
+    }
+
+    /**
+     * US30: burndown chart data for a sprint.
+     * Example: GET /api/timelogs/burndown/1
+     */
+    @GetMapping("/burndown/{sprintId}")
+    public ResponseEntity<?> getBurndown(@PathVariable Long sprintId) {
+        try {
+            return ResponseEntity.ok(timeLogService.getBurndown(sprintId));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        }
     }
 }

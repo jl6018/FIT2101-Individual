@@ -1,9 +1,13 @@
 package webapplication.service;
 
+import webapplication.dto.BurndownPoint;
+import webapplication.dto.TaskHours;
 import webapplication.dto.TimeLogSummary;
+import webapplication.model.Sprint;
 import webapplication.model.Task;
 import webapplication.model.TimeLog;
 import webapplication.model.User;
+import webapplication.repository.SprintRepository;
 import webapplication.repository.TaskRepository;
 import webapplication.repository.TimeLogRepository;
 import webapplication.repository.UserRepository;
@@ -15,7 +19,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Manages time log creation, retrieval, and total hours calculation.
+ * Manages time log creation, retrieval, and reporting calculations.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -27,13 +31,16 @@ public class TimeLogService {
     private final TimeLogRepository timeLogRepository;
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private final SprintRepository sprintRepository;
 
     public TimeLogService(TimeLogRepository timeLogRepository,
                           TaskRepository taskRepository,
-                          UserRepository userRepository) {
+                          UserRepository userRepository,
+                          SprintRepository sprintRepository) {
         this.timeLogRepository = timeLogRepository;
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
+        this.sprintRepository = sprintRepository;
     }
 
     public List<TimeLog> getAllTimeLogs() {
@@ -43,18 +50,10 @@ public class TimeLogService {
     public TimeLog logHours(String dateStr, String startTimeStr, double hours,
                             String description, Long taskId, Long userId) {
 
-        if (dateStr == null || dateStr.isBlank()) {
-            throw new IllegalArgumentException("Date is required");
-        }
-        if (hours <= 0) {
-            throw new IllegalArgumentException("Hours must be greater than 0");
-        }
-        if (taskId == null) {
-            throw new IllegalArgumentException("Task is required");
-        }
-        if (userId == null) {
-            throw new IllegalArgumentException("User is required");
-        }
+        if (dateStr == null || dateStr.isBlank()) throw new IllegalArgumentException("Date is required");
+        if (hours <= 0) throw new IllegalArgumentException("Hours must be greater than 0");
+        if (taskId == null) throw new IllegalArgumentException("Task is required");
+        if (userId == null) throw new IllegalArgumentException("User is required");
 
         LocalDate date = LocalDate.parse(dateStr);
         LocalTime startTime = (startTimeStr != null && !startTimeStr.isBlank())
@@ -96,33 +95,19 @@ public class TimeLogService {
                 .sum();
     }
 
-    /**
-     * US25: total hours logged across every task in a sprint.
-     */
     public double getTotalHoursForSprint(Long sprintId) {
         return timeLogRepository.findByTaskSprintId(sprintId).stream()
                 .mapToDouble(TimeLog::getHours)
                 .sum();
     }
 
-    /**
-     * US26 / US27: per-member aggregated contribution over a date range.
-     * Includes every EMPLOYEE even if they logged nothing (so the table
-     * always lists the full team).
-     *
-     * @param from Start date (inclusive)
-     * @param to   End date (inclusive)
-     * @return     One summary row per employee, sorted by total hours desc
-     */
     public List<TimeLogSummary> getSummaryByRange(LocalDate from, LocalDate to) {
         List<TimeLog> logs = timeLogRepository.findByDateBetween(from, to);
 
-        // Group logs by user
         Map<Long, List<TimeLog>> byUser = logs.stream()
                 .filter(l -> l.getUser() != null)
                 .collect(Collectors.groupingBy(l -> l.getUser().getId()));
 
-        // Include every employee so the table is never empty
         List<User> allUsers = userRepository.findAll();
         List<TimeLogSummary> rows = new ArrayList<>();
 
@@ -131,30 +116,17 @@ public class TimeLogService {
 
             List<TimeLog> mine = byUser.getOrDefault(u.getId(), Collections.emptyList());
             double total = mine.stream().mapToDouble(TimeLog::getHours).sum();
-            long daysWorked = mine.stream()
-                    .map(TimeLog::getDate)
-                    .filter(Objects::nonNull)
-                    .distinct()
-                    .count();
+            long daysWorked = mine.stream().map(TimeLog::getDate).filter(Objects::nonNull).distinct().count();
             double avg = daysWorked > 0 ? total / daysWorked : 0.0;
 
             String teamName = (u.getTeam() != null) ? u.getTeam().getName() : "Unassigned";
-            rows.add(new TimeLogSummary(
-                    u.getId(), u.getName(), teamName, total, (int) daysWorked, avg));
+            rows.add(new TimeLogSummary(u.getId(), u.getName(), teamName, total, (int) daysWorked, avg));
         }
 
         rows.sort((a, b) -> Double.compare(b.getTotalHours(), a.getTotalHours()));
         return rows;
     }
 
-    /**
-     * US28: individual member's log entries over a date range, sorted by date desc.
-     *
-     * @param userId The member's ID
-     * @param from   Start date (inclusive)
-     * @param to     End date (inclusive)
-     * @return       That member's logs in the range
-     */
     public List<TimeLog> getLogsForUserInRange(Long userId, LocalDate from, LocalDate to) {
         return timeLogRepository.findByUserId(userId).stream()
                 .filter(l -> l.getDate() != null)
@@ -163,15 +135,7 @@ public class TimeLogService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * US29: total hours logged against each task over a date range.
-     * Sorted by total hours descending so the biggest time sinks come first.
-     *
-     * @param from Start date (inclusive)
-     * @param to   End date (inclusive)
-     * @return     One row per task that has any logs in the range
-     */
-    public List<webapplication.dto.TaskHours> getHoursPerTask(LocalDate from, LocalDate to) {
+    public List<TaskHours> getHoursPerTask(LocalDate from, LocalDate to) {
         List<TimeLog> logs = timeLogRepository.findByDateBetween(from, to);
 
         Map<Long, Double> hoursByTaskId = new LinkedHashMap<>();
@@ -184,13 +148,74 @@ public class TimeLogService {
             hoursByTaskId.merge(tid, log.getHours(), Double::sum);
         }
 
-        List<webapplication.dto.TaskHours> rows = new ArrayList<>();
+        List<TaskHours> rows = new ArrayList<>();
         for (Map.Entry<Long, Double> e : hoursByTaskId.entrySet()) {
-            rows.add(new webapplication.dto.TaskHours(
-                    e.getKey(), nameByTaskId.get(e.getKey()), e.getValue()));
+            rows.add(new TaskHours(e.getKey(), nameByTaskId.get(e.getKey()), e.getValue()));
         }
-
         rows.sort((a, b) -> Double.compare(b.getTotalHours(), a.getTotalHours()));
         return rows;
+    }
+
+    /**
+     * US30: burndown chart data for a sprint.
+     *
+     * <p>Projected line: linear descent from total estimate hours on day 1
+     * down to 0 on the sprint's end date.</p>
+     *
+     * <p>Actual line: total estimate hours minus the cumulative hours logged
+     * up to and including each day.</p>
+     *
+     * @param sprintId The sprint ID
+     * @return         One point per calendar day of the sprint
+     * @throws RuntimeException if the sprint does not exist
+     */
+    public List<BurndownPoint> getBurndown(Long sprintId) {
+        Sprint sprint = sprintRepository.findById(sprintId)
+                .orElseThrow(() -> new RuntimeException("Sprint not found"));
+
+        LocalDate start = sprint.getStartDate();
+        LocalDate end = sprint.getEndDate();
+        if (start == null || end == null || end.isBefore(start)) {
+            return Collections.emptyList();
+        }
+
+        // Total estimate hours for every task in this sprint
+        List<Task> tasks = taskRepository.findBySprintId(sprintId);
+        double totalEstimate = tasks.stream()
+                .mapToDouble(Task::getEstimateHours)
+                .sum();
+
+        // Guard: no estimates → can't draw anything meaningful
+        if (totalEstimate <= 0) {
+            return Collections.emptyList();
+        }
+
+        // Load all logs in the sprint range, grouped by date
+        List<TimeLog> logs = timeLogRepository
+                .findByTaskSprintIdAndDateBetween(sprintId, start, end);
+
+        Map<LocalDate, Double> hoursByDate = new HashMap<>();
+        for (TimeLog log : logs) {
+            if (log.getDate() == null) continue;
+            hoursByDate.merge(log.getDate(), log.getHours(), Double::sum);
+        }
+
+        long totalDays = java.time.temporal.ChronoUnit.DAYS.between(start, end);
+        if (totalDays <= 0) totalDays = 1;
+
+        List<BurndownPoint> points = new ArrayList<>();
+        double cumulativeLogged = 0.0;
+
+        for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
+            double dayIndex = java.time.temporal.ChronoUnit.DAYS.between(start, d);
+            double projected = totalEstimate * (1.0 - (dayIndex / (double) totalDays));
+
+            cumulativeLogged += hoursByDate.getOrDefault(d, 0.0);
+            double actual = Math.max(0.0, totalEstimate - cumulativeLogged);
+
+            points.add(new BurndownPoint(d, projected, actual));
+        }
+
+        return points;
     }
 }
