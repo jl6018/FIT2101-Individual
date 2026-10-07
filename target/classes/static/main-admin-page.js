@@ -3,15 +3,15 @@
  * Compiled output of main-admin-page.ts — do not hand-edit.
  * Handles all interactive behaviour for the admin Kanban board, including
  * authentication guards, task CRUD, drag-and-drop reordering, sprint tabs,
- * team filtering, tag filtering/sorting (US14), search, the task modal,
- * sprint start/end controls, and tag management (US13).
+ * team filtering, tag filtering/sorting (US14), search, the task modal with
+ * progress editing (US16), log-time modal (US24), sprint start/end controls,
+ * and tag management (US13).
  *
  * @author Lim Jia Li
  * @version 17.0.16
  */
 
 "use strict";
-// main-admin-page.js — compiled from main-admin-page.ts
 
 // ===================== ADMIN GUARD =====================
 window.addEventListener("pageshow", (event) => {
@@ -61,11 +61,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const USERS_API = "http://localhost:8080/api/users";
     const SPRINTS_API = "http://localhost:8080/api/sprints";
     const TAGS_API = "http://localhost:8080/api/tags";
+    const TIMELOGS_API = "http://localhost:8080/api/timelogs";
 
-    /** Tag filter sentinel values. */
     const TAG_FILTER_ALL = "all";
 
-    /** Maps sprint tab IDs to the sprint names stored in the backend. */
     const SPRINT_TAB_NAMES = {
         "1": "Sprint 1",
         "2": "Sprint 2",
@@ -81,9 +80,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     let EMPLOYEES = [];
 
-    /**
-     * Loads all employees from the backend and caches them in EMPLOYEES.
-     */
     async function loadEmployeesFromBackend() {
         try {
             const res = await fetch(USERS_API);
@@ -111,13 +107,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         { id: "COMPLETED", name: "Completed" },
     ];
 
-    /**
-     * Creates a blank draft task for the given sprint and column.
-     *
-     * @param {string} sprintId The sprint ID to attach the task to
-     * @param {string} column   The board column the task belongs to
-     * @returns {Object}        A blank task object
-     */
     function blankTask(sprintId, column) {
         return {
             id: "",
@@ -131,29 +120,17 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             priority: "",
             position: 0,
             tags: [],
+            progress: 0,
         };
     }
 
     // ===================== HELPERS =====================
-    /**
-     * Retrieves a DOM element by its ID and throws if not found.
-     *
-     * @param {string} id   The ID of the element to retrieve
-     * @returns {HTMLElement} The matching DOM element
-     * @throws {Error}      if no element with the given ID exists
-     */
     function requireElement(id) {
         const el = document.getElementById(id);
         if (!el) throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
         return el;
     }
 
-    /**
-     * Escapes HTML special characters to prevent XSS injection.
-     *
-     * @param {string} text The raw string to escape
-     * @returns {string}    The escaped string
-     */
     function escapeHtml(text) {
         return String(text)
             .replace(/&/g, "&amp;")
@@ -163,43 +140,19 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             .replace(/'/g, "&#39;");
     }
 
-    /**
-     * Extracts the initials from a name (up to 2 characters).
-     *
-     * @param {string} name The full name to extract initials from
-     * @returns {string}    The uppercase initials
-     */
     function initials(name) {
         return name.split(/\s+/).filter(Boolean).slice(0, 2)
             .map((part) => part.charAt(0).toUpperCase()).join("");
     }
 
-    /**
-     * Resolves a team ID to its display name.
-     *
-     * @param {string} teamId The team ID to resolve
-     * @returns {string}      The team name, or an empty string if not found
-     */
     function teamName(teamId) {
         return TEAMS.find((team) => team.id === teamId)?.name ?? "";
     }
 
-    /**
-     * Looks up an employee by their ID.
-     *
-     * @param {string} employeeId The employee ID to look up
-     * @returns {Object|undefined} The Employee object, or undefined if not found
-     */
     function findEmployee(employeeId) {
         return EMPLOYEES.find((employee) => employee.id === employeeId);
     }
 
-    /**
-     * Returns the list of employees assigned to a task.
-     *
-     * @param {Object|null} assignee The task's assignee
-     * @returns {Array}              An array of Employee objects
-     */
     function assignedEmployees(assignee) {
         if (assignee?.kind !== "employees") return [];
         return assignee.employeeIds
@@ -207,12 +160,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             .filter((employee) => employee !== undefined);
     }
 
-    /**
-     * Returns the team IDs a task is assigned to.
-     *
-     * @param {Object} task The task to inspect
-     * @returns {Array}     An array of team IDs
-     */
     function teamsOfTask(task) {
         if (!task.assignee) return [];
         if (task.assignee.kind === "team") return [task.assignee.teamId];
@@ -220,12 +167,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         return assignedEmployees(task.assignee).map((employee) => employee.team).filter(Boolean);
     }
 
-    /**
-     * Returns a human-readable label for a task's assignee.
-     *
-     * @param {Object|null} assignee The task's assignee
-     * @returns {string}             A display string
-     */
     function assigneeLabel(assignee) {
         if (!assignee) return "Unassigned";
         if (assignee.kind === "team") return teamName(assignee.teamId) || "Team";
@@ -234,63 +175,29 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         return names.length > 0 ? names.join(", ") : "Unassigned";
     }
 
-    /**
-     * Formats an estimate in hours for display.
-     *
-     * @param {number} hours The number of hours
-     * @returns {string}     A string such as "4h"
-     */
     function formatEstimate(hours) {
         return `${hours}h`;
     }
 
-    /**
-     * Formats an ISO date string into a short badge label.
-     *
-     * @param {string} isoDate The ISO date string (YYYY-MM-DD)
-     * @returns {string}       A string such as "5 Sep"
-     */
     function formatDateBadge(isoDate) {
         const date = new Date(`${isoDate}T00:00:00`);
         return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
     }
 
-    /**
-     * Reads a value from localStorage, returning an empty string on failure.
-     *
-     * @param {string} key The localStorage key
-     * @returns {string}   The stored value, or an empty string
-     */
     function readSetting(key) {
         try { return window.localStorage.getItem(key) ?? ""; } catch { return ""; }
     }
 
-    /**
-     * Writes a value to localStorage, silently ignoring failures.
-     *
-     * @param {string} key   The localStorage key
-     * @param {string} value The value to store
-     */
     function writeSetting(key, value) {
         try { window.localStorage.setItem(key, value); } catch { /* ignore */ }
     }
 
     const SPRINT_KEY = "symph.currentSprint";
 
-    /**
-     * Reads the persisted sprint ID, defaulting to "1".
-     *
-     * @returns {string} The stored sprint ID
-     */
     function readSprintSetting() {
         return readSetting(SPRINT_KEY) || "1";
     }
 
-    /**
-     * Persists the current sprint ID.
-     *
-     * @param {string} sprintId The sprint ID to save
-     */
     function writeSprintSetting(sprintId) {
         writeSetting(SPRINT_KEY, sprintId);
     }
@@ -299,18 +206,12 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     let tasks = [];
     let currentSprintId = readSprintSetting();
     let currentTeamId = "all";
-    let currentTagName = TAG_FILTER_ALL;   // "all" or a specific tag name
+    let currentTagName = TAG_FILTER_ALL;
     let sortByTag = false;
     let searchTerm = "";
 
     const board = requireElement("board");
 
-    /**
-     * Converts a front-end assignee into the backend's payload format.
-     *
-     * @param {Object|null} assignee The assignee to convert
-     * @returns {Object}             An object with assignedTeams and assignedEmployeeIds
-     */
     function assigneeToBackendPayload(assignee) {
         if (!assignee) {
             return { assignedTeams: null, assignedEmployeeIds: null };
@@ -325,30 +226,16 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     }
 
     // ===================== CUSTOM MODALS =====================
-    /**
-     * Shows a modal overlay by adding the "visible" class.
-     *
-     * @param {string} id The ID of the overlay to show
-     */
     function showOverlay(id) {
         const el = document.getElementById(id);
         if (el) el.classList.add("visible");
     }
 
-    /**
-     * Hides a modal overlay by removing the "visible" class.
-     *
-     * @param {string} id The ID of the overlay to hide
-     */
     function hideOverlay(id) {
         const el = document.getElementById(id);
         if (el) el.classList.remove("visible");
     }
 
-    // -------- No-Sprint modal --------
-    /**
-     * Displays the "No sprint found" modal.
-     */
     function showNoSprintModal() {
         showOverlay("noSprintOverlay");
     }
@@ -357,19 +244,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         if (e.target === document.getElementById("noSprintOverlay")) hideOverlay("noSprintOverlay");
     });
 
-    // -------- Generic Confirm modal --------
     let confirmResolver = null;
 
-    /**
-     * Shows a generic confirmation modal and returns a promise resolving to the user's choice.
-     *
-     * @param {Object} opts              The options for the modal
-     * @param {string} opts.title        The modal title
-     * @param {string} opts.message      The modal message body
-     * @param {string} [opts.confirmText] The confirm button label
-     * @param {boolean} [opts.danger]    Whether the action is destructive
-     * @returns {Promise<boolean>}       A promise resolving to true (confirmed) or false (cancelled)
-     */
     function showConfirmModal(opts) {
         return new Promise((resolve) => {
             confirmResolver = resolve;
@@ -390,11 +266,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         });
     }
 
-    /**
-     * Closes the confirm modal and resolves the pending promise.
-     *
-     * @param {boolean} result The result to resolve the promise with
-     */
     function closeConfirmModal(result) {
         hideOverlay("confirmOverlay");
         if (confirmResolver) {
@@ -409,13 +280,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         if (e.target === document.getElementById("confirmOverlay")) closeConfirmModal(false);
     });
 
-    // -------- Generic Alert modal --------
-    /**
-     * Shows a generic alert modal with a title and message.
-     *
-     * @param {string} title   The alert title
-     * @param {string} message The alert message
-     */
     function showAlertModal(title, message) {
         const titleEl = document.getElementById("alertTitle");
         const msgEl = document.getElementById("alertMessage");
@@ -429,7 +293,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         if (e.target === document.getElementById("alertOverlay")) hideOverlay("alertOverlay");
     });
 
-    // -------- Invite Product Owner (Share button) --------
     const shareBtn = document.getElementById("shareBtn");
     const inviteOverlay = document.getElementById("inviteOverlay");
     const closeInviteBtn = document.getElementById("closeInviteBtn");
@@ -474,11 +337,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     });
 
     // ===================== BACKEND SYNC =====================
-    /**
-     * Fetches all tasks from the backend and maps them into the front-end shape.
-     *
-     * @returns {Promise<Array>} A promise resolving to an array of tasks
-     */
     async function fetchTasks() {
         try {
             const res = await fetch(API_BASE);
@@ -515,6 +373,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     priority: t.priority ?? "",
                     position: t.position ?? 0,
                     tags: Array.isArray(t.tags) ? t.tags : [],
+                    progress: typeof t.progress === "number" ? t.progress : 0,
                 };
             });
         } catch (err) {
@@ -523,9 +382,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
     }
 
-    /**
-     * Refreshes the task list and re-renders the board, team filter, and tag filter.
-     */
     async function refreshFromBackend() {
         tasks = await fetchTasks();
         renderBoard();
@@ -533,12 +389,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderTagFilter();
     }
 
-    /**
-     * Creates a new task on the backend.
-     *
-     * @param {Object} task The task to create
-     * @returns {Promise<Object|null>} A promise resolving to the created task, or null on failure
-     */
     async function apiCreate(task) {
         try {
             const payload = assigneeToBackendPayload(task.assignee);
@@ -555,6 +405,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     estimateHours: task.estimateHours,
                     priority: task.priority || null,
                     position: task.position,
+                    progress: task.progress ?? 0,
                     sprint: { id: Number(currentSprintId) },
                 }),
             });
@@ -567,12 +418,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
     }
 
-    /**
-     * Updates an existing task on the backend.
-     *
-     * @param {Object} task The task to update
-     * @returns {Promise<boolean>} A promise resolving to true on success, false on failure
-     */
     async function apiUpdate(task) {
         try {
             const numericId = Number(task.id);
@@ -593,6 +438,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                 estimateHours: task.estimateHours,
                 priority: task.priority || null,
                 position: task.position,
+                progress: task.progress ?? 0,
                 sprint: { id: Number(currentSprintId) },
             };
 
@@ -612,12 +458,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
     }
 
-    /**
-     * Deletes a task from the backend by its ID.
-     *
-     * @param {string} id The ID of the task to delete
-     * @returns {Promise<boolean>} A promise resolving to true on success, false on failure
-     */
     async function apiDelete(id) {
         try {
             const numericId = Number(id);
@@ -634,11 +474,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     }
 
     // ===================== RENDER =====================
-    /**
-     * Filters tasks by the current sprint, team, tag filter, and search term.
-     *
-     * @returns {Array} An array of visible tasks
-     */
     function visibleTasks() {
         const term = searchTerm.toLowerCase();
         return tasks.filter((task) => {
@@ -657,12 +492,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         });
     }
 
-    /**
-     * Renders the assignee chips or avatars for a task card.
-     *
-     * @param {Object} task The task to render assignees for
-     * @returns {string}    An HTML string
-     */
     function renderAssignee(task) {
         if (!task.assignee) return "";
         if (task.assignee.kind === "team") {
@@ -683,12 +512,16 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const PENCIL_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-1L19 8l-3-3L5 16l-1 4z"/></svg>`;
     const CLOCK_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>`;
 
-    /**
-     * Renders a single task card as HTML.
-     *
-     * @param {Object} task The task to render
-     * @returns {string}    The card's HTML string
-     */
+    function renderProgressBar(task) {
+        const pct = Math.max(0, Math.min(100, Number(task.progress) || 0));
+        if (pct <= 0) return "";
+        return `
+      <div class="progress-wrap" title="Progress: ${pct}%">
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <span class="progress-text">${pct}%</span>
+      </div>`;
+    }
+
     function renderCard(task) {
         const priorityBadge = task.priority
             ? `<span class="priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>`
@@ -706,21 +539,20 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             ? `<div class="card-footer-row"><div class="card-badges">${badges}${tagBadges}</div><div class="tag-avatars">${assigneeHtml}</div></div>`
             : "";
 
+        const progressHtml = renderProgressBar(task);
+
         return `
-      <div class="card${footerHtml ? " card-detailed" : ""}" draggable="true" data-task="${escapeHtml(task.id)}">
+      <div class="card${footerHtml || progressHtml ? " card-detailed" : ""}" draggable="true" data-task="${escapeHtml(task.id)}">
         <div class="card-title-row">
           <span class="card-title">${escapeHtml(task.title)}</span>
+          <button type="button" class="logtime-icon" data-logtime="${escapeHtml(task.id)}" title="Log time on this task" aria-label="Log time on ${escapeHtml(task.title)}">${CLOCK_ICON}</button>
           <button type="button" class="edit-icon" data-edit="${escapeHtml(task.id)}" title="Edit task details" aria-label="Edit ${escapeHtml(task.title)}">${PENCIL_ICON}</button>
         </div>
+        ${progressHtml}
         ${footerHtml}
       </div>`;
     }
 
-    /**
-     * Renders the full board with all columns and their cards.
-     * Card order follows board position, unless "Sort by tag" is enabled —
-     * in which case cards are ordered by their first tag name, then position.
-     */
     function renderBoard() {
         const shown = visibleTasks();
         board.innerHTML = COLUMNS.map((column) => {
@@ -746,6 +578,16 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     board.addEventListener("click", (event) => {
         const target = event.target;
 
+        // US24: log-time button
+        const logBtn = target.closest("[data-logtime]");
+        if (logBtn) {
+            const taskId = logBtn.dataset["logtime"];
+            const task = tasks.find((t) => t.id === taskId);
+            if (!task) return;
+            openLogTimeModal(task);
+            return;
+        }
+
         const editBtn = target.closest("[data-edit]");
         if (editBtn) {
             const task = tasks.find((t) => t.id === editBtn.dataset["edit"]);
@@ -763,25 +605,108 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
     });
 
+    // ===================== US24: LOG TIME MODAL =====================
+    const logTimeOverlay = requireElement("logTimeOverlay");
+    const closeLogTimeBtn = requireElement("closeLogTimeBtn");
+    const logTimeForm = requireElement("logTimeForm");
+    const logDate = requireElement("logDate");
+    const logStartTime = requireElement("logStartTime");
+    const logHours = requireElement("logHours");
+    const logDescription = requireElement("logDescription");
+    const logTimeTaskContext = requireElement("logTimeTaskContext");
+    const logTimeError = requireElement("logTimeError");
+    const logTimeErrorText = requireElement("logTimeErrorText");
+    const logTimeSubmitBtn = requireElement("logTimeSubmitBtn");
+
+    let logTimeTaskId = null;
+
+    function openLogTimeModal(task) {
+        if (!task || !task.id) return;
+        logTimeTaskId = task.id;
+
+        logTimeTaskContext.textContent =
+            `Record your start time, time spent, and date for "${task.title}".`;
+
+        logDate.value = new Date().toISOString().split("T")[0];
+        logStartTime.value = "";
+        logHours.value = "";
+        logDescription.value = "";
+        logTimeError.hidden = true;
+
+        logTimeSubmitBtn.disabled = false;
+        logTimeSubmitBtn.textContent = "Save log";
+
+        logTimeOverlay.classList.add("visible");
+        logDate.focus();
+    }
+
+    function closeLogTimeModal() {
+        logTimeOverlay.classList.remove("visible");
+        logTimeTaskId = null;
+    }
+
+    closeLogTimeBtn.addEventListener("click", closeLogTimeModal);
+    logTimeOverlay.addEventListener("click", (e) => {
+        if (e.target === logTimeOverlay) closeLogTimeModal();
+    });
+
+    logTimeForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        logTimeError.hidden = true;
+
+        const userId = sessionStorage.getItem("userId");
+
+        const payload = {
+            date: logDate.value,
+            startTime: logStartTime.value,
+            hours: Number(logHours.value),
+            description: logDescription.value.trim() || null,
+            taskId: logTimeTaskId ? Number(logTimeTaskId) : null,
+            userId: userId ? Number(userId) : null,
+        };
+
+        if (!payload.date) { logTimeErrorText.textContent = "Please pick a date."; logTimeError.hidden = false; return; }
+        if (!payload.startTime) { logTimeErrorText.textContent = "Please pick a start time."; logTimeError.hidden = false; return; }
+        if (!payload.hours || payload.hours <= 0) { logTimeErrorText.textContent = "Hours must be greater than 0."; logTimeError.hidden = false; return; }
+        if (!payload.taskId) { logTimeErrorText.textContent = "Missing task ID."; logTimeError.hidden = false; return; }
+        if (!payload.userId) { logTimeErrorText.textContent = "You must be signed in."; logTimeError.hidden = false; return; }
+
+        logTimeSubmitBtn.disabled = true;
+        logTimeSubmitBtn.textContent = "Saving…";
+
+        try {
+            const res = await fetch(TIMELOGS_API, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || `HTTP ${res.status}`);
+            }
+
+            closeLogTimeModal();
+            showToast(`Logged ${payload.hours}h on this task`);
+        } catch (err) {
+            console.error("Log time failed:", err);
+            logTimeErrorText.textContent =
+                err instanceof Error ? err.message : "Could not save the time log.";
+            logTimeError.hidden = false;
+            logTimeSubmitBtn.disabled = false;
+            logTimeSubmitBtn.textContent = "Save log";
+        }
+    });
+
     // ===================== DRAG AND DROP =====================
     let draggedTaskId = null;
 
-    /**
-     * Removes all drop-target and drop-before markers from the board.
-     */
     function clearDropMarkers() {
         board.querySelectorAll(".drop-target, .drop-before").forEach((el) => {
             el.classList.remove("drop-target", "drop-before");
         });
     }
 
-    /**
-     * Returns the card directly after the pointer's Y position in a column.
-     *
-     * @param {HTMLElement} column The column to search in
-     * @param {number} pointerY    The pointer's Y coordinate
-     * @returns {HTMLElement|null} The card after the pointer, or null
-     */
     function cardAfterPointer(column, pointerY) {
         const cards = Array.from(column.querySelectorAll(".card:not(.dragging)"));
         return cards.find((card) => {
@@ -850,8 +775,21 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
 
         const from = COLUMNS.find((c) => c.id === moved.column)?.name ?? "";
+        const wasCompleted = from === "Completed";
+
         moved.column = targetColumn;
         moved.position = newPosition;
+
+        if (targetColumn === "COMPLETED" && (moved.progress ?? 0) < 100) {
+            moved.progress = 100;
+        } else if (
+            wasCompleted &&
+            (targetColumn === "TO_DO" ||
+             targetColumn === "IN_PROGRESS" ||
+             targetColumn === "IN_REVIEW")
+        ) {
+            moved.progress = 0;
+        }
 
         const ok = await apiUpdate(moved);
         if (ok) {
@@ -871,9 +809,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     });
 
     // ===================== SPRINT TABS + SEARCH =====================
-    /**
-     * Wires up click handlers for the sprint tab buttons.
-     */
     function initSprintTabs() {
         const tabs = document.querySelectorAll(".sprint-tab");
         tabs.forEach((tab) => {
@@ -893,9 +828,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         });
     }
 
-    /**
-     * Highlights the sprint tab matching the persisted sprint ID.
-     */
     function highlightSavedSprintTab() {
         const tabs = document.querySelectorAll(".sprint-tab");
         tabs.forEach((tab) => {
@@ -913,9 +845,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const teamFilterMenu = requireElement("teamFilterMenu");
     const teamFilterLabel = requireElement("teamFilterLabel");
 
-    /**
-     * Renders the team filter dropdown with counts per team.
-     */
     function renderTeamFilter() {
         const inSprint = tasks.filter((t) => t.sprintId === currentSprintId);
         const options = [
@@ -941,11 +870,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         teamFilterBtn.classList.toggle("filtered", currentTeamId !== "all");
     }
 
-    /**
-     * Opens or closes the team filter dropdown.
-     *
-     * @param {boolean} open Whether the dropdown should be open
-     */
     function setTeamFilterOpen(open) {
         teamFilterMenu.classList.toggle("visible", open);
         teamFilterBtn.setAttribute("aria-expanded", String(open));
@@ -974,12 +898,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const tagFilterMenu = requireElement("tagFilterMenu");
     const tagFilterLabel = requireElement("tagFilterLabel");
 
-    /**
-     * Collects every unique tag name across all tasks in the current sprint,
-     * sorted alphabetically (case-insensitive).
-     *
-     * @returns {Array<string>} A sorted list of tag names
-     */
     function availableTagNames() {
         const names = new Set();
         tasks
@@ -988,10 +906,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         return Array.from(names).sort((a, b) => a.localeCompare(b));
     }
 
-    /**
-     * Renders the tag filter dropdown with a "Sort by tag" toggle, an
-     * "All tags" row, and one row per distinct tag in the sprint.
-     */
     function renderTagFilter() {
         if (!tagFilterMenu) return;
 
@@ -1027,7 +941,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         tagFilterMenu.innerHTML =
             `<span class="popover-label">Filter by tag</span>` + header + rows;
 
-        // Update the button label
         if (sortByTag && currentTagName === TAG_FILTER_ALL) {
             tagFilterLabel.textContent = "Sorted by tag";
         } else if (currentTagName === TAG_FILTER_ALL) {
@@ -1042,11 +955,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         );
     }
 
-    /**
-     * Opens or closes the tag filter dropdown.
-     *
-     * @param {boolean} open Whether the dropdown should be open
-     */
     function setTagFilterOpen(open) {
         tagFilterMenu.classList.toggle("visible", open);
         tagFilterBtn.setAttribute("aria-expanded", String(open));
@@ -1097,20 +1005,19 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const estimateInput = requireElement("estimateInput");
     const prioritySelect = requireElement("prioritySelect");
 
-    // ----- Tags (US13) -----
     const tagInput = requireElement("tagInput");
     const addTagBtn = requireElement("addTagBtn");
     const tagChips = requireElement("tagChips");
     const tagEmpty = requireElement("tagEmpty");
 
+    const progressInput = requireElement("progressInput");
+    const progressValue = requireElement("progressValue");
+    const progressSlider = requireElement("progressSlider");
+    const progressClearBtn = requireElement("progressClearBtn");
+
     let draft = null;
     let assignKind = "team";
 
-    /**
-     * Opens the task modal with the given task (existing or blank).
-     *
-     * @param {Object} task The task to edit or create
-     */
     function openModal(task) {
         draft = JSON.parse(JSON.stringify(task));
         assignKind = draft.assignee?.kind ?? "team";
@@ -1122,6 +1029,12 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         estimateInput.value = draft.estimateHours > 0 ? String(draft.estimateHours) : "";
         prioritySelect.value = draft.priority;
         tagInput.value = "";
+
+        const pct = Number(draft.progress) || 0;
+        progressInput.value = String(pct);
+        progressSlider.value = String(pct);
+        progressValue.textContent = `${pct}%`;
+
         errorText.textContent = "";
         saveBtn.textContent = draft.id ? "Save" : "Create task";
         deleteBtn.hidden = draft.id === "";
@@ -1134,11 +1047,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         titleInput.focus();
     }
 
-    /**
-     * Closes the task modal and clears the draft.
-     * If the modal was opened on an existing task, refreshes the board so any
-     * tag changes (added or removed) appear on the card immediately.
-     */
     function closeModal() {
         overlay.classList.remove("visible");
         closePopovers();
@@ -1149,9 +1057,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         if (wasSavedTask) void refreshFromBackend();
     }
 
-    /**
-     * Re-renders the summary chips and assignment controls from the current draft.
-     */
     function renderDraft() {
         if (!draft) return;
         const chips = [
@@ -1159,14 +1064,12 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             `<span class="summary-chip"><b>Due</b> ${draft.dueDate ? formatDateBadge(draft.dueDate) : "No due date"}</span>`,
             `<span class="summary-chip"><b>Estimate</b> ${draft.estimateHours > 0 ? formatEstimate(draft.estimateHours) : "Not set"}</span>`,
             `<span class="summary-chip"><b>Priority</b> ${draft.priority || "None"}</span>`,
+            `<span class="summary-chip"><b>Progress</b> ${Math.max(0, Math.min(100, Number(draft.progress) || 0))}%</span>`,
         ];
         summary.innerHTML = chips.join("");
         renderAssignControls();
     }
 
-    /**
-     * Renders the team/employee assignment controls from the current draft.
-     */
     function renderAssignControls() {
         if (!draft) return;
 
@@ -1202,9 +1105,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     }
 
     // ===================== TAGS (US13) =====================
-    /**
-     * Renders the tag chips for the current draft.
-     */
     function renderTags() {
         if (!draft) return;
         const tags = draft.tags ?? [];
@@ -1219,22 +1119,17 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             .join("");
     }
 
-    /**
-     * Persists a new tag on the backend, then updates the draft.
-     */
     async function addTagToDraft() {
         if (!draft) return;
 
         const name = tagInput.value.trim().toLowerCase();
         if (!name) return;
 
-        // Guard against duplicates in the draft
         if ((draft.tags ?? []).some((t) => t.name.toLowerCase() === name)) {
             tagInput.value = "";
             return;
         }
 
-        // New tasks have no backend ID yet — we can only tag after the task exists.
         if (!draft.id) {
             showToast("Save the task first, then add tags.");
             return;
@@ -1258,11 +1153,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
     }
 
-    /**
-     * Removes a tag from the current draft on the backend.
-     *
-     * @param {number} tagId The ID of the tag to remove
-     */
     async function removeTagFromDraft(tagId) {
         if (!draft || !draft.id) return;
         try {
@@ -1280,9 +1170,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
     }
 
-    /**
-     * Validates and saves the current draft to the backend.
-     */
     async function saveModal() {
         if (!draft) return;
 
@@ -1296,6 +1183,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         draft.title = title;
         draft.description = descriptionBox.value.trim();
         draft.column = columnSelect.value;
+        draft.progress = Math.max(0, Math.min(100, Number(progressInput.value) || 0));
 
         const isNew = draft.id === "";
         const ok = isNew ? (await apiCreate(draft)) !== null : await apiUpdate(draft);
@@ -1306,14 +1194,8 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         showToast(isNew ? "Task created" : "Changes saved");
     }
 
-    // ----- Delete -----
     let deleteArmed = false;
 
-    /**
-     * Arms or disarms the delete button (two-click confirmation).
-     *
-     * @param {boolean} armed Whether the button should be armed
-     */
     function setDeleteArmed(armed) {
         deleteArmed = armed;
         deleteBtn.textContent = armed ? "Click again to delete" : "Delete task";
@@ -1334,10 +1216,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     deleteBtn.addEventListener("blur", () => setDeleteArmed(false));
 
-    // ----- Popovers -----
-    /**
-     * Closes all open popovers inside the task modal.
-     */
     function closePopovers() {
         overlay.querySelectorAll(".popover.visible").forEach((p) => p.classList.remove("visible"));
     }
@@ -1360,7 +1238,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         popover.addEventListener("click", (event) => event.stopPropagation());
     });
 
-    // ----- Due date -----
     dueDateInput.addEventListener("change", () => {
         if (!draft) return;
         draft.dueDate = dueDateInput.value;
@@ -1374,7 +1251,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderDraft();
     });
 
-    // ----- Estimate -----
     estimateInput.addEventListener("input", () => {
         if (!draft) return;
         const hours = Number(estimateInput.value);
@@ -1389,7 +1265,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderDraft();
     });
 
-    // ----- Priority -----
     prioritySelect.addEventListener("change", () => {
         if (!draft) return;
         draft.priority = prioritySelect.value;
@@ -1403,7 +1278,23 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderDraft();
     });
 
-    // ----- Assignee -----
+    function syncProgress(value) {
+        const pct = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+        if (draft) draft.progress = pct;
+        progressInput.value = String(pct);
+        progressSlider.value = String(pct);
+        progressValue.textContent = `${pct}%`;
+    }
+
+    progressInput.addEventListener("input", () => syncProgress(progressInput.value));
+    progressSlider.addEventListener("input", () => syncProgress(progressSlider.value));
+
+    progressClearBtn.addEventListener("click", () => {
+        if (!draft) return;
+        syncProgress(0);
+        renderDraft();
+    });
+
     document.querySelectorAll("[data-assign-kind]").forEach((segment) => {
         segment.addEventListener("click", () => {
             assignKind = segment.dataset["assignKind"] === "employees" ? "employees" : "team";
@@ -1431,7 +1322,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderDraft();
     });
 
-    // ----- Tags events (US13) -----
     addTagBtn.addEventListener("click", () => {
         void addTagToDraft();
     });
@@ -1449,7 +1339,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         void removeTagFromDraft(Number(btn.dataset["removeTag"]));
     });
 
-    // ----- Open / close wiring -----
     saveBtn.addEventListener("click", () => { void saveModal(); });
     titleInput.addEventListener("input", () => (errorText.textContent = ""));
     titleInput.addEventListener("keydown", (event) => {
@@ -1465,6 +1354,13 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
     document.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") return;
+
+        // Close log-time modal first if open
+        if (logTimeOverlay.classList.contains("visible")) {
+            closeLogTimeModal();
+            return;
+        }
+
         setTeamFilterOpen(false);
         setTagFilterOpen(false);
         if (!overlay.classList.contains("visible")) return;
@@ -1476,11 +1372,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const toast = requireElement("toast");
     let toastTimeoutId;
 
-    /**
-     * Displays a toast notification for 3 seconds.
-     *
-     * @param {string} message The message to display
-     */
     function showToast(message) {
         toast.textContent = message;
         toast.classList.add("visible");
@@ -1493,9 +1384,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const projectNameInput = requireElement("projectName");
     let projectName = readSetting(PROJECT_NAME_KEY) || "Project Name";
 
-    /**
-     * Auto-sizes the project name input to fit its content.
-     */
     function fitProjectName() {
         const sizer = document.createElement("span");
         sizer.className = "project-name-sizer";
@@ -1505,9 +1393,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         sizer.remove();
     }
 
-    /**
-     * Commits the typed project name and persists it.
-     */
     function commitProjectName() {
         const typed = projectNameInput.value.trim();
         if (typed) {
@@ -1534,11 +1419,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const appShell = requireElement("appShell");
     const sidebarToggle = requireElement("sidebarToggle");
 
-    /**
-     * Collapses or expands the sidebar.
-     *
-     * @param {boolean} collapsed Whether the sidebar should be collapsed
-     */
     function setSidebarCollapsed(collapsed) {
         appShell.classList.toggle("sidebar-collapsed", collapsed);
         sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
@@ -1559,12 +1439,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     let currentSprintStatus = null;
     let currentSprintNumericId = null;
 
-    /**
-     * Fetches the sprint matching the given tab ID from the backend.
-     *
-     * @param {string} tabId The sprint tab ID ("1", "2", or "3")
-     * @returns {Promise<Object|null>} A promise resolving to the sprint, or null if not found
-     */
     async function fetchSprintStatus(tabId) {
         const name = SPRINT_TAB_NAMES[tabId];
         if (!name) return null;
@@ -1579,11 +1453,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
     }
 
-    /**
-     * Renders the sprint start/end button based on sprint status.
-     *
-     * @param {string|null} status The current sprint status
-     */
     function renderSprintButton(status) {
         if (!startSprintBtn) return;
 
@@ -1607,9 +1476,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         }
     }
 
-    /**
-     * Refreshes the current sprint's status and updates the button.
-     */
     async function refreshSprintButton() {
         const sprint = await fetchSprintStatus(currentSprintId);
         currentSprintStatus = sprint?.status ?? null;
@@ -1668,9 +1534,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     });
 
     // ===================== INIT =====================
-    /**
-     * Initializes the admin board page by loading data and wiring UI.
-     */
     async function init() {
         await loadEmployeesFromBackend();
         highlightSavedSprintTab();
