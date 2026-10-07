@@ -1,9 +1,10 @@
 /**
  * Admin Board Page — Symph Web Application
- * Compiled output of main-admin-page.ts.
+ * Compiled output of main-admin-page.ts — do not hand-edit.
  * Handles all interactive behaviour for the admin Kanban board, including
  * authentication guards, task CRUD, drag-and-drop reordering, sprint tabs,
- * team filtering, search, the task modal, and sprint start/end controls.
+ * team filtering, search, the task modal, sprint start/end controls, and
+ * tag management (US13).
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -59,6 +60,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const API_BASE = "http://localhost:8080/api/tasks";
     const USERS_API = "http://localhost:8080/api/users";
     const SPRINTS_API = "http://localhost:8080/api/sprints";
+    const TAGS_API = "http://localhost:8080/api/tags";
 
     /** Maps sprint tab IDs to the sprint names stored in the backend. */
     const SPRINT_TAB_NAMES = {
@@ -125,6 +127,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             estimateHours: 0,
             priority: "",
             position: 0,
+            tags: [],
         };
     }
 
@@ -506,6 +509,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     estimateHours: t.estimateHours ?? 0,
                     priority: t.priority ?? "",
                     position: t.position ?? 0,
+                    tags: Array.isArray(t.tags) ? t.tags : [],
                 };
             });
         } catch (err) {
@@ -680,9 +684,12 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             task.dueDate ? `<span class="date-badge" title="Due date">${CLOCK_ICON} ${formatDateBadge(task.dueDate)}</span>` : "",
             task.estimateHours > 0 ? `<span class="date-badge" title="Estimate">Est. ${formatEstimate(task.estimateHours)}</span>` : "",
         ].join("");
+        const tagBadges = (task.tags ?? [])
+            .map((t) => `<span class="tag">${escapeHtml(t.name)}</span>`)
+            .join("");
         const assigneeHtml = renderAssignee(task);
-        const footerHtml = badges || assigneeHtml
-            ? `<div class="card-footer-row"><div class="card-badges">${badges}</div><div class="tag-avatars">${assigneeHtml}</div></div>`
+        const footerHtml = badges || assigneeHtml || tagBadges
+            ? `<div class="card-footer-row"><div class="card-badges">${badges}${tagBadges}</div><div class="tag-avatars">${assigneeHtml}</div></div>`
             : "";
 
         return `
@@ -953,6 +960,12 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     const estimateInput = requireElement("estimateInput");
     const prioritySelect = requireElement("prioritySelect");
 
+    // ----- Tags (US13) -----
+    const tagInput = requireElement("tagInput");
+    const addTagBtn = requireElement("addTagBtn");
+    const tagChips = requireElement("tagChips");
+    const tagEmpty = requireElement("tagEmpty");
+
     let draft = null;
     let assignKind = "team";
 
@@ -971,12 +984,14 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         dueDateInput.value = draft.dueDate;
         estimateInput.value = draft.estimateHours > 0 ? String(draft.estimateHours) : "";
         prioritySelect.value = draft.priority;
+        tagInput.value = "";
         errorText.textContent = "";
         saveBtn.textContent = draft.id ? "Save" : "Create task";
         deleteBtn.hidden = draft.id === "";
         setDeleteArmed(false);
 
         renderDraft();
+        renderTags();
         closePopovers();
         overlay.classList.add("visible");
         titleInput.focus();
@@ -1041,6 +1056,85 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
               <span>${escapeHtml(employee.name)}</span>
               <span class="employee-team">${escapeHtml(employee.team)}</span>
             </label>`).join("");
+    }
+
+    // ===================== TAGS (US13) =====================
+    /**
+     * Renders the tag chips for the current draft.
+     */
+    function renderTags() {
+        if (!draft) return;
+        const tags = draft.tags ?? [];
+
+        tagEmpty.hidden = tags.length > 0;
+        tagChips.innerHTML = tags
+            .map((t) => `
+      <span class="tag-chip" data-tag-id="${t.id}">
+        ${escapeHtml(t.name)}
+        <button type="button" aria-label="Remove ${escapeHtml(t.name)}" data-remove-tag="${t.id}">✕</button>
+      </span>`)
+            .join("");
+    }
+
+    /**
+     * Persists a new tag on the backend, then updates the draft.
+     */
+    async function addTagToDraft() {
+        if (!draft) return;
+
+        const name = tagInput.value.trim().toLowerCase();
+        if (!name) return;
+
+        // Guard against duplicates in the draft
+        if ((draft.tags ?? []).some((t) => t.name.toLowerCase() === name)) {
+            tagInput.value = "";
+            return;
+        }
+
+        // New tasks have no backend ID yet — we can only tag after the task exists.
+        if (!draft.id) {
+            showToast("Save the task first, then add tags.");
+            return;
+        }
+
+        try {
+            const res = await fetch(`${TAGS_API}/task/${Number(draft.id)}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name }),
+            });
+            if (!res.ok) throw new Error(await res.text());
+
+            const updated = await res.json();
+            draft.tags = Array.isArray(updated.tags) ? updated.tags : [];
+            tagInput.value = "";
+            renderTags();
+        } catch (err) {
+            console.error("Add tag failed:", err);
+            showToast("Could not add tag");
+        }
+    }
+
+    /**
+     * Removes a tag from the current draft on the backend.
+     *
+     * @param {number} tagId The ID of the tag to remove
+     */
+    async function removeTagFromDraft(tagId) {
+        if (!draft || !draft.id) return;
+        try {
+            const res = await fetch(`${TAGS_API}/task/${Number(draft.id)}/${tagId}`, {
+                method: "DELETE",
+            });
+            if (!res.ok) throw new Error(await res.text());
+
+            const updated = await res.json();
+            draft.tags = Array.isArray(updated.tags) ? updated.tags : [];
+            renderTags();
+        } catch (err) {
+            console.error("Remove tag failed:", err);
+            showToast("Could not remove tag");
+        }
     }
 
     /**
@@ -1192,6 +1286,24 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         if (!draft) return;
         draft.assignee = null;
         renderDraft();
+    });
+
+    // ----- Tags events (US13) -----
+    addTagBtn.addEventListener("click", () => {
+        void addTagToDraft();
+    });
+
+    tagInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            void addTagToDraft();
+        }
+    });
+
+    tagChips.addEventListener("click", (event) => {
+        const btn = event.target.closest("[data-remove-tag]");
+        if (!btn) return;
+        void removeTagFromDraft(Number(btn.dataset["removeTag"]));
     });
 
     // ----- Open / close wiring -----
