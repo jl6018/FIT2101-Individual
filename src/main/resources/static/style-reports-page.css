@@ -478,3 +478,21 @@ h1 {
     width: auto;
     max-width: 100%;
 }
+
+/* ===================== US29: HOURS-PER-TASK LINE CHART ===================== */
+
+.line-chart-wrap {
+    width: 100%;
+    background: #fff;
+    border-radius: 8px;
+    padding: 12px;
+    overflow-x: auto;
+}
+
+.line-chart-svg {
+    width: 100%;
+    max-width: 720px;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}

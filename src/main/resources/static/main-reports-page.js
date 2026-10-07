@@ -1,8 +1,8 @@
 /**
  * Reports Page — Symph Web Application
- * Displays the per-member time contribution table over a selectable range
- * (US26 / US27), and a member-history modal with the specific dates they
- * worked (US28). All data comes from /api/timelogs endpoints.
+ * Displays per-member time contribution (US26/27), member-history modal
+ * (US28), and a line chart of hours per task (US29). All data comes from
+ * /api/timelogs endpoints.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -51,6 +51,15 @@ function toIsoDate(d) {
     return d.toISOString().split("T")[0];
 }
 
+function escapeHtml(text) {
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
 // ===================== ELEMENTS =====================
 const timeRangeRow = requireElement("timeRangeRow");
 const contributionTitle = requireElement("contributionTitle");
@@ -62,6 +71,8 @@ const memberModalTeam = requireElement("memberModalTeam");
 const memberChartWrap = requireElement("memberChartWrap");
 const memberEmptyState = requireElement("memberEmptyState");
 const memberModalTotal = requireElement("memberModalTotal");
+const taskLineChart = requireElement("taskLineChart");
+const taskChartEmpty = requireElement("taskChartEmpty");
 
 // ===================== LOGOUT MODAL =====================
 const logoutBtn = requireElement("logoutBtn");
@@ -81,7 +92,7 @@ logoutOverlay.addEventListener("click", (e) => {
 
 // ===================== STATE =====================
 let selectedWeeks = 1;
-let currentSummary = [];   // the last fetched array of summary rows
+let currentSummary = [];
 
 // ===================== MODAL OPEN/CLOSE =====================
 function openModal(overlay) { overlay.classList.add("visible"); }
@@ -98,27 +109,27 @@ timeRangeRow.querySelectorAll(".range-btn").forEach((btn) => {
         selectedWeeks = Number(btn.dataset["weeks"]) || 1;
         timeRangeRow.querySelectorAll(".range-btn").forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
-        void loadSummary();
+        void reloadAll();
     });
 });
 
-// ===================== LOAD SUMMARY =====================
-/**
- * Fetches per-member totals from the backend for the selected time range
- * and re-renders the contribution table.
- */
-async function loadSummary() {
+// ===================== RANGE HELPERS =====================
+function rangeIso() {
     const days = selectedWeeks * 7;
     const to = new Date();
     const from = new Date();
     from.setDate(from.getDate() - (days - 1));
+    return { from: toIsoDate(from), to: toIsoDate(to), days };
+}
 
+// ===================== LOAD: SUMMARY + TASK CHART =====================
+async function loadSummary() {
+    const { from, to, days } = rangeIso();
     contributionTitle.textContent = `Team contribution — last ${days} days`;
     contributionBody.innerHTML = `<tr><td colspan="4" class="muted">Loading…</td></tr>`;
 
     try {
-        const url = `${TIMELOGS_API}/summary?from=${toIsoDate(from)}&to=${toIsoDate(to)}`;
-        const res = await fetch(url);
+        const res = await fetch(`${TIMELOGS_API}/summary?from=${from}&to=${to}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         currentSummary = await res.json();
         renderContributionTable();
@@ -129,20 +140,35 @@ async function loadSummary() {
     }
 }
 
+async function loadTaskChart() {
+    const { from, to } = rangeIso();
+    taskLineChart.innerHTML = "";
+    taskChartEmpty.style.display = "none";
+
+    try {
+        const res = await fetch(`${TIMELOGS_API}/by-task?from=${from}&to=${to}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const rows = await res.json();
+        renderTaskLineChart(rows);
+    } catch (err) {
+        console.error("Failed to load task chart:", err);
+        taskChartEmpty.textContent = "Could not load task chart.";
+        taskChartEmpty.style.display = "block";
+    }
+}
+
+async function reloadAll() {
+    await loadSummary();
+    await loadTaskChart();
+}
+
 // ===================== CONTRIBUTION TABLE =====================
-/**
- * Deterministic HSL colour for a member avatar, based on their name.
- */
 function avatarColor(name) {
     let hash = 0;
     for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    const hue = Math.abs(hash) % 360;
-    return `hsl(${hue}, 65%, 55%)`;
+    return `hsl(${Math.abs(hash) % 360}, 65%, 55%)`;
 }
 
-/**
- * Renders the contribution table from currentSummary.
- */
 function renderContributionTable() {
     contributionBody.innerHTML = "";
 
@@ -154,11 +180,8 @@ function renderContributionTable() {
 
     currentSummary.forEach((row) => {
         const initials = row.name
-            .split(/\s+/)
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((p) => p.charAt(0).toUpperCase())
-            .join("");
+            .split(/\s+/).filter(Boolean).slice(0, 2)
+            .map((p) => p.charAt(0).toUpperCase()).join("");
 
         const tr = document.createElement("tr");
         tr.className = "member-row-clickable";
@@ -187,14 +210,9 @@ async function openMemberModal(row) {
 
     openModal(memberOverlay);
 
-    const days = selectedWeeks * 7;
-    const to = new Date();
-    const from = new Date();
-    from.setDate(from.getDate() - (days - 1));
-
+    const { from, to } = rangeIso();
     try {
-        const url = `${TIMELOGS_API}/user/${row.userId}/range?from=${toIsoDate(from)}&to=${toIsoDate(to)}`;
-        const res = await fetch(url);
+        const res = await fetch(`${TIMELOGS_API}/user/${row.userId}/range?from=${from}&to=${to}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const logs = await res.json();
         renderMemberChart(logs);
@@ -205,9 +223,6 @@ async function openMemberModal(row) {
     }
 }
 
-/**
- * Draws a simple bar chart of hours per date for a member.
- */
 function renderMemberChart(logs) {
     if (!logs || logs.length === 0) {
         memberChartWrap.style.display = "none";
@@ -216,11 +231,9 @@ function renderMemberChart(logs) {
         return;
     }
 
-    // Group by date and sum
     const byDate = {};
     logs.forEach((log) => {
-        const key = log.date;
-        byDate[key] = (byDate[key] || 0) + Number(log.hours || 0);
+        byDate[log.date] = (byDate[log.date] || 0) + Number(log.hours || 0);
     });
 
     const entries = Object.entries(byDate)
@@ -247,15 +260,145 @@ function renderMemberChart(logs) {
     memberModalTotal.textContent = `Total: ${totalHours.toFixed(1)}h across ${entries.length} day(s)`;
 }
 
-// ===================== ESCAPE HTML =====================
-function escapeHtml(text) {
-    return String(text)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
+// ===================== HOURS PER TASK — LINE CHART (US29) =====================
+/**
+ * Renders an SVG line chart of hours per task.
+ *
+ * @param {Array} rows Array of { taskId, taskName, totalHours }
+ */
+function renderTaskLineChart(rows) {
+    taskLineChart.innerHTML = "";
+
+    if (!rows || rows.length === 0) {
+        taskChartEmpty.style.display = "block";
+        return;
+    }
+
+    taskChartEmpty.style.display = "none";
+
+    // --- Chart geometry ---
+    const width = 720;
+    const height = 320;
+    const paddingLeft = 60;
+    const paddingRight = 30;
+    const paddingTop = 30;
+    const paddingBottom = 80;      // extra room for rotated task labels
+    const plotWidth = width - paddingLeft - paddingRight;
+    const plotHeight = height - paddingTop - paddingBottom;
+
+    const maxValue = Math.max(...rows.map((r) => r.totalHours), 1);
+    const niceMax = Math.ceil(maxValue);
+
+    const svgNS = "http://www.w3.org/2000/svg";
+    taskLineChart.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+    // --- Y axis ---
+    const yAxis = document.createElementNS(svgNS, "line");
+    yAxis.setAttribute("x1", String(paddingLeft));
+    yAxis.setAttribute("y1", String(paddingTop));
+    yAxis.setAttribute("x2", String(paddingLeft));
+    yAxis.setAttribute("y2", String(height - paddingBottom));
+    yAxis.setAttribute("stroke", "#D1D5DB");
+    taskLineChart.appendChild(yAxis);
+
+    // --- X axis ---
+    const xAxis = document.createElementNS(svgNS, "line");
+    xAxis.setAttribute("x1", String(paddingLeft));
+    xAxis.setAttribute("y1", String(height - paddingBottom));
+    xAxis.setAttribute("x2", String(width - paddingRight));
+    xAxis.setAttribute("y2", String(height - paddingBottom));
+    xAxis.setAttribute("stroke", "#D1D5DB");
+    taskLineChart.appendChild(xAxis);
+
+    // --- Y-axis ticks ---
+    const tickCount = 4;
+    for (let i = 0; i <= tickCount; i++) {
+        const value = (niceMax / tickCount) * i;
+        const y = paddingTop + plotHeight - (value / niceMax) * plotHeight;
+
+        const gridLine = document.createElementNS(svgNS, "line");
+        gridLine.setAttribute("x1", String(paddingLeft));
+        gridLine.setAttribute("y1", String(y));
+        gridLine.setAttribute("x2", String(width - paddingRight));
+        gridLine.setAttribute("y2", String(y));
+        gridLine.setAttribute("stroke", "#EEF0FB");
+        taskLineChart.appendChild(gridLine);
+
+        const label = document.createElementNS(svgNS, "text");
+        label.setAttribute("x", String(paddingLeft - 8));
+        label.setAttribute("y", String(y + 4));
+        label.setAttribute("text-anchor", "end");
+        label.setAttribute("font-size", "11");
+        label.setAttribute("fill", "#6B7280");
+        label.textContent = `${value.toFixed(0)}h`;
+        taskLineChart.appendChild(label);
+    }
+
+    // --- Compute points ---
+    const points = rows.map((row, i) => {
+        const x = rows.length === 1
+            ? paddingLeft + plotWidth / 2
+            : paddingLeft + (i / (rows.length - 1)) * plotWidth;
+        const y = paddingTop + plotHeight - (row.totalHours / niceMax) * plotHeight;
+        return { x, y, row };
+    });
+
+    // --- Polyline ---
+    const polyline = document.createElementNS(svgNS, "polyline");
+    polyline.setAttribute("points", points.map((p) => `${p.x},${p.y}`).join(" "));
+    polyline.setAttribute("fill", "none");
+    polyline.setAttribute("stroke", "#6672c8");
+    polyline.setAttribute("stroke-width", "2.5");
+    polyline.setAttribute("stroke-linejoin", "round");
+    polyline.setAttribute("stroke-linecap", "round");
+    taskLineChart.appendChild(polyline);
+
+    // --- Points + labels ---
+    points.forEach(({ x, y, row }) => {
+        // Dot
+        const dot = document.createElementNS(svgNS, "circle");
+        dot.setAttribute("cx", String(x));
+        dot.setAttribute("cy", String(y));
+        dot.setAttribute("r", "5");
+        dot.setAttribute("fill", "#ffffff");
+        dot.setAttribute("stroke", "#6672c8");
+        dot.setAttribute("stroke-width", "2.5");
+        taskLineChart.appendChild(dot);
+
+        // Value label above the dot
+        const valueLabel = document.createElementNS(svgNS, "text");
+        valueLabel.setAttribute("x", String(x));
+        valueLabel.setAttribute("y", String(y - 10));
+        valueLabel.setAttribute("text-anchor", "middle");
+        valueLabel.setAttribute("font-size", "12");
+        valueLabel.setAttribute("font-weight", "700");
+        valueLabel.setAttribute("fill", "#1a1a1a");
+        valueLabel.textContent = `${row.totalHours.toFixed(1)}h`;
+        taskLineChart.appendChild(valueLabel);
+
+        // Rotated task name below the x-axis
+        const nameLabel = document.createElementNS(svgNS, "text");
+        nameLabel.setAttribute("x", String(x));
+        nameLabel.setAttribute("y", String(height - paddingBottom + 14));
+        nameLabel.setAttribute("text-anchor", "end");
+        nameLabel.setAttribute("font-size", "11");
+        nameLabel.setAttribute("fill", "#4B5563");
+        nameLabel.setAttribute("transform", `rotate(-35 ${x} ${height - paddingBottom + 14})`);
+        nameLabel.textContent = row.taskName.length > 16
+            ? row.taskName.slice(0, 15) + "…"
+            : row.taskName;
+        taskLineChart.appendChild(nameLabel);
+    });
+
+    // --- Y-axis title ---
+    const yTitle = document.createElementNS(svgNS, "text");
+    yTitle.setAttribute("x", "14");
+    yTitle.setAttribute("y", "18");
+    yTitle.setAttribute("font-size", "11");
+    yTitle.setAttribute("fill", "#6B7280");
+    yTitle.textContent = "Hours";
+    taskLineChart.appendChild(yTitle);
 }
 
 // ===================== INIT =====================
-void loadSummary();
+void reloadAll();

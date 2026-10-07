@@ -1,8 +1,7 @@
 <!--
     Reports Page — Symph Web Application
-    Displays time contribution, hours per task, and sprint burndown charts.
-    Includes a time range selector, team contribution table, and member
-    history modal, all driven by /api/timelogs endpoints.
+    Displays time contribution per member (US26/27/28) and a line chart of
+    hours per task (US29) over a selectable time range.
 
     @author Lim Jia Li
     @version 17.0.16
@@ -63,7 +62,7 @@
         </div>
 
         <h1>Reports</h1>
-        <p class="page-subtitle">Time contribution per member over a selectable range</p>
+        <p class="page-subtitle">Time contribution, hours per task, and sprint burndown</p>
 
         <!-- ===================== TIME RANGE ===================== -->
         <section class="panel">
@@ -92,6 +91,18 @@
                 </thead>
                 <tbody id="contributionBody"></tbody>
             </table>
+        </section>
+
+        <!-- ===================== HOURS PER TASK (US29) ===================== -->
+        <section class="panel">
+            <h2>Hours per task</h2>
+            <p class="muted">Total logged hours against each task in this range, ordered from
+                highest to lowest.</p>
+            <div class="line-chart-wrap">
+                <svg id="taskLineChart" class="line-chart-svg" viewBox="0 0 720 320"
+                     preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+            <p id="taskChartEmpty" class="muted" style="display:none;">No hours logged in this range yet.</p>
         </section>
     </main>
 </div>
