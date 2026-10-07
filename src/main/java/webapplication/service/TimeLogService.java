@@ -162,4 +162,35 @@ public class TimeLogService {
                 .sorted((a, b) -> b.getDate().compareTo(a.getDate()))
                 .collect(Collectors.toList());
     }
+
+    /**
+     * US29: total hours logged against each task over a date range.
+     * Sorted by total hours descending so the biggest time sinks come first.
+     *
+     * @param from Start date (inclusive)
+     * @param to   End date (inclusive)
+     * @return     One row per task that has any logs in the range
+     */
+    public List<webapplication.dto.TaskHours> getHoursPerTask(LocalDate from, LocalDate to) {
+        List<TimeLog> logs = timeLogRepository.findByDateBetween(from, to);
+
+        Map<Long, Double> hoursByTaskId = new LinkedHashMap<>();
+        Map<Long, String> nameByTaskId = new HashMap<>();
+
+        for (TimeLog log : logs) {
+            if (log.getTask() == null || log.getTask().getId() == null) continue;
+            Long tid = log.getTask().getId();
+            nameByTaskId.put(tid, log.getTask().getName());
+            hoursByTaskId.merge(tid, log.getHours(), Double::sum);
+        }
+
+        List<webapplication.dto.TaskHours> rows = new ArrayList<>();
+        for (Map.Entry<Long, Double> e : hoursByTaskId.entrySet()) {
+            rows.add(new webapplication.dto.TaskHours(
+                    e.getKey(), nameByTaskId.get(e.getKey()), e.getValue()));
+        }
+
+        rows.sort((a, b) -> Double.compare(b.getTotalHours(), a.getTotalHours()));
+        return rows;
+    }
 }

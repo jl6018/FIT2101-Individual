@@ -99,4 +99,15 @@ public class TimeLogController {
         return timeLogService.getLogsForUserInRange(
                 userId, LocalDate.parse(from), LocalDate.parse(to));
     }
+
+    /**
+     * US29: hours per task over a date range.
+     * Example: GET /api/timelogs/by-task?from=2026-10-01&to=2026-10-07
+     */
+    @GetMapping("/by-task")
+    public java.util.List<webapplication.dto.TaskHours> getHoursPerTask(
+            @RequestParam String from,
+            @RequestParam String to) {
+        return timeLogService.getHoursPerTask(LocalDate.parse(from), LocalDate.parse(to));
+    }
 }
