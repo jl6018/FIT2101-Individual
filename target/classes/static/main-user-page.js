@@ -1,9 +1,8 @@
 /**
  * User Board Page — Symph Web Application
- * Compiled from main-user-page.ts — do not hand-edit.
  * Provides a read-only Kanban board for employees. Loads tasks scoped to the
- * employee's team or sprint, handles sprint tab switching, and displays a
- * read-only task modal.
+ * current sprint, handles sprint tab switching, and displays a read-only
+ * task modal.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -30,29 +29,24 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 (() => {
     // ===================== CONFIG =====================
     const API_BASE = "http://localhost:8080/api/tasks";
+    const SPRINTS_API = "http://localhost:8080/api/sprints";
+
+    /** Maps sprint tab IDs to the sprint names stored in the backend. */
+    const SPRINT_TAB_NAMES = {
+        "1": "Sprint 1",
+        "2": "Sprint 2",
+        "3": "Sprint 3",
+    };
 
     // ===================== HELPERS =====================
-    /**
-     * Retrieves a DOM element by its ID and throws if not found.
-     *
-     * @param {string} id      The ID of the element to retrieve
-     * @returns {HTMLElement}  The matching DOM element
-     * @throws {Error}         if no element with the given ID exists
-     */
     function requireElement(id) {
         const el = document.getElementById(id);
         if (!el) throw new Error(`Missing element: ${id}`);
         return el;
     }
 
-    /**
-     * Escapes HTML special characters to prevent XSS injection.
-     *
-     * @param {string} text The raw string to escape
-     * @returns {string}    The escaped string
-     */
     function escapeHtml(text) {
-        return text
+        return String(text)
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
@@ -60,12 +54,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             .replace(/'/g, "&#39;");
     }
 
-    /**
-     * Formats an ISO date string into a short badge label.
-     *
-     * @param {string} isoDate The ISO date string (YYYY-MM-DD)
-     * @returns {string}       A string such as "5 Sep"
-     */
     function formatDateBadge(isoDate) {
         const date = new Date(`${isoDate}T00:00:00`);
         return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
@@ -85,9 +73,12 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     const savedSprintId = sessionStorage.getItem("currentSprintId");
     let currentSprintId = savedSprintId && savedSprintId !== "" ? savedSprintId : "1";
 
+    // Store the resolved numeric sprint ID for the current tab, if any.
+    let currentSprintNumericId = null;
+
     const board = requireElement("board");
 
-    // ✅ Show name + team in the navbar
+    // ===================== SHOW CURRENT USER =====================
     const nameEl = document.getElementById("signedInName");
     if (nameEl) {
         const name = sessionStorage.getItem("name");
@@ -121,77 +112,139 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (e.target === logoutOverlay) logoutOverlay.classList.remove("visible");
     });
 
+    // ===================== SPRINT RESOLUTION =====================
+    /**
+     * Resolves the current tab to a real sprint ID.
+     * Returns null if no sprint with the tab's name exists yet.
+     *
+     * @returns {Promise<number|null>} The numeric sprint ID, or null
+     */
+    async function resolveCurrentSprintId() {
+        const name = SPRINT_TAB_NAMES[currentSprintId];
+        if (!name) return null;
+
+        try {
+            const res = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
+            if (res.status === 404) return null;
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const sprint = await res.json();
+            return sprint?.id ?? null;
+        } catch (err) {
+            console.error("Failed to resolve sprint:", err);
+            return null;
+        }
+    }
+
     // ===================== BACKEND SYNC =====================
     /**
-     * Fetches tasks scoped to the employee's team or current sprint.
+     * Fetches tasks for the currently selected sprint.
+     *
+     * Uses two strategies:
+     *  1. If a real sprint row exists for the tab, fetch its tasks.
+     *  2. Otherwise fall back to "all tasks without a sprint" so a brand-new
+     *     employee still sees something on the board.
+     *
+     * The results are always filtered to either "matches this sprint" or
+     * "has no sprint at all".
      *
      * @returns {Promise<Array>} A promise resolving to an array of tasks
      */
     async function fetchTasks() {
         try {
-            const team = sessionStorage.getItem("team") || "";
+            // ---- 1. Try sprint-scoped fetch ----
+            currentSprintNumericId = await resolveCurrentSprintId();
 
-            const url = team
-                ? `${API_BASE}/team/${encodeURIComponent(team)}`
-                : `${API_BASE}/sprint/${currentSprintId}`;
+            if (currentSprintNumericId) {
+                const res = await fetch(`${API_BASE}/sprint/${currentSprintNumericId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    return data.map(mapTask);
+                }
+                console.warn(`Sprint ${currentSprintNumericId} fetch failed — falling back`);
+            }
 
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
+            // ---- 2. Fallback: show everything with no sprint ----
+            const allRes = await fetch(API_BASE);
+            if (!allRes.ok) throw new Error(`HTTP ${allRes.status}`);
+            const all = await allRes.json();
 
-            // ✅ Keep tasks that match the current sprint OR have no sprint at all
-            const scoped = team
-                ? data.filter((t) => {
-                      const taskSprintId = t.sprint?.id ? String(t.sprint.id) : "";
-                      return taskSprintId === "" || taskSprintId === currentSprintId;
-                  })
-                : data;
-
-            return scoped.map((t) => ({
-                id: String(t.id),
-                column: t.status ?? "PRODUCT_BACKLOG",
-                title: t.name,
-                description: t.description ?? "",
-                dueDate: t.dueDate ?? "",
-                estimateHours: t.estimateHours ?? 0,
-            }));
+            return all
+                .filter((t) => {
+                    const taskSprintId = t.sprint?.id ? String(t.sprint.id) : "";
+                    return taskSprintId === "";
+                })
+                .map(mapTask);
         } catch (err) {
             console.error("Failed to load tasks:", err);
             return [];
         }
     }
 
+    /**
+     * Maps a raw backend task into the front-end shape.
+     *
+     * @param {Object} t The raw backend task
+     * @returns {Object}  The front-end task
+     */
+    function mapTask(t) {
+        return {
+            id: String(t.id),
+            column: t.status ?? "PRODUCT_BACKLOG",
+            title: t.name,
+            description: t.description ?? "",
+            dueDate: t.dueDate ?? "",
+            estimateHours: t.estimateHours ?? 0,
+            priority: t.priority ?? "",
+            progress: typeof t.progress === "number" ? t.progress : 0,
+            tags: Array.isArray(t.tags) ? t.tags : [],
+        };
+    }
+
     // ===================== RENDER =====================
     const CLOCK_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>`;
 
-    /**
-     * Renders a single task card as HTML.
-     *
-     * @param {Object} task The task to render
-     * @returns {string}    The card's HTML string
-     */
+    function renderPriorityBadge(task) {
+        if (!task.priority) return "";
+        return `<span class="priority-badge priority-${task.priority.toLowerCase()}">${escapeHtml(task.priority)}</span>`;
+    }
+
+    function renderProgressBar(task) {
+        const pct = Math.max(0, Math.min(100, Number(task.progress) || 0));
+        if (pct <= 0) return "";
+        return `
+      <div class="progress-wrap" title="Progress: ${pct}%">
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <span class="progress-text">${pct}%</span>
+      </div>`;
+    }
+
     function renderCard(task) {
+        const priorityBadge = renderPriorityBadge(task);
         const badges = [
+            priorityBadge,
             task.dueDate ? `<span class="date-badge" title="Due date">${CLOCK_ICON} ${formatDateBadge(task.dueDate)}</span>` : "",
             task.estimateHours > 0 ? `<span class="date-badge" title="Estimate">Est. ${task.estimateHours}h</span>` : "",
         ].join("");
+        const tagBadges = (task.tags ?? [])
+            .map((t) => `<span class="tag">${escapeHtml(t.name)}</span>`)
+            .join("");
 
-        const footerHtml = badges
-            ? `<div class="card-footer-row"><div class="card-badges">${badges}</div></div>`
+        const footerHtml = badges || tagBadges
+            ? `<div class="card-footer-row"><div class="card-badges">${badges}${tagBadges}</div></div>`
             : "";
 
+        const progressHtml = renderProgressBar(task);
+
         return `
-      <div class="card${footerHtml ? " card-detailed" : ""}" data-task="${task.id}" style="cursor: pointer;">
+      <div class="card${footerHtml || progressHtml ? " card-detailed" : ""}" data-task="${escapeHtml(task.id)}" style="cursor: pointer;">
         <div class="card-title-row">
           <span class="card-title">${escapeHtml(task.title)}</span>
         </div>
+        ${progressHtml}
         ${footerHtml}
       </div>`;
     }
 
-    /**
-     * Renders the full board with all columns and their cards.
-     */
     function renderBoard() {
         board.innerHTML = COLUMNS.map((column) => {
             const cards = tasks.filter((t) => t.column === column.id);
@@ -212,33 +265,28 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     const closeBtn = document.getElementById("modalCloseBtn");
     const cancelBtn = document.getElementById("modalCancelBtn");
 
-    /**
-     * Opens the read-only task modal with the given task's details.
-     *
-     * @param {Object} task The task to display
-     */
     function openModal(task) {
-        modalColumn.value = task.column;
-
-        titleInput.value = task.title;
-        descriptionBox.value = task.description || "No description";
+        if (!overlay) return;
+        if (modalColumn) modalColumn.value = task.column;
+        if (titleInput) titleInput.value = task.title;
+        if (descriptionBox) descriptionBox.value = task.description || "No description";
 
         const column = COLUMNS.find((c) => c.id === task.column);
-        const chips = [
-            `<span class="summary-chip"><b>Due</b> ${task.dueDate ? formatDateBadge(task.dueDate) : "No due date"}</span>`,
-            `<span class="summary-chip"><b>Estimate</b> ${task.estimateHours > 0 ? `${task.estimateHours}h` : "Not set"}</span>`,
-            `<span class="summary-chip"><b>Column</b> ${column ? column.name : ""}</span>`,
-        ];
-        summary.innerHTML = chips.join("");
+        if (summary) {
+            const chips = [
+                `<span class="summary-chip"><b>Due</b> ${task.dueDate ? formatDateBadge(task.dueDate) : "No due date"}</span>`,
+                `<span class="summary-chip"><b>Estimate</b> ${task.estimateHours > 0 ? `${task.estimateHours}h` : "Not set"}</span>`,
+                `<span class="summary-chip"><b>Progress</b> ${Math.max(0, Math.min(100, Number(task.progress) || 0))}%</span>`,
+                `<span class="summary-chip"><b>Column</b> ${column ? column.name : ""}</span>`,
+            ];
+            summary.innerHTML = chips.join("");
+        }
 
         overlay.classList.add("visible");
     }
 
-    /**
-     * Closes the read-only task modal.
-     */
     function closeModal() {
-        overlay.classList.remove("visible");
+        overlay?.classList.remove("visible");
     }
 
     if (overlay && closeBtn && cancelBtn) {
@@ -264,10 +312,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     });
 
     // ===================== SPRINT TABS =====================
-    /**
-     * Wires up click handlers for the sprint tab buttons and persists the
-     * selected sprint in sessionStorage.
-     */
     function initSprintTabs() {
         const tabs = document.querySelectorAll(".sprint-tab");
 
@@ -296,9 +340,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     // ===================== INIT =====================
-    /**
-     * Initializes the user board page by loading tasks and wiring UI.
-     */
     async function init() {
         initSprintTabs();
         tasks = await fetchTasks();

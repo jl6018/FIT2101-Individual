@@ -8,13 +8,15 @@
  * authentication guards, task CRUD, drag-and-drop reordering, sprint tabs,
  * accumulated sprint hours (US25), team filtering, tag filtering/sorting
  * (US14), search, the task modal with progress editing (US16), log-time
- * modal (US24), sprint start/end controls, and tag management (US13).
+ * modal (US24), card status dropdown (US18), sprint start/end controls,
+ * tag management (US13), admin-only task deletion (US11), and the
+ * PRODUCT_OWNER role (US22).
  *
  * @author Lim Jia Li
  * @version 17.0.16
  */
 
-// ===================== ADMIN GUARD =====================
+// ===================== ADMIN / PRODUCT OWNER GUARD =====================
 window.addEventListener("pageshow", (event) => {
     if ((event as PageTransitionEvent).persisted && sessionStorage.getItem("loggedIn") !== "true") {
         window.location.href = "index-login-page.html";
@@ -25,9 +27,11 @@ if (sessionStorage.getItem("loggedIn") !== "true") {
     window.location.href = "index-login-page.html";
     throw new Error("Not logged in");
 }
-if (sessionStorage.getItem("role") !== "ADMIN") {
+
+const USER_ROLE = sessionStorage.getItem("role");
+if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     window.location.href = "index-user-page.html";
-    throw new Error("Admin access only");
+    throw new Error("Admin or Product Owner access only");
 }
 
 (() => {
@@ -37,7 +41,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         const name = sessionStorage.getItem("name");
         const role = sessionStorage.getItem("role");
         if (name) {
-            nameEl.textContent = role === "ADMIN" ? `${name} (Admin)` : name;
+            const suffix =
+                role === "ADMIN" ? " (Admin)" :
+                role === "PRODUCT_OWNER" ? " (Product Owner)" : "";
+            nameEl.textContent = `${name}${suffix}`;
         }
     }
 
@@ -292,10 +299,6 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
     // ===================== US25: SPRINT HOURS =====================
     let currentSprintNumericIdForHours: number | null = null;
 
-    /**
-     * Fetches the accumulated hours for the current sprint and updates the
-     * hours chip in the board controls.
-     */
     async function refreshSprintHours(): Promise<void> {
         const chip = document.getElementById("sprintHours");
         const chipValue = document.getElementById("sprintHoursValue");
@@ -589,7 +592,16 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
             const numericId = Number(id);
             if (!Number.isFinite(numericId) || numericId <= 0) return false;
 
-            const res = await fetch(`${API_BASE}/${numericId}`, { method: "DELETE" });
+            const role = sessionStorage.getItem("role") || "";
+            const res = await fetch(`${API_BASE}/${numericId}`, {
+                method: "DELETE",
+                headers: { "X-Role": role },
+            });
+
+            if (res.status === 403) {
+                showAlertModal("Not allowed", "Only admins can delete tasks.");
+                return false;
+            }
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             return true;
         } catch (err) {
@@ -674,6 +686,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
         const progressHtml = renderProgressBar(task);
 
+        const columnOptions = COLUMNS.map((col) =>
+            `<option value="${col.id}"${col.id === task.column ? " selected" : ""}>${escapeHtml(col.name)}</option>`
+        ).join("");
+
         return `
       <div class="card${footerHtml || progressHtml ? " card-detailed" : ""}" draggable="true" data-task="${escapeHtml(task.id)}">
         <div class="card-title-row">
@@ -682,6 +698,9 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
           <button type="button" class="edit-icon" data-edit="${escapeHtml(task.id)}" title="Edit task details" aria-label="Edit ${escapeHtml(task.title)}">${PENCIL_ICON}</button>
         </div>
         ${progressHtml}
+        <select class="card-status-select" data-status-for="${escapeHtml(task.id)}" aria-label="Change status">
+          ${columnOptions}
+        </select>
         ${footerHtml}
       </div>`;
     }
@@ -737,6 +756,38 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                 draftTask.assignee = { kind: "team", teamId: currentTeamId };
             }
             openModal(draftTask);
+        }
+    });
+
+    // ===================== US18: STATUS DROPDOWN ON CARD =====================
+    board.addEventListener("change", async (event: Event) => {
+        const select = (event.target as HTMLElement).closest<HTMLSelectElement>("[data-status-for]");
+        if (!select) return;
+
+        const taskId = select.dataset["statusFor"];
+        const task = tasks.find((t) => t.id === taskId);
+        if (!task) return;
+
+        const newColumn = select.value as ColumnId;
+        if (newColumn === task.column) return;
+
+        const oldColumn = task.column;
+        task.column = newColumn;
+
+        if (newColumn === "COMPLETED" && (task.progress ?? 0) < 100) {
+            task.progress = 100;
+        } else if (
+            oldColumn === "COMPLETED" &&
+            (newColumn === "TO_DO" || newColumn === "IN_PROGRESS" || newColumn === "IN_REVIEW")
+        ) {
+            task.progress = 0;
+        }
+
+        const ok = await apiUpdate(task);
+        if (ok) {
+            const to = COLUMNS.find((c) => c.id === newColumn)?.name ?? newColumn;
+            showToast(`Moved to ${to}`);
+            await refreshFromBackend();
         }
     });
 
@@ -1184,7 +1235,10 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
         errorText.textContent = "";
         saveBtn.textContent = draft.id ? "Save" : "Create task";
-        deleteBtn.hidden = draft.id === "";
+
+        const isAdmin = sessionStorage.getItem("role") === "ADMIN";
+        deleteBtn.hidden = draft.id === "" || !isAdmin;
+
         setDeleteArmed(false);
 
         renderDraft();
