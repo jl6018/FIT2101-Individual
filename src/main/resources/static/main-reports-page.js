@@ -1,8 +1,7 @@
 /**
  * Reports Page — Symph Web Application
- * Displays per-member time contribution (US26/27), member-history modal
- * (US28), and a line chart of hours per task (US29). All data comes from
- * /api/timelogs endpoints.
+ * Per-member time contribution (US26/27), member-history modal (US28),
+ * line chart of hours per task (US29), and sprint burndown (US30).
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -28,13 +27,14 @@ const nameEl = document.getElementById("signedInName");
 if (nameEl) {
     const name = sessionStorage.getItem("name");
     const role = sessionStorage.getItem("role");
-    if (name) {
-        nameEl.textContent = role === "ADMIN" ? `${name} (Admin)` : name;
-    }
+    if (name) nameEl.textContent = role === "ADMIN" ? `${name} (Admin)` : name;
 }
 
 // ===================== CONFIG =====================
 const TIMELOGS_API = "http://localhost:8080/api/timelogs";
+const SPRINTS_API = "http://localhost:8080/api/sprints";
+const SPRINT_KEY = "symph.currentSprint";
+const SPRINT_TAB_NAMES = { "1": "Sprint 1", "2": "Sprint 2", "3": "Sprint 3" };
 
 // ===================== HELPERS =====================
 function requireElement(id) {
@@ -73,6 +73,8 @@ const memberEmptyState = requireElement("memberEmptyState");
 const memberModalTotal = requireElement("memberModalTotal");
 const taskLineChart = requireElement("taskLineChart");
 const taskChartEmpty = requireElement("taskChartEmpty");
+const burndownChart = requireElement("burndownChart");
+const burndownEmpty = requireElement("burndownEmpty");
 
 // ===================== LOGOUT MODAL =====================
 const logoutBtn = requireElement("logoutBtn");
@@ -95,8 +97,8 @@ let selectedWeeks = 1;
 let currentSummary = [];
 
 // ===================== MODAL OPEN/CLOSE =====================
-function openModal(overlay) { overlay.classList.add("visible"); }
-function closeModal(overlay) { overlay.classList.remove("visible"); }
+function openModal(o) { o.classList.add("visible"); }
+function closeModal(o) { o.classList.remove("visible"); }
 
 closeMemberModalBtn.addEventListener("click", () => closeModal(memberOverlay));
 memberOverlay.addEventListener("click", (e) => {
@@ -113,7 +115,6 @@ timeRangeRow.querySelectorAll(".range-btn").forEach((btn) => {
     });
 });
 
-// ===================== RANGE HELPERS =====================
 function rangeIso() {
     const days = selectedWeeks * 7;
     const to = new Date();
@@ -122,7 +123,7 @@ function rangeIso() {
     return { from: toIsoDate(from), to: toIsoDate(to), days };
 }
 
-// ===================== LOAD: SUMMARY + TASK CHART =====================
+// ===================== LOADERS =====================
 async function loadSummary() {
     const { from, to, days } = rangeIso();
     contributionTitle.textContent = `Team contribution — last ${days} days`;
@@ -148,8 +149,7 @@ async function loadTaskChart() {
     try {
         const res = await fetch(`${TIMELOGS_API}/by-task?from=${from}&to=${to}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const rows = await res.json();
-        renderTaskLineChart(rows);
+        renderTaskLineChart(await res.json());
     } catch (err) {
         console.error("Failed to load task chart:", err);
         taskChartEmpty.textContent = "Could not load task chart.";
@@ -157,9 +157,44 @@ async function loadTaskChart() {
     }
 }
 
+async function loadBurndown() {
+    burndownChart.innerHTML = "";
+    burndownEmpty.style.display = "none";
+
+    // Resolve the current sprint ID
+    const tabId = window.localStorage.getItem(SPRINT_KEY) || "1";
+    const sprintName = SPRINT_TAB_NAMES[tabId];
+    if (!sprintName) {
+        burndownEmpty.textContent = "No sprint selected on the Sprint Board.";
+        burndownEmpty.style.display = "block";
+        return;
+    }
+
+    try {
+        const sRes = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(sprintName)}`);
+        if (sRes.status === 404) {
+            burndownEmpty.textContent = `No sprint named "${sprintName}" exists yet.`;
+            burndownEmpty.style.display = "block";
+            return;
+        }
+        if (!sRes.ok) throw new Error(`HTTP ${sRes.status}`);
+        const sprint = await sRes.json();
+
+        const bRes = await fetch(`${TIMELOGS_API}/burndown/${sprint.id}`);
+        if (!bRes.ok) throw new Error(`HTTP ${bRes.status}`);
+        const points = await bRes.json();
+        renderBurndown(points);
+    } catch (err) {
+        console.error("Failed to load burndown:", err);
+        burndownEmpty.textContent = "Could not load burndown data.";
+        burndownEmpty.style.display = "block";
+    }
+}
+
 async function reloadAll() {
     await loadSummary();
     await loadTaskChart();
+    await loadBurndown();
 }
 
 // ===================== CONTRIBUTION TABLE =====================
@@ -173,14 +208,12 @@ function renderContributionTable() {
     contributionBody.innerHTML = "";
 
     if (!currentSummary || currentSummary.length === 0) {
-        contributionBody.innerHTML =
-            `<tr><td colspan="4" class="muted">No members found.</td></tr>`;
+        contributionBody.innerHTML = `<tr><td colspan="4" class="muted">No members found.</td></tr>`;
         return;
     }
 
     currentSummary.forEach((row) => {
-        const initials = row.name
-            .split(/\s+/).filter(Boolean).slice(0, 2)
+        const initials = row.name.split(/\s+/).filter(Boolean).slice(0, 2)
             .map((p) => p.charAt(0).toUpperCase()).join("");
 
         const tr = document.createElement("tr");
@@ -207,15 +240,13 @@ async function openMemberModal(row) {
     memberChartWrap.innerHTML = "";
     memberEmptyState.style.display = "none";
     memberModalTotal.textContent = "";
-
     openModal(memberOverlay);
 
     const { from, to } = rangeIso();
     try {
         const res = await fetch(`${TIMELOGS_API}/user/${row.userId}/range?from=${from}&to=${to}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const logs = await res.json();
-        renderMemberChart(logs);
+        renderMemberChart(await res.json());
     } catch (err) {
         console.error("Failed to load member history:", err);
         memberEmptyState.textContent = "Could not load this member's history.";
@@ -241,17 +272,15 @@ function renderMemberChart(logs) {
         .sort((a, b) => a.date.localeCompare(b.date));
 
     const maxHours = Math.max(...entries.map((e) => e.hours), 1);
-
     memberChartWrap.style.display = "flex";
     memberChartWrap.innerHTML = "";
 
     entries.forEach(({ date, hours }) => {
-        const heightPct = (hours / maxHours) * 100;
         const item = document.createElement("div");
         item.className = "bar-chart-item";
         item.innerHTML = `
             <span class="bar-value">${formatHours(hours)}</span>
-            <div class="bar" style="height:${heightPct}%;"></div>
+            <div class="bar" style="height:${(hours / maxHours) * 100}%;"></div>
             <span class="bar-label">${date.slice(5)}</span>`;
         memberChartWrap.appendChild(item);
     });
@@ -261,11 +290,6 @@ function renderMemberChart(logs) {
 }
 
 // ===================== HOURS PER TASK — LINE CHART (US29) =====================
-/**
- * Renders an SVG line chart of hours per task.
- *
- * @param {Array} rows Array of { taskId, taskName, totalHours }
- */
 function renderTaskLineChart(rows) {
     taskLineChart.innerHTML = "";
 
@@ -273,68 +297,27 @@ function renderTaskLineChart(rows) {
         taskChartEmpty.style.display = "block";
         return;
     }
-
     taskChartEmpty.style.display = "none";
 
-    // --- Chart geometry ---
-    const width = 720;
-    const height = 320;
-    const paddingLeft = 60;
-    const paddingRight = 30;
-    const paddingTop = 30;
-    const paddingBottom = 80;      // extra room for rotated task labels
+    const width = 720, height = 320;
+    const paddingLeft = 60, paddingRight = 30, paddingTop = 30, paddingBottom = 80;
     const plotWidth = width - paddingLeft - paddingRight;
     const plotHeight = height - paddingTop - paddingBottom;
 
-    const maxValue = Math.max(...rows.map((r) => r.totalHours), 1);
-    const niceMax = Math.ceil(maxValue);
-
+    const niceMax = Math.ceil(Math.max(...rows.map((r) => r.totalHours), 1));
     const svgNS = "http://www.w3.org/2000/svg";
     taskLineChart.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
-    // --- Y axis ---
-    const yAxis = document.createElementNS(svgNS, "line");
-    yAxis.setAttribute("x1", String(paddingLeft));
-    yAxis.setAttribute("y1", String(paddingTop));
-    yAxis.setAttribute("x2", String(paddingLeft));
-    yAxis.setAttribute("y2", String(height - paddingBottom));
-    yAxis.setAttribute("stroke", "#D1D5DB");
-    taskLineChart.appendChild(yAxis);
+    addAxis(svgNS, taskLineChart, paddingLeft, paddingTop, paddingLeft, height - paddingBottom);
+    addAxis(svgNS, taskLineChart, paddingLeft, height - paddingBottom, width - paddingRight, height - paddingBottom);
 
-    // --- X axis ---
-    const xAxis = document.createElementNS(svgNS, "line");
-    xAxis.setAttribute("x1", String(paddingLeft));
-    xAxis.setAttribute("y1", String(height - paddingBottom));
-    xAxis.setAttribute("x2", String(width - paddingRight));
-    xAxis.setAttribute("y2", String(height - paddingBottom));
-    xAxis.setAttribute("stroke", "#D1D5DB");
-    taskLineChart.appendChild(xAxis);
-
-    // --- Y-axis ticks ---
-    const tickCount = 4;
-    for (let i = 0; i <= tickCount; i++) {
-        const value = (niceMax / tickCount) * i;
+    for (let i = 0; i <= 4; i++) {
+        const value = (niceMax / 4) * i;
         const y = paddingTop + plotHeight - (value / niceMax) * plotHeight;
-
-        const gridLine = document.createElementNS(svgNS, "line");
-        gridLine.setAttribute("x1", String(paddingLeft));
-        gridLine.setAttribute("y1", String(y));
-        gridLine.setAttribute("x2", String(width - paddingRight));
-        gridLine.setAttribute("y2", String(y));
-        gridLine.setAttribute("stroke", "#EEF0FB");
-        taskLineChart.appendChild(gridLine);
-
-        const label = document.createElementNS(svgNS, "text");
-        label.setAttribute("x", String(paddingLeft - 8));
-        label.setAttribute("y", String(y + 4));
-        label.setAttribute("text-anchor", "end");
-        label.setAttribute("font-size", "11");
-        label.setAttribute("fill", "#6B7280");
-        label.textContent = `${value.toFixed(0)}h`;
-        taskLineChart.appendChild(label);
+        addGridLine(svgNS, taskLineChart, paddingLeft, y, width - paddingRight, y);
+        addYLabel(svgNS, taskLineChart, paddingLeft - 8, y + 4, `${value.toFixed(0)}h`);
     }
 
-    // --- Compute points ---
     const points = rows.map((row, i) => {
         const x = rows.length === 1
             ? paddingLeft + plotWidth / 2
@@ -343,61 +326,182 @@ function renderTaskLineChart(rows) {
         return { x, y, row };
     });
 
-    // --- Polyline ---
-    const polyline = document.createElementNS(svgNS, "polyline");
-    polyline.setAttribute("points", points.map((p) => `${p.x},${p.y}`).join(" "));
-    polyline.setAttribute("fill", "none");
-    polyline.setAttribute("stroke", "#6672c8");
-    polyline.setAttribute("stroke-width", "2.5");
-    polyline.setAttribute("stroke-linejoin", "round");
-    polyline.setAttribute("stroke-linecap", "round");
-    taskLineChart.appendChild(polyline);
+    const poly = document.createElementNS(svgNS, "polyline");
+    poly.setAttribute("points", points.map((p) => `${p.x},${p.y}`).join(" "));
+    poly.setAttribute("fill", "none");
+    poly.setAttribute("stroke", "#6672c8");
+    poly.setAttribute("stroke-width", "2.5");
+    taskLineChart.appendChild(poly);
 
-    // --- Points + labels ---
     points.forEach(({ x, y, row }) => {
-        // Dot
-        const dot = document.createElementNS(svgNS, "circle");
-        dot.setAttribute("cx", String(x));
-        dot.setAttribute("cy", String(y));
-        dot.setAttribute("r", "5");
-        dot.setAttribute("fill", "#ffffff");
-        dot.setAttribute("stroke", "#6672c8");
-        dot.setAttribute("stroke-width", "2.5");
-        taskLineChart.appendChild(dot);
-
-        // Value label above the dot
-        const valueLabel = document.createElementNS(svgNS, "text");
-        valueLabel.setAttribute("x", String(x));
-        valueLabel.setAttribute("y", String(y - 10));
-        valueLabel.setAttribute("text-anchor", "middle");
-        valueLabel.setAttribute("font-size", "12");
-        valueLabel.setAttribute("font-weight", "700");
-        valueLabel.setAttribute("fill", "#1a1a1a");
-        valueLabel.textContent = `${row.totalHours.toFixed(1)}h`;
-        taskLineChart.appendChild(valueLabel);
-
-        // Rotated task name below the x-axis
-        const nameLabel = document.createElementNS(svgNS, "text");
-        nameLabel.setAttribute("x", String(x));
-        nameLabel.setAttribute("y", String(height - paddingBottom + 14));
-        nameLabel.setAttribute("text-anchor", "end");
-        nameLabel.setAttribute("font-size", "11");
-        nameLabel.setAttribute("fill", "#4B5563");
-        nameLabel.setAttribute("transform", `rotate(-35 ${x} ${height - paddingBottom + 14})`);
-        nameLabel.textContent = row.taskName.length > 16
-            ? row.taskName.slice(0, 15) + "…"
-            : row.taskName;
-        taskLineChart.appendChild(nameLabel);
+        addDot(svgNS, taskLineChart, x, y);
+        addValueLabel(svgNS, taskLineChart, x, y - 10, `${row.totalHours.toFixed(1)}h`);
+        addRotatedXLabel(svgNS, taskLineChart, x, height - paddingBottom + 14,
+            row.taskName.length > 16 ? row.taskName.slice(0, 15) + "…" : row.taskName);
     });
 
-    // --- Y-axis title ---
-    const yTitle = document.createElementNS(svgNS, "text");
-    yTitle.setAttribute("x", "14");
-    yTitle.setAttribute("y", "18");
-    yTitle.setAttribute("font-size", "11");
-    yTitle.setAttribute("fill", "#6B7280");
-    yTitle.textContent = "Hours";
-    taskLineChart.appendChild(yTitle);
+    addYTitle(svgNS, taskLineChart, "Hours");
+}
+
+// ===================== SPRINT BURNDOWN (US30) =====================
+function renderBurndown(points) {
+    burndownChart.innerHTML = "";
+
+    if (!points || points.length === 0) {
+        burndownEmpty.style.display = "block";
+        return;
+    }
+    burndownEmpty.style.display = "none";
+
+    const width = 720, height = 320;
+    const paddingLeft = 60, paddingRight = 30, paddingTop = 30, paddingBottom = 50;
+    const plotWidth = width - paddingLeft - paddingRight;
+    const plotHeight = height - paddingTop - paddingBottom;
+
+    const maxValue = Math.max(
+        ...points.map((p) => Math.max(p.projectedRemaining, p.actualRemaining)),
+        1
+    );
+    const niceMax = Math.ceil(maxValue);
+
+    const svgNS = "http://www.w3.org/2000/svg";
+    burndownChart.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+    addAxis(svgNS, burndownChart, paddingLeft, paddingTop, paddingLeft, height - paddingBottom);
+    addAxis(svgNS, burndownChart, paddingLeft, height - paddingBottom, width - paddingRight, height - paddingBottom);
+
+    for (let i = 0; i <= 4; i++) {
+        const value = (niceMax / 4) * i;
+        const y = paddingTop + plotHeight - (value / niceMax) * plotHeight;
+        addGridLine(svgNS, burndownChart, paddingLeft, y, width - paddingRight, y);
+        addYLabel(svgNS, burndownChart, paddingLeft - 8, y + 4, `${value.toFixed(0)}h`);
+    }
+
+    const lastIndex = points.length - 1;
+    const xFor = (i) => lastIndex === 0
+        ? paddingLeft + plotWidth / 2
+        : paddingLeft + (i / lastIndex) * plotWidth;
+    const yFor = (v) => paddingTop + plotHeight - (v / niceMax) * plotHeight;
+
+    // Projected (dashed)
+    const projectedLine = document.createElementNS(svgNS, "polyline");
+    projectedLine.setAttribute("points",
+        points.map((p, i) => `${xFor(i)},${yFor(p.projectedRemaining)}`).join(" "));
+    projectedLine.setAttribute("fill", "none");
+    projectedLine.setAttribute("stroke", "#111111");
+    projectedLine.setAttribute("stroke-width", "2");
+    projectedLine.setAttribute("stroke-dasharray", "6,4");
+    burndownChart.appendChild(projectedLine);
+
+    // Actual (solid, blue)
+    const actualLine = document.createElementNS(svgNS, "polyline");
+    actualLine.setAttribute("points",
+        points.map((p, i) => `${xFor(i)},${yFor(p.actualRemaining)}`).join(" "));
+    actualLine.setAttribute("fill", "none");
+    actualLine.setAttribute("stroke", "#4F7FFF");
+    actualLine.setAttribute("stroke-width", "2.5");
+    burndownChart.appendChild(actualLine);
+
+    // Dots + x-axis date labels
+    points.forEach((p, i) => {
+        const x = xFor(i);
+        const yProj = yFor(p.projectedRemaining);
+        const yAct = yFor(p.actualRemaining);
+
+        addDot(svgNS, burndownChart, x, yProj, "#111111", 3);
+        addDot(svgNS, burndownChart, x, yAct, "#4F7FFF", 3);
+
+        // Only label every other day to avoid crowding
+        if (i === 0 || i === lastIndex || i % 2 === 0) {
+            const lbl = document.createElementNS(svgNS, "text");
+            lbl.setAttribute("x", String(x));
+            lbl.setAttribute("y", String(height - paddingBottom + 16));
+            lbl.setAttribute("text-anchor", "middle");
+            lbl.setAttribute("font-size", "10");
+            lbl.setAttribute("fill", "#6B7280");
+            lbl.textContent = p.date.slice(5); // MM-DD
+            burndownChart.appendChild(lbl);
+        }
+    });
+
+    addYTitle(svgNS, burndownChart, "Remaining hours");
+}
+
+// ===================== SVG HELPERS =====================
+function addAxis(svgNS, svg, x1, y1, x2, y2) {
+    const line = document.createElementNS(svgNS, "line");
+    line.setAttribute("x1", String(x1));
+    line.setAttribute("y1", String(y1));
+    line.setAttribute("x2", String(x2));
+    line.setAttribute("y2", String(y2));
+    line.setAttribute("stroke", "#D1D5DB");
+    svg.appendChild(line);
+}
+
+function addGridLine(svgNS, svg, x1, y1, x2, y2) {
+    const line = document.createElementNS(svgNS, "line");
+    line.setAttribute("x1", String(x1));
+    line.setAttribute("y1", String(y1));
+    line.setAttribute("x2", String(x2));
+    line.setAttribute("y2", String(y2));
+    line.setAttribute("stroke", "#EEF0FB");
+    svg.appendChild(line);
+}
+
+function addYLabel(svgNS, svg, x, y, text) {
+    const t = document.createElementNS(svgNS, "text");
+    t.setAttribute("x", String(x));
+    t.setAttribute("y", String(y));
+    t.setAttribute("text-anchor", "end");
+    t.setAttribute("font-size", "11");
+    t.setAttribute("fill", "#6B7280");
+    t.textContent = text;
+    svg.appendChild(t);
+}
+
+function addYTitle(svgNS, svg, text) {
+    const t = document.createElementNS(svgNS, "text");
+    t.setAttribute("x", "14");
+    t.setAttribute("y", "18");
+    t.setAttribute("font-size", "11");
+    t.setAttribute("fill", "#6B7280");
+    t.textContent = text;
+    svg.appendChild(t);
+}
+
+function addDot(svgNS, svg, cx, cy, stroke = "#6672c8", r = 5) {
+    const dot = document.createElementNS(svgNS, "circle");
+    dot.setAttribute("cx", String(cx));
+    dot.setAttribute("cy", String(cy));
+    dot.setAttribute("r", String(r));
+    dot.setAttribute("fill", "#ffffff");
+    dot.setAttribute("stroke", stroke);
+    dot.setAttribute("stroke-width", "2");
+    svg.appendChild(dot);
+}
+
+function addValueLabel(svgNS, svg, x, y, text) {
+    const t = document.createElementNS(svgNS, "text");
+    t.setAttribute("x", String(x));
+    t.setAttribute("y", String(y));
+    t.setAttribute("text-anchor", "middle");
+    t.setAttribute("font-size", "12");
+    t.setAttribute("font-weight", "700");
+    t.setAttribute("fill", "#1a1a1a");
+    t.textContent = text;
+    svg.appendChild(t);
+}
+
+function addRotatedXLabel(svgNS, svg, x, y, text) {
+    const t = document.createElementNS(svgNS, "text");
+    t.setAttribute("x", String(x));
+    t.setAttribute("y", String(y));
+    t.setAttribute("text-anchor", "end");
+    t.setAttribute("font-size", "11");
+    t.setAttribute("fill", "#4B5563");
+    t.setAttribute("transform", `rotate(-35 ${x} ${y})`);
+    t.textContent = text;
+    svg.appendChild(t);
 }
 
 // ===================== INIT =====================
