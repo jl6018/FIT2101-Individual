@@ -2,8 +2,8 @@
     Admin Board Page — Symph Web Application
     Provides the main Kanban board for administrators. Includes the sidebar
     navigation, search, team filter and tag filter, project header with sprint
-    controls, sprint tabs, and modals for task editing, log time (US24),
-    logout, invites, and generic confirm/alert dialogs.
+    controls, sprint tabs with accumulated hours (US25), and modals for task
+    editing, log time (US24), logout, invites, and generic confirm/alert dialogs.
 
     @author Lim Jia Li
     @version 17.0.16
@@ -124,12 +124,20 @@
             </div>
         </header>
 
-        <!-- ===================== SPRINT TABS ===================== -->
+        <!-- ===================== SPRINT TABS + HOURS (US25) ===================== -->
         <div class="board-controls">
             <div class="sprint-tabs">
                 <button class="sprint-tab active" data-sprint="1" type="button">Sprint 1</button>
                 <button class="sprint-tab" data-sprint="2" type="button">Sprint 2</button>
                 <button class="sprint-tab" data-sprint="3" type="button">Sprint 3</button>
+            </div>
+
+            <!-- US25: accumulated sprint hours -->
+            <div class="sprint-hours" id="sprintHours" title="Total hours logged in this sprint">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>
+                </svg>
+                <span id="sprintHoursValue">0h logged</span>
             </div>
         </div>
 

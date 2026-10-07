@@ -6,9 +6,9 @@
  * Admin Board Page — Symph Web Application
  * Handles all interactive behaviour for the admin Kanban board, including
  * authentication guards, task CRUD, drag-and-drop reordering, sprint tabs,
- * team filtering, tag filtering/sorting (US14), search, the task modal with
- * progress editing (US16), log-time modal (US24), sprint start/end controls,
- * and tag management (US13).
+ * accumulated sprint hours (US25), team filtering, tag filtering/sorting
+ * (US14), search, the task modal with progress editing (US16), log-time
+ * modal (US24), sprint start/end controls, and tag management (US13).
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -289,6 +289,55 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         return { assignedTeams: null, assignedEmployeeIds: assignee.employeeIds.join(",") };
     }
 
+    // ===================== US25: SPRINT HOURS =====================
+    let currentSprintNumericIdForHours: number | null = null;
+
+    /**
+     * Fetches the accumulated hours for the current sprint and updates the
+     * hours chip in the board controls.
+     */
+    async function refreshSprintHours(): Promise<void> {
+        const chip = document.getElementById("sprintHours");
+        const chipValue = document.getElementById("sprintHoursValue");
+        if (!chip || !chipValue) return;
+
+        const name = SPRINT_TAB_NAMES[currentSprintId];
+        if (!name) {
+            chipValue.textContent = "0h logged";
+            chip.classList.remove("is-nonzero");
+            return;
+        }
+
+        try {
+            const sprintRes = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
+            if (sprintRes.status === 404) {
+                chipValue.textContent = "0h logged";
+                chip.classList.remove("is-nonzero");
+                return;
+            }
+            if (!sprintRes.ok) throw new Error(`HTTP ${sprintRes.status}`);
+            const sprint = (await sprintRes.json()) as Sprint;
+            currentSprintNumericIdForHours = sprint?.id ?? null;
+
+            if (!currentSprintNumericIdForHours) {
+                chipValue.textContent = "0h logged";
+                chip.classList.remove("is-nonzero");
+                return;
+            }
+
+            const totalRes = await fetch(`${TIMELOGS_API}/sprint/${currentSprintNumericIdForHours}/total`);
+            if (!totalRes.ok) throw new Error(`HTTP ${totalRes.status}`);
+            const total = Number(await totalRes.json()) || 0;
+
+            chipValue.textContent = `${total.toFixed(1)}h logged`;
+            chip.classList.toggle("is-nonzero", total > 0);
+        } catch (err) {
+            console.error("Failed to load sprint hours:", err);
+            chipValue.textContent = "0h logged";
+            chip.classList.remove("is-nonzero");
+        }
+    }
+
     // ===================== CUSTOM MODALS =====================
     function showOverlay(id: string): void {
         const el = document.getElementById(id);
@@ -463,6 +512,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         renderBoard();
         renderTeamFilter();
         renderTagFilter();
+        await refreshSprintHours();
     }
 
     async function apiCreate(task: Task): Promise<Task | null> {
@@ -773,6 +823,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
 
             closeLogTimeModal();
             showToast(`Logged ${payload.hours}h on this task`);
+            await refreshSprintHours();
         } catch (err) {
             console.error("Log time failed:", err);
             logTimeErrorText.textContent =
@@ -912,6 +963,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
                     renderTeamFilter();
                     renderTagFilter();
                     void refreshSprintButton();
+                    void refreshSprintHours();
                 }
             });
         });
@@ -1660,6 +1712,7 @@ if (sessionStorage.getItem("role") !== "ADMIN") {
         await refreshSprintButton();
         await refreshFromBackend();
         renderTagFilter();
+        await refreshSprintHours();
     }
     void init();
 })();
