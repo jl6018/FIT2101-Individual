@@ -1643,3 +1643,40 @@ textarea {
 .sprint-hours.is-nonzero svg {
     color: #ffffff;
 }
+
+/* ===================== US18: CARD STATUS DROPDOWN ===================== */
+
+.card-status-select {
+    width: 100%;
+    padding: 6px 10px;
+    margin-top: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.12);
+    color: #e3e6fa;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image:
+        linear-gradient(45deg, transparent 50%, #e3e6fa 50%),
+        linear-gradient(-45deg, transparent 50%, #e3e6fa 50%);
+    background-position: calc(100% - 14px) 55%, calc(100% - 9px) 55%;
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+}
+
+.card-status-select:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.card-status-select:focus {
+    outline: 2px solid #6672c8;
+    outline-offset: 2px;
+}
+
+.card-status-select option {
+    background: #ffffff;
+    color: #1a1a1a;
+}

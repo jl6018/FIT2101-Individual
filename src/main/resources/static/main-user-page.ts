@@ -5,8 +5,8 @@
 /**
  * User Board Page — Symph Web Application
  * Provides a read-only Kanban board for employees. Loads tasks scoped to the
- * employee's team or sprint, handles sprint tab switching, and displays a
- * read-only task modal.
+ * current sprint, handles sprint tab switching, and displays a read-only
+ * task modal.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -31,12 +31,10 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 (() => {
     // ===================== CONFIG =====================
     const API_BASE = "http://localhost:8080/api/tasks";
+    const SPRINTS_API = "http://localhost:8080/api/sprints";
 
-    // ===================== TYPES =====================
-    /** Identifiers for the five board columns. */
     type ColumnId = "PRODUCT_BACKLOG" | "TO_DO" | "IN_PROGRESS" | "IN_REVIEW" | "COMPLETED";
 
-    /** Front-end representation of a task on the board. */
     type Task = {
         id: string;
         column: ColumnId;
@@ -44,9 +42,11 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         description: string;
         dueDate: string;
         estimateHours: number;
+        priority: string;
+        progress: number;
+        tags: { id: number; name: string }[];
     };
 
-    /** Shape of a task as returned by the backend API. */
     type BackendTask = {
         id: number;
         name: string;
@@ -54,31 +54,29 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         status?: ColumnId | null;
         dueDate?: string | null;
         estimateHours?: number | null;
+        priority?: string | null;
+        progress?: number | null;
+        tags?: { id: number; name: string }[] | null;
         sprint?: { id: number } | null;
     };
 
+    type Sprint = { id: number; name: string };
+
+    const SPRINT_TAB_NAMES: Record<string, string> = {
+        "1": "Sprint 1",
+        "2": "Sprint 2",
+        "3": "Sprint 3",
+    };
+
     // ===================== HELPERS =====================
-    /**
-     * Retrieves a DOM element by its ID and throws if not found.
-     *
-     * @param id The ID of the element to retrieve
-     * @returns  The element cast to the expected type
-     * @throws Error if no element with the given ID exists
-     */
     function requireElement<T extends HTMLElement>(id: string): T {
         const el = document.getElementById(id);
         if (!el) throw new Error(`Missing element: ${id}`);
         return el as T;
     }
 
-    /**
-     * Escapes HTML special characters to prevent XSS injection.
-     *
-     * @param text The raw string to escape
-     * @returns    The escaped string
-     */
     function escapeHtml(text: string): string {
-        return text
+        return String(text)
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
@@ -86,12 +84,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             .replace(/'/g, "&#39;");
     }
 
-    /**
-     * Formats an ISO date string into a short badge label.
-     *
-     * @param isoDate The ISO date string (YYYY-MM-DD)
-     * @returns        A string such as "5 Sep"
-     */
     function formatDateBadge(isoDate: string): string {
         const date = new Date(`${isoDate}T00:00:00`);
         return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
@@ -110,10 +102,11 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
     const savedSprintId = sessionStorage.getItem("currentSprintId");
     let currentSprintId = savedSprintId && savedSprintId !== "" ? savedSprintId : "1";
+    let currentSprintNumericId: number | null = null;
 
     const board = requireElement<HTMLElement>("board");
 
-    // ✅ Show name + team in the navbar
+    // ===================== SHOW CURRENT USER =====================
     const nameEl = document.getElementById("signedInName");
     if (nameEl) {
         const name = sessionStorage.getItem("name");
@@ -147,77 +140,111 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (e.target === logoutOverlay) logoutOverlay.classList.remove("visible");
     });
 
+    // ===================== SPRINT RESOLUTION =====================
+    async function resolveCurrentSprintId(): Promise<number | null> {
+        const name = SPRINT_TAB_NAMES[currentSprintId];
+        if (!name) return null;
+        try {
+            const res = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
+            if (res.status === 404) return null;
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const sprint = (await res.json()) as Sprint;
+            return sprint?.id ?? null;
+        } catch (err) {
+            console.error("Failed to resolve sprint:", err);
+            return null;
+        }
+    }
+
     // ===================== BACKEND SYNC =====================
-    /**
-     * Fetches tasks scoped to the employee's team or current sprint.
-     *
-     * @returns A promise resolving to an array of Tasks
-     */
     async function fetchTasks(): Promise<Task[]> {
         try {
-            const team = sessionStorage.getItem("team") || "";
+            currentSprintNumericId = await resolveCurrentSprintId();
 
-            const url = team
-                ? `${API_BASE}/team/${encodeURIComponent(team)}`
-                : `${API_BASE}/sprint/${currentSprintId}`;
+            if (currentSprintNumericId) {
+                const res = await fetch(`${API_BASE}/sprint/${currentSprintNumericId}`);
+                if (res.ok) {
+                    const data = (await res.json()) as BackendTask[];
+                    return data.map(mapTask);
+                }
+                console.warn(`Sprint ${currentSprintNumericId} fetch failed — falling back`);
+            }
 
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data: BackendTask[] = await res.json();
+            const allRes = await fetch(API_BASE);
+            if (!allRes.ok) throw new Error(`HTTP ${allRes.status}`);
+            const all = (await allRes.json()) as BackendTask[];
 
-            // ✅ Keep tasks that match the current sprint OR have no sprint at all
-            const scoped = team
-                ? data.filter((t) => {
-                      const taskSprintId = t.sprint?.id ? String(t.sprint.id) : "";
-                      return taskSprintId === "" || taskSprintId === currentSprintId;
-                  })
-                : data;
-
-            return scoped.map((t) => ({
-                id: String(t.id),
-                column: (t.status ?? "PRODUCT_BACKLOG") as ColumnId,
-                title: t.name,
-                description: t.description ?? "",
-                dueDate: t.dueDate ?? "",
-                estimateHours: t.estimateHours ?? 0,
-            }));
+            return all
+                .filter((t) => {
+                    const taskSprintId = t.sprint?.id ? String(t.sprint.id) : "";
+                    return taskSprintId === "";
+                })
+                .map(mapTask);
         } catch (err) {
             console.error("Failed to load tasks:", err);
             return [];
         }
     }
 
+    function mapTask(t: BackendTask): Task {
+        return {
+            id: String(t.id),
+            column: (t.status ?? "PRODUCT_BACKLOG") as ColumnId,
+            title: t.name,
+            description: t.description ?? "",
+            dueDate: t.dueDate ?? "",
+            estimateHours: t.estimateHours ?? 0,
+            priority: t.priority ?? "",
+            progress: typeof t.progress === "number" ? t.progress : 0,
+            tags: Array.isArray(t.tags) ? t.tags : [],
+        };
+    }
+
     // ===================== RENDER =====================
     const CLOCK_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>`;
 
-    /**
-     * Renders a single task card as HTML.
-     *
-     * @param task The task to render
-     * @returns    The card's HTML string
-     */
+    function renderPriorityBadge(task: Task): string {
+        if (!task.priority) return "";
+        return `<span class="priority-badge priority-${task.priority.toLowerCase()}">${escapeHtml(task.priority)}</span>`;
+    }
+
+    function renderProgressBar(task: Task): string {
+        const pct = Math.max(0, Math.min(100, Number(task.progress) || 0));
+        if (pct <= 0) return "";
+        return `
+      <div class="progress-wrap" title="Progress: ${pct}%">
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <span class="progress-text">${pct}%</span>
+      </div>`;
+    }
+
     function renderCard(task: Task): string {
+        const priorityBadge = renderPriorityBadge(task);
         const badges = [
+            priorityBadge,
             task.dueDate ? `<span class="date-badge" title="Due date">${CLOCK_ICON} ${formatDateBadge(task.dueDate)}</span>` : "",
             task.estimateHours > 0 ? `<span class="date-badge" title="Estimate">Est. ${task.estimateHours}h</span>` : "",
         ].join("");
+        const tagBadges = (task.tags ?? [])
+            .map((t) => `<span class="tag">${escapeHtml(t.name)}</span>`)
+            .join("");
 
-        const footerHtml = badges
-            ? `<div class="card-footer-row"><div class="card-badges">${badges}</div></div>`
+        const footerHtml = badges || tagBadges
+            ? `<div class="card-footer-row"><div class="card-badges">${badges}${tagBadges}</div></div>`
             : "";
 
+        const progressHtml = renderProgressBar(task);
+
         return `
-      <div class="card${footerHtml ? " card-detailed" : ""}" data-task="${task.id}" style="cursor: pointer;">
+      <div class="card${footerHtml || progressHtml ? " card-detailed" : ""}" data-task="${escapeHtml(task.id)}" style="cursor: pointer;">
         <div class="card-title-row">
           <span class="card-title">${escapeHtml(task.title)}</span>
         </div>
+        ${progressHtml}
         ${footerHtml}
       </div>`;
     }
 
-    /**
-     * Renders the full board with all columns and their cards.
-     */
     function renderBoard(): void {
         board.innerHTML = COLUMNS.map((column) => {
             const cards = tasks.filter((t) => t.column === column.id);
@@ -230,54 +257,48 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     // ===================== TASK MODAL (READ-ONLY) =====================
-    const overlay = requireElement<HTMLDivElement>("taskModalOverlay");
-    const modalColumn = requireElement<HTMLSelectElement>("modalColumn");
-    const titleInput = requireElement<HTMLInputElement>("modalTitle");
-    const descriptionBox = requireElement<HTMLTextAreaElement>("modalDescription");
-    const summary = requireElement<HTMLDivElement>("modalSummary");
-    const closeBtn = requireElement<HTMLButtonElement>("modalCloseBtn");
-    const cancelBtn = requireElement<HTMLButtonElement>("modalCancelBtn");
+    const overlay = document.getElementById("taskModalOverlay");
+    const modalColumn = document.getElementById("modalColumn") as HTMLSelectElement | null;
+    const titleInput = document.getElementById("modalTitle") as HTMLInputElement | null;
+    const descriptionBox = document.getElementById("modalDescription") as HTMLTextAreaElement | null;
+    const summary = document.getElementById("modalSummary") as HTMLDivElement | null;
+    const closeBtn = document.getElementById("modalCloseBtn") as HTMLButtonElement | null;
+    const cancelBtn = document.getElementById("modalCancelBtn") as HTMLButtonElement | null;
 
-    let activeTaskId: string | null = null;
-
-    /**
-     * Opens the read-only task modal with the given task's details.
-     *
-     * @param task The task to display
-     */
     function openModal(task: Task): void {
-        activeTaskId = task.id;
-        modalColumn.value = task.column;
-
-        titleInput.value = task.title;
-        descriptionBox.value = task.description || "No description";
+        if (!overlay) return;
+        if (modalColumn) modalColumn.value = task.column;
+        if (titleInput) titleInput.value = task.title;
+        if (descriptionBox) descriptionBox.value = task.description || "No description";
 
         const column = COLUMNS.find((c) => c.id === task.column);
-        const chips: string[] = [
-            `<span class="summary-chip"><b>Due</b> ${task.dueDate ? formatDateBadge(task.dueDate) : "No due date"}</span>`,
-            `<span class="summary-chip"><b>Estimate</b> ${task.estimateHours > 0 ? `${task.estimateHours}h` : "Not set"}</span>`,
-            `<span class="summary-chip"><b>Column</b> ${column ? column.name : ""}</span>`,
-        ];
-        summary.innerHTML = chips.join("");
+        if (summary) {
+            const chips: string[] = [
+                `<span class="summary-chip"><b>Due</b> ${task.dueDate ? formatDateBadge(task.dueDate) : "No due date"}</span>`,
+                `<span class="summary-chip"><b>Estimate</b> ${task.estimateHours > 0 ? `${task.estimateHours}h` : "Not set"}</span>`,
+                `<span class="summary-chip"><b>Progress</b> ${Math.max(0, Math.min(100, Number(task.progress) || 0))}%</span>`,
+                `<span class="summary-chip"><b>Column</b> ${column ? column.name : ""}</span>`,
+            ];
+            summary.innerHTML = chips.join("");
+        }
 
         overlay.classList.add("visible");
     }
 
-    /**
-     * Closes the read-only task modal.
-     */
     function closeModal(): void {
-        overlay.classList.remove("visible");
+        overlay?.classList.remove("visible");
     }
 
-    closeBtn.addEventListener("click", closeModal);
-    cancelBtn.addEventListener("click", closeModal);
-    overlay.addEventListener("click", (event) => {
-        if (event.target === overlay) closeModal();
-    });
-    document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") closeModal();
-    });
+    if (overlay && closeBtn && cancelBtn) {
+        closeBtn.addEventListener("click", closeModal);
+        cancelBtn.addEventListener("click", closeModal);
+        overlay.addEventListener("click", (event) => {
+            if (event.target === overlay) closeModal();
+        });
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") closeModal();
+        });
+    }
 
     // ===================== BOARD CLICK =====================
     board.addEventListener("click", (event) => {
@@ -290,11 +311,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (task) openModal(task);
     });
 
-    // ===================== SPRINT TABS (FUNCTIONAL + PERSIST) =====================
-    /**
-     * Wires up click handlers for the sprint tab buttons and persists the
-     * selected sprint in sessionStorage.
-     */
+    // ===================== SPRINT TABS =====================
     function initSprintTabs(): void {
         const tabs = document.querySelectorAll<HTMLButtonElement>(".sprint-tab");
 
@@ -323,9 +340,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     // ===================== INIT =====================
-    /**
-     * Initializes the user board page by loading tasks and wiring UI.
-     */
     async function init(): Promise<void> {
         initSprintTabs();
         tasks = await fetchTasks();
