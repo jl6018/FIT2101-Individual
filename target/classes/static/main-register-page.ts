@@ -22,8 +22,15 @@ const errorBanner = requireElement<HTMLDivElement>('errorBanner');
 const errorText = requireElement<HTMLSpanElement>('errorText');
 const dismissError = requireElement<HTMLButtonElement>('dismissError');
 
+/**
+ * Validates the email shape AND checks that it uses a recognized TLD.
+ * Rejects obvious typos like "gmailc.om" while allowing all common domains.
+ *
+ * @param email The email to validate
+ * @returns     True if the email looks valid
+ */
 function isValidEmailShape(email: string): boolean {
-    return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email);
+    return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.(com|org|net|edu|gov|mil|io|co|my|sg|uk|us|info|biz|dev|app)$/i.test(email);
 }
 
 function showError(message: string): void {
@@ -66,7 +73,7 @@ form.addEventListener('submit', async (e: SubmitEvent) => {
         return;
     }
     if (!isValidEmailShape(payload.email)) {
-        showError('Please enter a valid email address (e.g. user@example.com).');
+        showError('Please enter a valid email with a recognized domain (e.g. user@gmail.com).');
         return;
     }
 
@@ -87,8 +94,8 @@ form.addEventListener('submit', async (e: SubmitEvent) => {
             if (lower.includes('already registered') || lower.includes('duplicate')) {
                 throw new Error('This email is already registered. Please log in.');
             }
-            if (lower.includes('valid email')) {
-                throw new Error('Please enter a valid email address (e.g. user@example.com).');
+            if (lower.includes('valid email') || lower.includes('recognized domain')) {
+                throw new Error('Please enter a valid email with a recognized domain (e.g. user@gmail.com).');
             }
             throw new Error(text || 'Registration failed');
         }
