@@ -5,9 +5,10 @@
 /**
  * User Board Page — Symph Web Application
  * Provides a read-only Kanban board for employees. Loads tasks scoped to the
- * current sprint, handles sprint tab switching, live search filtering, and
- * displays a read-only task modal. The signed-in user's name and initials
- * are pulled from sessionStorage so the header reflects the real person.
+ * current sprint, handles sprint tab switching, live search filtering,
+ * tag filtering, and displays a read-only task modal. The signed-in user's
+ * name and initials are pulled from sessionStorage so the header reflects
+ * the real person.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -69,6 +70,8 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         "3": "Sprint 3",
     };
 
+    const TAG_FILTER_ALL = "all";
+
     // ===================== HELPERS =====================
     function requireElement<T extends HTMLElement>(id: string): T {
         const el = document.getElementById(id);
@@ -90,7 +93,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
     }
 
-    /** Returns up to two uppercase initials from a full name. */
     function initials(name: string): string {
         return name
             .split(/\s+/)
@@ -111,6 +113,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     // ===================== STATE =====================
     let tasks: Task[] = [];
     let searchTerm = "";
+    let currentTagName: string = TAG_FILTER_ALL;
 
     const savedSprintId = sessionStorage.getItem("currentSprintId");
     let currentSprintId = savedSprintId && savedSprintId !== "" ? savedSprintId : "1";
@@ -275,6 +278,14 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             const cards = tasks.filter((t) => {
                 if (t.column !== column.id) return false;
                 if (term && !t.title.toLowerCase().includes(term)) return false;
+
+                if (currentTagName !== TAG_FILTER_ALL) {
+                    const hasTag = (t.tags ?? []).some(
+                        (tag) => tag.name.toLowerCase() === currentTagName.toLowerCase()
+                    );
+                    if (!hasTag) return false;
+                }
+
                 return true;
             });
             return `
@@ -298,6 +309,79 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             renderBoard();
         }
     });
+
+    // ===================== TAG FILTER =====================
+    const tagFilterBtn = document.getElementById("tagFilterBtn");
+    const tagFilterMenu = document.getElementById("tagFilterMenu");
+    const tagFilterLabel = document.getElementById("tagFilterLabel");
+
+    function availableTagNames(): string[] {
+        const names = new Set<string>();
+        tasks.forEach((t) => (t.tags ?? []).forEach((tag) => names.add(tag.name)));
+        return Array.from(names).sort((a, b) => a.localeCompare(b));
+    }
+
+    function renderTagFilter(): void {
+        if (!tagFilterMenu) return;
+
+        const names = availableTagNames();
+
+        const countFor = (name: string) =>
+            tasks.filter((t) =>
+                (t.tags ?? []).some((tag) => tag.name.toLowerCase() === name.toLowerCase())
+            ).length;
+
+        const header = `
+            <button type="button" class="filter-option${currentTagName === TAG_FILTER_ALL ? " active" : ""}" data-tag="${TAG_FILTER_ALL}" role="menuitemradio" aria-checked="${currentTagName === TAG_FILTER_ALL}">
+                <span>All tags</span><span class="filter-count">${tasks.length}</span>
+            </button>`;
+
+        const rows = names.length === 0
+            ? `<p class="employee-empty">No tags yet.</p>`
+            : names
+                  .map((name) => {
+                      const active = currentTagName.toLowerCase() === name.toLowerCase();
+                      return `
+            <button type="button" class="filter-option${active ? " active" : ""}" data-tag="${escapeHtml(name)}" role="menuitemradio" aria-checked="${active}">
+              <span>${escapeHtml(name)}</span><span class="filter-count">${countFor(name)}</span>
+            </button>`;
+                  })
+                  .join("");
+
+        tagFilterMenu.innerHTML =
+            `<span class="popover-label">Filter by tag</span>` + header + rows;
+
+        if (tagFilterLabel) {
+            tagFilterLabel.textContent =
+                currentTagName === TAG_FILTER_ALL ? "All tags" : currentTagName;
+        }
+        tagFilterBtn?.classList.toggle("filtered", currentTagName !== TAG_FILTER_ALL);
+    }
+
+    function setTagFilterOpen(open: boolean): void {
+        if (!tagFilterMenu || !tagFilterBtn) return;
+        tagFilterMenu.classList.toggle("visible", open);
+        tagFilterBtn.setAttribute("aria-expanded", String(open));
+    }
+
+    tagFilterBtn?.addEventListener("click", (event: MouseEvent) => {
+        event.stopPropagation();
+        renderTagFilter();
+        setTagFilterOpen(!tagFilterMenu.classList.contains("visible"));
+    });
+
+    tagFilterMenu?.addEventListener("click", (event: MouseEvent) => {
+        event.stopPropagation();
+        const target = event.target as HTMLElement;
+        const tagBtn = target.closest<HTMLElement>("[data-tag]");
+        if (!tagBtn) return;
+        currentTagName = tagBtn.dataset["tag"] ?? TAG_FILTER_ALL;
+        setTagFilterOpen(false);
+        renderTagFilter();
+        renderBoard();
+    });
+
+    document.addEventListener("click", () => setTagFilterOpen(false));
 
     // ===================== TASK MODAL (READ-ONLY) =====================
     const overlay = document.getElementById("taskModalOverlay");
@@ -339,7 +423,13 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             if (event.target === overlay) closeModal();
         });
         document.addEventListener("keydown", (event) => {
-            if (event.key === "Escape") closeModal();
+            if (event.key === "Escape") {
+                if (tagFilterMenu?.classList.contains("visible")) {
+                    setTagFilterOpen(false);
+                    return;
+                }
+                closeModal();
+            }
         });
     }
 
@@ -376,6 +466,8 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
                 void (async () => {
                     tasks = await fetchTasks();
+                    currentTagName = TAG_FILTER_ALL;
+                    renderTagFilter();
                     renderBoard();
                 })();
             });
@@ -386,6 +478,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     async function init(): Promise<void> {
         initSprintTabs();
         tasks = await fetchTasks();
+        renderTagFilter();
         renderBoard();
     }
     void init();

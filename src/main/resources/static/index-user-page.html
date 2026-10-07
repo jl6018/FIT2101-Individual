@@ -1,7 +1,8 @@
 <!--
     User Board Page — Symph Web Application
-    Provides a read-only Kanban board for employees. Includes a top navbar,
-    project header, sprint tabs, live search, and a read-only task modal.
+    Provides a read-only Kanban board for employees. Includes a top navbar
+    with search + tag filter, project header, sprint tabs, and a read-only
+    task modal.
 
     @author Lim Jia Li
     @version 17.0.16
@@ -15,7 +16,6 @@
 
     <link rel="stylesheet" href="style-user-page.css"/>
 
-    <!-- Prevent caching so the board always reflects the latest data -->
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -25,10 +25,27 @@
 <!-- ===================== NAVBAR ===================== -->
 <nav class="navbar">
     <div class="logo"><img src="images/symph-logo.png" alt="Symph" /></div>
+
     <div class="search-bar">
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/>
+        </svg>
         <input type="text" id="searchInput" placeholder="Search" aria-label="Search tasks" />
-        <span class="search-icon">🔍</span>
+
+        <!-- Tag filter -->
+        <div class="tag-filter">
+            <button id="tagFilterBtn" class="team-filter-btn" type="button" aria-haspopup="true"
+                    aria-expanded="false" title="Filter by tag">
+                <span id="tagFilterLabel">All tags</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20 12l-8 8-9-9V4h7l10 8z"/>
+                    <circle cx="7.5" cy="7.5" r="1.2"/>
+                </svg>
+            </button>
+            <div class="popover team-filter-menu" id="tagFilterMenu" role="menu"></div>
+        </div>
     </div>
+
     <!-- Notification, avatar, and logout controls -->
     <div class="navbar-icons">
         <span>📢</span>
@@ -44,7 +61,6 @@
     <div class="project-header-left">
         <h1>Project Name</h1>
     </div>
-    <!-- Share button removed; three-dot menu kept -->
     <div class="project-header-right">
         <span class="menu-dots">⋯</span>
     </div>
@@ -57,7 +73,6 @@
     <button class="sprint-tab" data-sprint="3">Sprint 3</button>
 </div>
 
-<!-- Kanban board columns rendered dynamically -->
 <main class="board" id="board"></main>
 
 <!-- ===================== MODAL: View Task (read-only) ===================== -->
@@ -83,7 +98,6 @@
                 <input class="modal-title-input" id="modalTitle" type="text" readonly />
             </div>
 
-            <!-- Read-only metadata pills -->
             <div class="modal-toolbar">
                 <div class="toolbar-group">
                     <button class="pill" type="button" disabled>
@@ -103,7 +117,6 @@
 
             <div class="modal-summary" id="modalSummary"></div>
 
-            <!-- Read-only description -->
             <section class="modal-section">
                 <h3>Description</h3>
                 <textarea class="modal-description" id="modalDescription" readonly placeholder="No description"></textarea>

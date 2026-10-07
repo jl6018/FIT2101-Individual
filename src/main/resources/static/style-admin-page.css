@@ -204,6 +204,8 @@ textarea {
     gap: 32px;
     padding: 14px 32px;
     background-color: #e3e6fa;
+    position: relative;
+    z-index: 20;
 }
 
 .search-bar {

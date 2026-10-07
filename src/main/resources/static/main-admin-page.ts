@@ -37,15 +37,29 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 (() => {
     // ===================== SHOW CURRENT USER =====================
     const nameEl = document.getElementById("signedInName");
+    const avatarEl = document.getElementById("userAvatar");
+
+    const storedName = sessionStorage.getItem("name") || "";
+    const storedRole = sessionStorage.getItem("role") || "";
+
     if (nameEl) {
-        const name = sessionStorage.getItem("name");
-        const role = sessionStorage.getItem("role");
-        if (name) {
+        if (storedName) {
             const suffix =
-                role === "ADMIN" ? " (Admin)" :
-                role === "PRODUCT_OWNER" ? " (Product Owner)" : "";
-            nameEl.textContent = `${name}${suffix}`;
+                storedRole === "ADMIN" ? " (Admin)" :
+                storedRole === "PRODUCT_OWNER" ? " (Product Owner)" : "";
+            nameEl.textContent = `${storedName}${suffix}`;
         }
+    }
+
+    if (avatarEl) {
+        const label = storedName
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part.charAt(0).toUpperCase())
+            .join("");
+        avatarEl.textContent = label || (storedName ? storedName.charAt(0).toUpperCase() : "?");
+        if (storedName) avatarEl.title = storedName;
     }
 
     // ===================== LOGOUT MODAL =====================
@@ -1412,10 +1426,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
     deleteBtn.addEventListener("click", async () => {
         if (!draft) return;
-        if (!deleteArmed) {
-            setDeleteArmed(true);
-            return;
-        }
+        if (!deleteArmed) { setDeleteArmed(true); return; }
 
         const ok = await apiDelete(draft.id);
         if (!ok) return;
