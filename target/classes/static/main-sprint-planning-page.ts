@@ -2,6 +2,15 @@
 // Compile with:
 //   npx tsc main-sprint-planning-page.ts --module esnext --target esnext --strict --ignoreConfig
 
+/**
+ * Sprint Planning Page — Symph Web Application
+ * Handles sprint creation, member loading, end-date calculation, the delete
+ * sprint modal, and logout for the Sprint Planning page.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
 // ===================== BFCACHE FIX =====================
 window.addEventListener('pageshow', (event) => {
     if ((event as PageTransitionEvent).persisted && sessionStorage.getItem('loggedIn') !== 'true') {
@@ -25,6 +34,13 @@ if (nameEl) {
     }
 }
 
+/**
+ * Retrieves a DOM element by its ID and throws if not found.
+ *
+ * @param id The ID of the element to retrieve
+ * @returns  The element cast to the expected type
+ * @throws Error if no element with the given ID exists
+ */
 function requireElement<T extends HTMLElement>(id: string): T {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
@@ -71,7 +87,18 @@ const cancelDeleteBtn = requireElement<HTMLButtonElement>('cancelDeleteBtn');
 const confirmDeleteBtn = requireElement<HTMLButtonElement>('confirmDeleteBtn');
 
 // ===================== MODAL OPEN/CLOSE =====================
+/**
+ * Shows a modal overlay by adding the "visible" class.
+ *
+ * @param overlay The overlay element to show
+ */
 function openModal(overlay: HTMLDivElement): void { overlay.classList.add('visible'); }
+
+/**
+ * Hides a modal overlay by removing the "visible" class.
+ *
+ * @param overlay The overlay element to hide
+ */
 function closeModal(overlay: HTMLDivElement): void { overlay.classList.remove('visible'); }
 
 startSprintPlanningBtn.addEventListener('click', async () => {
@@ -96,6 +123,12 @@ closeSprintPlanningBtn.addEventListener('click', () => closeModal(sprintPlanning
 // ===================== TOAST =====================
 let toastTimeoutId: number | undefined;
 
+/**
+ * Displays a toast notification for 3 seconds.
+ *
+ * @param message The message to display
+ * @param type    Whether the toast is a success or error notification
+ */
 function showToast(message: string, type: 'success' | 'error' = 'success'): void {
     toast.textContent = message;
     toast.classList.remove('success', 'error');
@@ -106,6 +139,12 @@ function showToast(message: string, type: 'success' | 'error' = 'success'): void
 }
 
 // ===================== HELPERS =====================
+/**
+ * Converts a backend sprint status into a display label.
+ *
+ * @param status The raw status string
+ * @returns       The display label
+ */
 function statusLabel(status: string): string {
     if (status === 'PLANNED') return 'Planned';
     if (status === 'ACTIVE') return 'In progress';
@@ -113,6 +152,10 @@ function statusLabel(status: string): string {
     return status;
 }
 
+/**
+ * Recalculates and displays the sprint end date based on the start date
+ * and duration.
+ */
 function recalculateEndDate(): void {
     const startValue = sprintStartDateInput.value;
     const weeks = Number(sprintDurationSelect.value);
@@ -133,6 +176,9 @@ sprintStartDateInput.addEventListener('change', recalculateEndDate);
 sprintDurationSelect.addEventListener('change', recalculateEndDate);
 
 // ===================== LOAD MEMBERS =====================
+/**
+ * Loads all employees from the backend into the members checklist.
+ */
 async function loadMembers(): Promise<void> {
     try {
         const res = await fetch(USERS_API);
@@ -158,6 +204,9 @@ async function loadMembers(): Promise<void> {
 }
 
 // ===================== POPULATE SPRINT NAME OPTIONS =====================
+/**
+ * Populates the sprint name dropdown with the available sprint options.
+ */
 function populateSprintNameOptions(): void {
     sprintNameInput.innerHTML = `
         <option value="">Choose a sprint</option>
@@ -168,6 +217,9 @@ function populateSprintNameOptions(): void {
 }
 
 // ===================== POPULATE DURATION OPTIONS =====================
+/**
+ * Populates the duration dropdown with the available week options.
+ */
 function populateDurationOptions(): void {
     sprintDurationSelect.innerHTML = `
         <option value="">Choose a duration</option>
@@ -178,6 +230,9 @@ function populateDurationOptions(): void {
 }
 
 // ===================== LOAD SPRINTS =====================
+/**
+ * Loads all sprints from the backend and renders them in the past sprints table.
+ */
 async function loadSprints(): Promise<void> {
     try {
         const res = await fetch(SPRINTS_API);
@@ -222,6 +277,12 @@ async function loadSprints(): Promise<void> {
 // ===================== DELETE SPRINT (custom modal) =====================
 let pendingDeleteId: number | null = null;
 
+/**
+ * Opens the delete sprint confirmation modal.
+ *
+ * @param sprintId   The ID of the sprint to delete
+ * @param sprintName The name of the sprint to delete
+ */
 function openDeleteModal(sprintId: number, sprintName: string): void {
     pendingDeleteId = sprintId;
     deleteSprintName.textContent = sprintName;

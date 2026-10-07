@@ -1,3 +1,13 @@
+/**
+ * Login Page Stylesheet — Symph Web Application
+ * Defines the styling for the login page, including the centered card
+ * layout, error banner, form fields, primary button, and register link.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+/* ===================== DESIGN TOKENS ===================== */
 :root {
   --lavender: #C9CFFA;
   --black: #111111;
@@ -7,6 +17,7 @@
   --input-placeholder: #9CA3AF;
 }
 
+/* ===================== GLOBAL RESET ===================== */
 * {
   box-sizing: border-box;
 }
@@ -22,6 +33,7 @@ body {
   padding: 24px;
 }
 
+/* ===================== LOGIN LAYOUT ===================== */
 .login-wrap {
   width: 100%;
   max-width: 420px;
@@ -45,6 +57,7 @@ h1 {
   margin: 8px 0 24px;
 }
 
+/* ===================== CARD ===================== */
 .card {
   background: var(--lavender);
   border-radius: 16px;
@@ -52,6 +65,7 @@ h1 {
   text-align: left;
 }
 
+/* ===================== ERROR BANNER ===================== */
 .error-banner {
   display: none;
   align-items: center;
@@ -81,6 +95,7 @@ h1 {
   padding: 0;
 }
 
+/* ===================== FORM ===================== */
 label {
   display: block;
   font-size: 13px;

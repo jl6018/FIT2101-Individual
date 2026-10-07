@@ -1,3 +1,12 @@
+<!--
+    Reports Page — Symph Web Application
+    Displays time contribution, hours per task, and sprint burndown charts.
+    Includes a time range selector, team contribution table, bar chart,
+    SVG burndown chart, and a member history modal.
+
+    @author Lim Jia Li
+    @version 17.0.16
+-->
 <!DOCTYPE html>
 <html lang="en">
 
@@ -6,6 +15,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Symph — Reports</title>
     <link rel="stylesheet" href="style-reports-page.css">
+
+    <!-- Prevent caching so reports always reflect the latest data -->
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -14,12 +25,13 @@
 <body>
 
 <div class="app-shell">
-    <!-- SIDEBAR -->
+    <!-- ===================== SIDEBAR ===================== -->
     <aside class="sidebar">
         <a class="logo" href="index-admin-page.html">
             <img src="images/symph-logo.png" alt="Symph" />
         </a>
 
+        <!-- Primary navigation menu -->
         <nav class="nav">
             <a href="index-admin-page.html" class="nav-item">
                 <span class="dot"></span> Sprint Board
@@ -35,14 +47,16 @@
             </a>
         </nav>
 
+        <!-- Signed-in user info and logout -->
         <div class="sidebar-footer">
             <div class="signed-in">Signed in as <strong id="signedInName">Admin</strong></div>
             <button id="logoutBtn" class="switch-account-btn">Log out</button>
         </div>
     </aside>
 
-    <!-- MAIN CONTENT -->
+    <!-- ===================== MAIN CONTENT ===================== -->
     <main class="main">
+        <!-- Top bar with search and icons -->
         <div class="top-bar">
             <span class="top-bar-badge">Admin</span>
             <input type="text" class="top-bar-search" placeholder="Search">
@@ -57,7 +71,7 @@
         <h1>Reports</h1>
         <p class="page-subtitle">Time contribution, hours per task and sprint burndown</p>
 
-        <!-- TIME RANGE -->
+        <!-- ===================== TIME RANGE ===================== -->
         <section class="panel">
             <h2>Time range</h2>
             <div class="time-range-row" id="timeRangeRow">
@@ -67,7 +81,7 @@
             </div>
         </section>
 
-        <!-- TEAM CONTRIBUTION -->
+        <!-- ===================== TEAM CONTRIBUTION ===================== -->
         <section class="panel">
             <h2 id="contributionTitle">Team contribution — last 7 days</h2>
             <p class="muted">Average hours per day = total hours logged in this range ÷ days that member
@@ -86,14 +100,14 @@
             </table>
         </section>
 
-        <!-- HOURS PER TASK -->
+        <!-- ===================== HOURS PER TASK ===================== -->
         <section class="panel">
             <h2>Hours per task</h2>
             <p class="muted">Total logged hours against each task in this sprint.</p>
             <div class="bar-chart" id="taskHoursChart"></div>
         </section>
 
-        <!-- SPRINT BURNDOWN -->
+        <!-- ===================== SPRINT BURNDOWN ===================== -->
         <section class="panel">
             <h2>Sprint burndown</h2>
             <p class="muted">Illustrative example — actual vs projected velocity across the sprint.</p>

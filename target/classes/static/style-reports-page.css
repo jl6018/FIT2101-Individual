@@ -1,3 +1,14 @@
+/**
+ * Reports Page Stylesheet — Symph Web Application
+ * Defines the visual layout and styling for the Reports page, including
+ * the sidebar, top bar, time range selector, contribution table, bar
+ * charts, sprint burndown chart, member history modal, and logout modal.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+/* ===================== DESIGN TOKENS ===================== */
 :root {
     --lavender: #C9CFFA;
     --lavender-dark: #B4BBF5;
@@ -8,6 +19,7 @@
     --danger-dark: #B91C1C;
 }
 
+/* ===================== GLOBAL RESET ===================== */
 * {
     box-sizing: border-box;
 }
@@ -20,7 +32,6 @@ body {
 }
 
 /* ===================== APP SHELL ===================== */
-
 .app-shell {
     display: flex;
     min-height: 100vh;
@@ -104,7 +115,6 @@ body {
 .switch-account-btn:hover { background: #F3F4F6; }
 
 /* ===================== TOP BAR ===================== */
-
 .top-bar {
     display: flex;
     align-items: center;
@@ -165,7 +175,6 @@ body {
 }
 
 /* ===================== MAIN CONTENT ===================== */
-
 .main {
     flex-grow: 1;
     padding: 32px 40px;
@@ -203,7 +212,6 @@ h1 {
 }
 
 /* ===================== TIME RANGE ===================== */
-
 .time-range-row {
     display: flex;
     gap: 8px;
@@ -226,7 +234,6 @@ h1 {
 .range-btn.active { background: var(--black); color: #fff; }
 
 /* ===================== CONTRIBUTION TABLE ===================== */
-
 .contribution-table {
     width: 100%;
     border-collapse: collapse;
@@ -277,7 +284,6 @@ h1 {
 }
 
 /* ===================== BAR CHART ===================== */
-
 .bar-chart {
     display: flex;
     align-items: flex-end;
@@ -325,7 +331,6 @@ h1 {
 }
 
 /* ===================== BURNDOWN ===================== */
-
 .burndown-wrap {
     width: 100%;
     overflow-x: auto;
@@ -365,7 +370,6 @@ h1 {
 .legend-swatch.actual { background: #4F7FFF; }
 
 /* ===================== MODAL ===================== */
-
 .modal-overlay {
     display: none;
     position: fixed;
@@ -463,7 +467,6 @@ h1 {
 .btn-danger:hover { background: var(--danger-dark); }
 
 /* ===================== LOGO IMAGE ===================== */
-
 .logo {
     display: inline-block;
     line-height: 0;

@@ -1,3 +1,12 @@
+<!--
+    User Board Page — Symph Web Application
+    Provides a read-only Kanban board for employees. Includes a top navbar,
+    project header, sprint tabs, and a read-only task modal. All editing
+    controls are disabled for this view.
+
+    @author Lim Jia Li
+    @version 17.0.16
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,18 +16,21 @@
 
     <link rel="stylesheet" href="style-user-page.css"/>
 
+    <!-- Prevent caching so the board always reflects the latest data -->
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 </head>
 <body>
 
+<!-- ===================== NAVBAR ===================== -->
 <nav class="navbar">
     <div class="logo"><img src="images/symph-logo.png" alt="Symph" /></div>
     <div class="search-bar">
         <input type="text" placeholder="Search" />
         <span class="search-icon">🔍</span>
     </div>
+    <!-- Notification, avatar, and logout controls -->
     <div class="navbar-icons">
         <span>📢</span>
         <span>🔔</span>
@@ -28,10 +40,12 @@
     </div>
 </nav>
 
+<!-- ===================== PROJECT HEADER ===================== -->
 <header class="project-header">
     <div class="project-header-left">
         <h1>Project Name</h1>
     </div>
+    <!-- Member avatars and share control -->
     <div class="project-header-right">
         <div class="avatar-stack">
             <div class="avatar avatar-teal">T</div>
@@ -44,15 +58,17 @@
     </div>
 </header>
 
+<!-- ===================== SPRINT TABS ===================== -->
 <div class="sprint-tabs">
     <button class="sprint-tab active" data-sprint="1">Sprint 1</button>
     <button class="sprint-tab" data-sprint="2">Sprint 2</button>
     <button class="sprint-tab" data-sprint="3">Sprint 3</button>
 </div>
 
+<!-- Kanban board columns rendered dynamically -->
 <main class="board" id="board"></main>
 
-<!-- ===================== MODAL: View task (read-only, admin-style) ===================== -->
+<!-- ===================== MODAL: View Task (read-only) ===================== -->
 <div class="modal-overlay" id="taskModalOverlay">
     <div class="modal" role="dialog" aria-modal="true" aria-label="Task details">
         <div class="modal-header">
@@ -75,6 +91,7 @@
                 <input class="modal-title-input" id="modalTitle" type="text" readonly />
             </div>
 
+            <!-- Read-only metadata pills -->
             <div class="modal-toolbar">
                 <div class="toolbar-group">
                     <button class="pill" type="button" disabled>
@@ -94,6 +111,7 @@
 
             <div class="modal-summary" id="modalSummary"></div>
 
+            <!-- Read-only description -->
             <section class="modal-section">
                 <h3>Description</h3>
                 <textarea class="modal-description" id="modalDescription" readonly placeholder="No description"></textarea>

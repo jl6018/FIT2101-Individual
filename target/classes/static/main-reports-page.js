@@ -1,3 +1,13 @@
+/**
+ * Reports Page — Symph Web Application
+ * Compiled output of main-reports-page.ts.
+ * Handles time contribution tables, hours-per-task bar charts, sprint burndown
+ * charts, and the member history modal.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
 window.addEventListener('pageshow', (event) => {
     if (event.persisted && sessionStorage.getItem('loggedIn') !== 'true') {
         window.location.href = 'index-login-page.html';
@@ -6,11 +16,13 @@ window.addEventListener('pageshow', (event) => {
 
 "use strict";
 
+// ===================== AUTH GUARD =====================
 if (sessionStorage.getItem('loggedIn') !== 'true') {
     window.location.href = 'index-login-page.html';
     throw new Error('Not logged in');
 }
 
+// ===================== SHOW CURRENT USER =====================
 const nameEl = document.getElementById('signedInName');
 if (nameEl) {
     const name = sessionStorage.getItem('name');
@@ -20,6 +32,13 @@ if (nameEl) {
     }
 }
 
+/**
+ * Retrieves a DOM element by its ID and throws if not found.
+ *
+ * @param {string} id      The ID of the element to retrieve
+ * @returns {HTMLElement}  The matching DOM element
+ * @throws {Error}         if no element with the given ID exists
+ */
 function requireElement(id) {
     const el = document.getElementById(id);
     if (!el) {
@@ -45,6 +64,12 @@ logoutOverlay.addEventListener('click', (e) => {
 });
 
 // ===================== AVATAR COLOR =====================
+/**
+ * Generates a deterministic HSL colour for a member avatar.
+ *
+ * @param {number} index The member's index
+ * @returns {string}     An HSL colour string
+ */
 function getAvatarColor(index) {
     const hue = (index * 137) % 360;
     return `hsl(${hue}, 65%, 55%)`;
@@ -55,6 +80,9 @@ let TEAM_MEMBERS = [];
 let SESSIONS = [];
 
 // ===================== BACKEND LOADERS =====================
+/**
+ * Loads all employees from the backend and caches them in TEAM_MEMBERS.
+ */
 async function loadTeamMembers() {
     try {
         const res = await fetch('/api/users');
@@ -78,6 +106,9 @@ async function loadTeamMembers() {
     }
 }
 
+/**
+ * Loads all time logs from the backend and caches them in SESSIONS.
+ */
 async function loadSessions() {
     try {
         const res = await fetch('/api/timelogs');
@@ -125,7 +156,18 @@ const memberModalTotal = requireElement('memberModalTotal');
 let selectedWeeks = 1;
 
 // ===================== MODAL OPEN/CLOSE =====================
+/**
+ * Shows a modal overlay by adding the "visible" class.
+ *
+ * @param {HTMLElement} overlay The overlay element to show
+ */
 function openModal(overlay) { overlay.classList.add('visible'); }
+
+/**
+ * Hides a modal overlay by removing the "visible" class.
+ *
+ * @param {HTMLElement} overlay The overlay element to hide
+ */
 function closeModal(overlay) { overlay.classList.remove('visible'); }
 
 closeMemberModalBtn.addEventListener('click', () => closeModal(memberOverlay));
@@ -145,6 +187,13 @@ timeRangeRow.querySelectorAll('.range-btn').forEach((btn) => {
 });
 
 // ===================== CONTRIBUTION TABLE =====================
+/**
+ * Computes contribution statistics for a member over a period.
+ *
+ * @param {string} memberName  The member's name
+ * @param {number} maxDaysAgo  The maximum number of days to look back
+ * @returns {Object}           The member's aggregated statistics
+ */
 function computeStats(memberName, maxDaysAgo) {
     const sessions = SESSIONS.filter((s) => s.member === memberName && s.daysAgo < maxDaysAgo);
     const totalHours = sessions.reduce((sum, s) => sum + s.hours, 0);
@@ -154,6 +203,9 @@ function computeStats(memberName, maxDaysAgo) {
     return { totalHours, daysWorked, avgPerDay };
 }
 
+/**
+ * Renders the team contribution table.
+ */
 function renderContributionTable() {
     const maxDaysAgo = selectedWeeks * 7;
     contributionTitle.textContent = `Team contribution — last ${maxDaysAgo} days`;
@@ -184,6 +236,12 @@ function renderContributionTable() {
     });
 }
 
+/**
+ * Opens the member history modal for a given member.
+ *
+ * @param {Object} member     The member to display history for
+ * @param {number} maxDaysAgo The maximum number of days to look back
+ */
 function openMemberModal(member, maxDaysAgo) {
     memberModalName.textContent = member.name;
     memberModalTeam.textContent = `${member.team} — logged sessions`;
@@ -221,6 +279,9 @@ function openMemberModal(member, maxDaysAgo) {
 // ===================== TASK HOURS CHART =====================
 const TASK_BAR_COLORS = ['#8B5FBF', '#8B5FBF', '#F5C518', '#F5C518', '#F06478', '#F06478', '#2ED4C6'];
 
+/**
+ * Renders the hours-per-task bar chart.
+ */
 function renderTaskHoursChart() {
     const maxHours = Math.max(...TASK_HOURS.map((t) => t.hours), 1);
     taskHoursChart.innerHTML = '';
@@ -239,6 +300,9 @@ function renderTaskHoursChart() {
 }
 
 // ===================== BURNDOWN =====================
+/**
+ * Renders the sprint burndown chart as an SVG.
+ */
 function renderBurndownChart() {
     const width = 600, height = 260;
     const paddingLeft = 40, paddingBottom = 30, paddingTop = 10;
@@ -246,6 +310,12 @@ function renderBurndownChart() {
     const plotHeight = height - paddingBottom - paddingTop;
     const maxValue = Math.max(...BURNDOWN_PROJECTED, ...BURNDOWN_ACTUAL);
 
+    /**
+     * Converts an array of values into an SVG polyline points string.
+     *
+     * @param {Array<number>} values The values to plot
+     * @returns {string}             A points string for an SVG polyline
+     */
     function toPoints(values) {
         return values.map((v, i) => {
             const x = paddingLeft + (i / (values.length - 1)) * plotWidth;
@@ -309,6 +379,9 @@ function renderBurndownChart() {
 }
 
 // ===================== INIT =====================
+/**
+ * Initializes the reports page by loading data and rendering all charts.
+ */
 async function init() {
     await loadTeamMembers();
     await loadSessions();

@@ -2,6 +2,15 @@
 // Compile with:
 //   npx tsc main-team-management-page.ts --module esnext --target esnext --strict --ignoreConfig
 
+/**
+ * Team Management Page — Symph Web Application
+ * Handles adding and removing team members, loading users and team
+ * memberships from the backend, and the logout flow.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
 // ===================== BFCACHE FIX =====================
 window.addEventListener('pageshow', (event) => {
     if ((event as PageTransitionEvent).persisted && sessionStorage.getItem('loggedIn') !== 'true') {
@@ -25,6 +34,13 @@ if (nameEl) {
     }
 }
 
+/**
+ * Retrieves a DOM element by its ID and throws if not found.
+ *
+ * @param id The ID of the element to retrieve
+ * @returns  The element cast to the expected type
+ * @throws Error if no element with the given ID exists
+ */
 function requireElement<T extends HTMLElement>(id: string): T {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
@@ -67,7 +83,18 @@ let rowPendingRemoval: HTMLTableRowElement | null = null;
 let registeredUsers: { id: number; name: string; email: string; role: string }[] = [];
 
 // ===================== MODAL OPEN/CLOSE =====================
+/**
+ * Shows a modal overlay by adding the "visible" class.
+ *
+ * @param overlay The overlay element to show
+ */
 function openModal(overlay: HTMLDivElement): void { overlay.classList.add('visible'); }
+
+/**
+ * Hides a modal overlay by removing the "visible" class.
+ *
+ * @param overlay The overlay element to hide
+ */
 function closeModal(overlay: HTMLDivElement): void { overlay.classList.remove('visible'); }
 
 addMemberBtn.addEventListener('click', () => openModal(addMemberOverlay));
@@ -82,6 +109,12 @@ closeAddMemberBtn.addEventListener('click', () => closeModal(addMemberOverlay));
 // ===================== TOAST =====================
 let toastTimeoutId: number | undefined;
 
+/**
+ * Displays a toast notification for 3 seconds.
+ *
+ * @param message The message to display
+ * @param type    Whether the toast is a success or error notification
+ */
 function showToast(message: string, type: 'success' | 'error' = 'success'): void {
     toast.textContent = message;
     toast.classList.remove('success', 'error');
@@ -92,6 +125,9 @@ function showToast(message: string, type: 'success' | 'error' = 'success'): void
 }
 
 // ===================== LOAD USERS =====================
+/**
+ * Loads all registered employees and populates the member selection dropdown.
+ */
 async function loadMembers(): Promise<void> {
     try {
         const res = await fetch('/api/users');
@@ -113,6 +149,9 @@ async function loadMembers(): Promise<void> {
 }
 
 // ===================== LOAD TABLE (ONLY ASSIGNED) =====================
+/**
+ * Loads all users with a team assignment and renders them in the members table.
+ */
 async function loadTeamMemberships(): Promise<void> {
     try {
         const res = await fetch('/api/users');

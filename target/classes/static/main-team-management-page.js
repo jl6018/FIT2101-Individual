@@ -1,6 +1,14 @@
+/**
+ * Team Management Page — Symph Web Application
+ * Compiled from main-team-management-page.ts — do not hand-edit.
+ * Handles adding and removing team members, loading users and team
+ * memberships from the backend, and the logout flow.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
 "use strict";
-// main-team-management-page.js
-// Compiled from main-team-management-page.ts — do not hand-edit.
 
 // ===================== BFCACHE FIX =====================
 window.addEventListener('pageshow', (event) => {
@@ -25,6 +33,13 @@ if (nameEl) {
     }
 }
 
+/**
+ * Retrieves a DOM element by its ID and throws if not found.
+ *
+ * @param {string} id      The ID of the element to retrieve
+ * @returns {HTMLElement}  The matching DOM element
+ * @throws {Error}         if no element with the given ID exists
+ */
 function requireElement(id) {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
@@ -67,7 +82,18 @@ let rowPendingRemoval = null;
 let registeredUsers = [];
 
 // ===================== MODAL OPEN/CLOSE =====================
+/**
+ * Shows a modal overlay by adding the "visible" class.
+ *
+ * @param {HTMLElement} overlay The overlay element to show
+ */
 function openModal(overlay) { overlay.classList.add('visible'); }
+
+/**
+ * Hides a modal overlay by removing the "visible" class.
+ *
+ * @param {HTMLElement} overlay The overlay element to hide
+ */
 function closeModal(overlay) { overlay.classList.remove('visible'); }
 
 addMemberBtn.addEventListener('click', () => openModal(addMemberOverlay));
@@ -82,6 +108,12 @@ closeAddMemberBtn.addEventListener('click', () => closeModal(addMemberOverlay));
 // ===================== TOAST =====================
 let toastTimeoutId;
 
+/**
+ * Displays a toast notification for 3 seconds.
+ *
+ * @param {string} message           The message to display
+ * @param {string} [type='success']  Whether the toast is a success or error notification
+ */
 function showToast(message, type = 'success') {
     toast.textContent = message;
     toast.classList.remove('success', 'error');
@@ -92,6 +124,9 @@ function showToast(message, type = 'success') {
 }
 
 // ===================== LOAD USERS =====================
+/**
+ * Loads all registered employees and populates the member selection dropdown.
+ */
 async function loadMembers() {
     try {
         const res = await fetch('/api/users');
@@ -113,6 +148,9 @@ async function loadMembers() {
 }
 
 // ===================== LOAD TABLE =====================
+/**
+ * Loads all users with a team assignment and renders them in the members table.
+ */
 async function loadTeamMemberships() {
     try {
         const res = await fetch('/api/users');

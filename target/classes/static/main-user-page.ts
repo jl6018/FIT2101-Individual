@@ -2,6 +2,16 @@
 // Compile with:
 //   npx tsc main-user-page.ts --module esnext --target esnext --strict --ignoreConfig
 
+/**
+ * User Board Page — Symph Web Application
+ * Provides a read-only Kanban board for employees. Loads tasks scoped to the
+ * employee's team or sprint, handles sprint tab switching, and displays a
+ * read-only task modal.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
 // ===================== EMPLOYEE GUARD =====================
 window.addEventListener("pageshow", (event) => {
     if ((event as PageTransitionEvent).persisted && sessionStorage.getItem("loggedIn") !== "true") {
@@ -23,8 +33,10 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     const API_BASE = "http://localhost:8080/api/tasks";
 
     // ===================== TYPES =====================
+    /** Identifiers for the five board columns. */
     type ColumnId = "PRODUCT_BACKLOG" | "TO_DO" | "IN_PROGRESS" | "IN_REVIEW" | "COMPLETED";
 
+    /** Front-end representation of a task on the board. */
     type Task = {
         id: string;
         column: ColumnId;
@@ -34,6 +46,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         estimateHours: number;
     };
 
+    /** Shape of a task as returned by the backend API. */
     type BackendTask = {
         id: number;
         name: string;
@@ -45,12 +58,25 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     };
 
     // ===================== HELPERS =====================
+    /**
+     * Retrieves a DOM element by its ID and throws if not found.
+     *
+     * @param id The ID of the element to retrieve
+     * @returns  The element cast to the expected type
+     * @throws Error if no element with the given ID exists
+     */
     function requireElement<T extends HTMLElement>(id: string): T {
         const el = document.getElementById(id);
         if (!el) throw new Error(`Missing element: ${id}`);
         return el as T;
     }
 
+    /**
+     * Escapes HTML special characters to prevent XSS injection.
+     *
+     * @param text The raw string to escape
+     * @returns    The escaped string
+     */
     function escapeHtml(text: string): string {
         return text
             .replace(/&/g, "&amp;")
@@ -60,6 +86,12 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             .replace(/'/g, "&#39;");
     }
 
+    /**
+     * Formats an ISO date string into a short badge label.
+     *
+     * @param isoDate The ISO date string (YYYY-MM-DD)
+     * @returns        A string such as "5 Sep"
+     */
     function formatDateBadge(isoDate: string): string {
         const date = new Date(`${isoDate}T00:00:00`);
         return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
@@ -116,6 +148,11 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     });
 
     // ===================== BACKEND SYNC =====================
+    /**
+     * Fetches tasks scoped to the employee's team or current sprint.
+     *
+     * @returns A promise resolving to an array of Tasks
+     */
     async function fetchTasks(): Promise<Task[]> {
         try {
             const team = sessionStorage.getItem("team") || "";
@@ -153,6 +190,12 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     // ===================== RENDER =====================
     const CLOCK_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>`;
 
+    /**
+     * Renders a single task card as HTML.
+     *
+     * @param task The task to render
+     * @returns    The card's HTML string
+     */
     function renderCard(task: Task): string {
         const badges = [
             task.dueDate ? `<span class="date-badge" title="Due date">${CLOCK_ICON} ${formatDateBadge(task.dueDate)}</span>` : "",
@@ -172,6 +215,9 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
       </div>`;
     }
 
+    /**
+     * Renders the full board with all columns and their cards.
+     */
     function renderBoard(): void {
         board.innerHTML = COLUMNS.map((column) => {
             const cards = tasks.filter((t) => t.column === column.id);
@@ -194,6 +240,11 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
     let activeTaskId: string | null = null;
 
+    /**
+     * Opens the read-only task modal with the given task's details.
+     *
+     * @param task The task to display
+     */
     function openModal(task: Task): void {
         activeTaskId = task.id;
         modalColumn.value = task.column;
@@ -212,6 +263,9 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         overlay.classList.add("visible");
     }
 
+    /**
+     * Closes the read-only task modal.
+     */
     function closeModal(): void {
         overlay.classList.remove("visible");
     }
@@ -237,6 +291,10 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     });
 
     // ===================== SPRINT TABS (FUNCTIONAL + PERSIST) =====================
+    /**
+     * Wires up click handlers for the sprint tab buttons and persists the
+     * selected sprint in sessionStorage.
+     */
     function initSprintTabs(): void {
         const tabs = document.querySelectorAll<HTMLButtonElement>(".sprint-tab");
 
@@ -265,6 +323,9 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     // ===================== INIT =====================
+    /**
+     * Initializes the user board page by loading tasks and wiring UI.
+     */
     async function init(): Promise<void> {
         initSprintTabs();
         tasks = await fetchTasks();

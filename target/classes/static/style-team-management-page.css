@@ -1,3 +1,14 @@
+/**
+ * Team Management Page Stylesheet — Symph Web Application
+ * Defines the visual layout and styling for the Team Management page,
+ * including the sidebar, main content, members table, add/remove member
+ * modals, toast notifications, and success/error variants.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+/* ===================== DESIGN TOKENS ===================== */
 :root {
     --lavender: #C9CFFA;
     --lavender-dark: #B4BBF5;
@@ -8,6 +19,7 @@
     --danger-dark: #B91C1C;
 }
 
+/* ===================== GLOBAL RESET ===================== */
 * {
     box-sizing: border-box;
 }
@@ -20,7 +32,6 @@ body {
 }
 
 /* ===================== APP SHELL ===================== */
-
 .app-shell {
     display: flex;
     min-height: 100vh;
@@ -104,7 +115,6 @@ body {
 .switch-account-btn:hover { background: #F3F4F6; }
 
 /* ===================== MAIN CONTENT ===================== */
-
 .main {
     flex-grow: 1;
     padding: 32px 40px;
@@ -137,6 +147,7 @@ h1 {
 .btn-primary:hover { background: #2a2a2a; }
 .btn-primary.full-width { width: 100%; }
 
+/* ===================== MEMBERS TABLE ===================== */
 .members-table {
     width: 100%;
     border-collapse: collapse;
@@ -177,7 +188,6 @@ h1 {
 .remove-btn:hover { background: #FEE2E2; }
 
 /* ===================== MODALS ===================== */
-
 .modal-overlay {
     display: none;
     position: fixed;
@@ -228,6 +238,7 @@ h1 {
     margin: 0 0 20px;
 }
 
+/* ===================== FORM ===================== */
 .form-field { margin-bottom: 16px; }
 
 label {
@@ -256,6 +267,7 @@ select:focus {
     outline-offset: 1px;
 }
 
+/* ===================== MODAL BUTTONS ===================== */
 .modal-actions {
     display: flex;
     gap: 10px;
@@ -291,7 +303,6 @@ select:focus {
 .btn-danger:hover { background: var(--danger-dark); }
 
 /* ===================== TOAST ===================== */
-
 .toast {
     position: fixed;
     bottom: 24px;

@@ -1,3 +1,13 @@
+/**
+ * Log Time Page Stylesheet — Symph Web Application
+ * Defines the styling for the Log Time modal, including the overlay,
+ * form fields, and primary submit button.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+/* ===================== DESIGN TOKENS ===================== */
 :root {
     --lavender: #C9CFFA;
     --black: #111111;
@@ -5,6 +15,7 @@
     --border: #E5E7EB;
 }
 
+/* ===================== GLOBAL RESET ===================== */
 * {
     box-sizing: border-box;
 }
@@ -16,6 +27,7 @@ body {
     color: var(--black);
 }
 
+/* ===================== MODAL ===================== */
 .modal-overlay {
     display: none;
     position: fixed;
@@ -68,6 +80,7 @@ body {
     margin: 0 0 20px;
 }
 
+/* ===================== FORM ===================== */
 .form-field {
     margin-bottom: 16px;
 }
@@ -96,6 +109,7 @@ input:focus {
     outline-offset: 1px;
 }
 
+/* ===================== BUTTONS ===================== */
 .btn-primary {
     padding: 12px 20px;
     border: none;
