@@ -130,13 +130,25 @@ public class TaskController {
     }
 
     /**
-     * Deletes a task from the database by its ID.
+     * US11: Deletes a task. Only an ADMIN caller may do this.
+     * The caller's role is passed via the "X-Role" header (set by the frontend
+     * after login). This is a lightweight guard, not full authentication.
      *
-     * @param id The ID of the task to delete
+     * @param id    The ID of the task to delete
+     * @param role  The caller's role, from the X-Role header
+     * @return      204 No Content on success, 403 Forbidden if not admin
      */
     @DeleteMapping("/{id}")
-    public void deleteTask(@PathVariable Long id) {
+    public ResponseEntity<?> deleteTask(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-Role", required = false) String role) {
+
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            return ResponseEntity.status(403).body("Only admins can delete tasks");
+        }
+
         taskService.deleteTask(id);
+        return ResponseEntity.noContent().build();
     }
 
     /**
