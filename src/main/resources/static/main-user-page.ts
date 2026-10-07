@@ -5,8 +5,9 @@
 /**
  * User Board Page — Symph Web Application
  * Provides a read-only Kanban board for employees. Loads tasks scoped to the
- * current sprint, handles sprint tab switching, and displays a read-only
- * task modal.
+ * current sprint, handles sprint tab switching, live search filtering, and
+ * displays a read-only task modal. The signed-in user's name and initials
+ * are pulled from sessionStorage so the header reflects the real person.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -89,6 +90,16 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
     }
 
+    /** Returns up to two uppercase initials from a full name. */
+    function initials(name: string): string {
+        return name
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part.charAt(0).toUpperCase())
+            .join("");
+    }
+
     const COLUMNS: { id: ColumnId; name: string }[] = [
         { id: "PRODUCT_BACKLOG", name: "Product Backlog" },
         { id: "TO_DO", name: "To Do" },
@@ -99,29 +110,41 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
     // ===================== STATE =====================
     let tasks: Task[] = [];
+    let searchTerm = "";
 
     const savedSprintId = sessionStorage.getItem("currentSprintId");
     let currentSprintId = savedSprintId && savedSprintId !== "" ? savedSprintId : "1";
     let currentSprintNumericId: number | null = null;
 
     const board = requireElement<HTMLElement>("board");
+    const searchInput = document.getElementById("searchInput") as HTMLInputElement | null;
 
     // ===================== SHOW CURRENT USER =====================
     const nameEl = document.getElementById("signedInName");
-    if (nameEl) {
-        const name = sessionStorage.getItem("name");
-        const role = sessionStorage.getItem("role");
-        const team = sessionStorage.getItem("team");
+    const avatarEl = document.getElementById("userAvatar");
 
-        if (role === "ADMIN") {
-            nameEl.textContent = name ? `${name} (Admin)` : "Admin";
-        } else if (name && team) {
-            nameEl.textContent = `${name} (${team})`;
-        } else if (name) {
-            nameEl.textContent = name;
-        } else if (team) {
-            nameEl.textContent = team;
+    const storedName = sessionStorage.getItem("name") || "";
+    const storedRole = sessionStorage.getItem("role") || "";
+    const storedTeam = sessionStorage.getItem("team") || "";
+
+    if (nameEl) {
+        if (storedRole === "ADMIN") {
+            nameEl.textContent = storedName ? `${storedName} (Admin)` : "Admin";
+        } else if (storedName && storedTeam) {
+            nameEl.textContent = `${storedName} (${storedTeam})`;
+        } else if (storedName) {
+            nameEl.textContent = storedName;
+        } else if (storedTeam) {
+            nameEl.textContent = storedTeam;
+        } else {
+            nameEl.textContent = "Employee";
         }
+    }
+
+    if (avatarEl) {
+        const label = initials(storedName) || (storedName ? storedName.charAt(0).toUpperCase() : "?");
+        avatarEl.textContent = label;
+        if (storedName) avatarEl.title = storedName;
     }
 
     // ===================== LOGOUT MODAL =====================
@@ -246,8 +269,14 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     function renderBoard(): void {
+        const term = searchTerm.toLowerCase();
+
         board.innerHTML = COLUMNS.map((column) => {
-            const cards = tasks.filter((t) => t.column === column.id);
+            const cards = tasks.filter((t) => {
+                if (t.column !== column.id) return false;
+                if (term && !t.title.toLowerCase().includes(term)) return false;
+                return true;
+            });
             return `
       <section class="column" data-column="${column.id}">
         <h2>${column.name}</h2>
@@ -255,6 +284,20 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
       </section>`;
         }).join("");
     }
+
+    // ===================== SEARCH =====================
+    searchInput?.addEventListener("input", (event) => {
+        searchTerm = (event.target as HTMLInputElement).value.trim();
+        renderBoard();
+    });
+
+    searchInput?.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (event.key === "Escape") {
+            searchInput.value = "";
+            searchTerm = "";
+            renderBoard();
+        }
+    });
 
     // ===================== TASK MODAL (READ-ONLY) =====================
     const overlay = document.getElementById("taskModalOverlay");

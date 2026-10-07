@@ -1,8 +1,7 @@
 <!--
     User Board Page — Symph Web Application
     Provides a read-only Kanban board for employees. Includes a top navbar,
-    project header, sprint tabs, and a read-only task modal. All editing
-    controls are disabled for this view.
+    project header, sprint tabs, live search, and a read-only task modal.
 
     @author Lim Jia Li
     @version 17.0.16
@@ -27,7 +26,7 @@
 <nav class="navbar">
     <div class="logo"><img src="images/symph-logo.png" alt="Symph" /></div>
     <div class="search-bar">
-        <input type="text" placeholder="Search" />
+        <input type="text" id="searchInput" placeholder="Search" aria-label="Search tasks" />
         <span class="search-icon">🔍</span>
     </div>
     <!-- Notification, avatar, and logout controls -->
@@ -35,7 +34,7 @@
         <span>📢</span>
         <span>🔔</span>
         <span id="signedInName" style="font-size: 0.85rem; margin-right: 8px;">Employee</span>
-        <div class="avatar avatar-dark">U</div>
+        <div class="avatar avatar-dark" id="userAvatar">?</div>
         <button id="logoutBtn" class="logout-btn">Log out</button>
     </div>
 </nav>
@@ -45,15 +44,8 @@
     <div class="project-header-left">
         <h1>Project Name</h1>
     </div>
-    <!-- Member avatars and share control -->
+    <!-- Share button removed; three-dot menu kept -->
     <div class="project-header-right">
-        <div class="avatar-stack">
-            <div class="avatar avatar-teal">T</div>
-            <div class="avatar avatar-pink">H</div>
-            <div class="avatar avatar-gray">B</div>
-            <span class="avatar-more">+2</span>
-        </div>
-        <button class="share-btn">👤+ Share</button>
         <span class="menu-dots">⋯</span>
     </div>
 </header>

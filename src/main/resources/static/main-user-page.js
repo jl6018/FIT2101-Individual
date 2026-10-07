@@ -1,8 +1,9 @@
 /**
  * User Board Page — Symph Web Application
  * Provides a read-only Kanban board for employees. Loads tasks scoped to the
- * current sprint, handles sprint tab switching, and displays a read-only
- * task modal.
+ * current sprint, handles sprint tab switching, live search filtering, and
+ * displays a read-only task modal. The signed-in user's name and initials
+ * are pulled from sessionStorage so the header reflects the real person.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -59,6 +60,16 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
     }
 
+    /** Returns up to two uppercase initials from a full name. */
+    function initials(name) {
+        return name
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part.charAt(0).toUpperCase())
+            .join("");
+    }
+
     const COLUMNS = [
         { id: "PRODUCT_BACKLOG", name: "Product Backlog" },
         { id: "TO_DO", name: "To Do" },
@@ -69,6 +80,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
     // ===================== STATE =====================
     let tasks = [];
+    let searchTerm = "";
 
     const savedSprintId = sessionStorage.getItem("currentSprintId");
     let currentSprintId = savedSprintId && savedSprintId !== "" ? savedSprintId : "1";
@@ -77,23 +89,34 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     let currentSprintNumericId = null;
 
     const board = requireElement("board");
+    const searchInput = document.getElementById("searchInput");
 
     // ===================== SHOW CURRENT USER =====================
     const nameEl = document.getElementById("signedInName");
-    if (nameEl) {
-        const name = sessionStorage.getItem("name");
-        const role = sessionStorage.getItem("role");
-        const team = sessionStorage.getItem("team");
+    const avatarEl = document.getElementById("userAvatar");
 
-        if (role === "ADMIN") {
-            nameEl.textContent = name ? `${name} (Admin)` : "Admin";
-        } else if (name && team) {
-            nameEl.textContent = `${name} (${team})`;
-        } else if (name) {
-            nameEl.textContent = name;
-        } else if (team) {
-            nameEl.textContent = team;
+    const storedName = sessionStorage.getItem("name") || "";
+    const storedRole = sessionStorage.getItem("role") || "";
+    const storedTeam = sessionStorage.getItem("team") || "";
+
+    if (nameEl) {
+        if (storedRole === "ADMIN") {
+            nameEl.textContent = storedName ? `${storedName} (Admin)` : "Admin";
+        } else if (storedName && storedTeam) {
+            nameEl.textContent = `${storedName} (${storedTeam})`;
+        } else if (storedName) {
+            nameEl.textContent = storedName;
+        } else if (storedTeam) {
+            nameEl.textContent = storedTeam;
+        } else {
+            nameEl.textContent = "Employee";
         }
+    }
+
+    if (avatarEl) {
+        const label = initials(storedName) || (storedName ? storedName.charAt(0).toUpperCase() : "?");
+        avatarEl.textContent = label;
+        if (storedName) avatarEl.title = storedName;
     }
 
     // ===================== LOGOUT MODAL =====================
@@ -143,9 +166,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
      *  1. If a real sprint row exists for the tab, fetch its tasks.
      *  2. Otherwise fall back to "all tasks without a sprint" so a brand-new
      *     employee still sees something on the board.
-     *
-     * The results are always filtered to either "matches this sprint" or
-     * "has no sprint at all".
      *
      * @returns {Promise<Array>} A promise resolving to an array of tasks
      */
@@ -246,8 +266,14 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     function renderBoard() {
+        const term = searchTerm.toLowerCase();
+
         board.innerHTML = COLUMNS.map((column) => {
-            const cards = tasks.filter((t) => t.column === column.id);
+            const cards = tasks.filter((t) => {
+                if (t.column !== column.id) return false;
+                if (term && !t.title.toLowerCase().includes(term)) return false;
+                return true;
+            });
             return `
       <section class="column" data-column="${column.id}">
         <h2>${column.name}</h2>
@@ -255,6 +281,20 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
       </section>`;
         }).join("");
     }
+
+    // ===================== SEARCH =====================
+    searchInput?.addEventListener("input", (event) => {
+        searchTerm = event.target.value.trim();
+        renderBoard();
+    });
+
+    searchInput?.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+            searchInput.value = "";
+            searchTerm = "";
+            renderBoard();
+        }
+    });
 
     // ===================== TASK MODAL (READ-ONLY) =====================
     const overlay = document.getElementById("taskModalOverlay");

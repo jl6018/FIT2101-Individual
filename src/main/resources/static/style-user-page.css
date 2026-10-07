@@ -137,41 +137,6 @@ body {
     font-weight: 600;
 }
 
-.project-header-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.avatar-stack {
-    display: flex;
-    align-items: center;
-}
-
-.avatar-stack .avatar {
-    margin-left: -8px;
-    border: 2px solid #7b7fd4;
-}
-
-.avatar-more {
-    margin-left: 8px;
-    font-size: 0.85rem;
-}
-
-.share-btn {
-    background: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 20px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.menu-dots {
-    font-size: 1.4rem;
-    cursor: pointer;
-}
-
 /* ===================== SPRINT TABS ===================== */
 .sprint-tabs {
     display: flex;
