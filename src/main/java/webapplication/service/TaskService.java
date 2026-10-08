@@ -3,9 +3,11 @@ package webapplication.service;
 import webapplication.model.Sprint;
 import webapplication.model.Task;
 import webapplication.model.TaskStatus;
+import webapplication.model.TimeLog;
 import webapplication.model.User;
 import webapplication.repository.SprintRepository;
 import webapplication.repository.TaskRepository;
+import webapplication.repository.TimeLogRepository;
 import webapplication.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
@@ -28,20 +30,24 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
     private final SprintRepository sprintRepository;
+    private final TimeLogRepository timeLogRepository;
 
     /**
      * Parameterized constructor with the required repository dependencies.
      *
-     * @param taskRepository   The repository handling task database operations
-     * @param userRepository   The repository handling user database operations
-     * @param sprintRepository The repository handling sprint database operations
+     * @param taskRepository    The repository handling task database operations
+     * @param userRepository    The repository handling user database operations
+     * @param sprintRepository  The repository handling sprint database operations
+     * @param timeLogRepository The repository handling time log database operations
      */
     public TaskService(TaskRepository taskRepository,
                        UserRepository userRepository,
-                       SprintRepository sprintRepository) {
+                       SprintRepository sprintRepository,
+                       TimeLogRepository timeLogRepository) {
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
         this.sprintRepository = sprintRepository;
+        this.timeLogRepository = timeLogRepository;
     }
 
     /**
@@ -178,11 +184,17 @@ public class TaskService {
     }
 
     /**
-     * Deletes a task from the database by its ID.
+     * Deletes a task and any time logs that reference it.
+     * Time logs are removed first so the DB does not raise a
+     * foreign key constraint violation on task_id.
      *
      * @param id The ID of the task to delete
      */
     public void deleteTask(Long id) {
+        List<TimeLog> logs = timeLogRepository.findByTaskId(id);
+        if (!logs.isEmpty()) {
+            timeLogRepository.deleteAll(logs);
+        }
         taskRepository.deleteById(id);
     }
 

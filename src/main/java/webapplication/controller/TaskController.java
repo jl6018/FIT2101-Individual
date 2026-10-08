@@ -33,22 +33,11 @@ public class TaskController {
         this.taskService = taskService;
     }
 
-    /**
-     * Retrieves all tasks ordered by board position.
-     *
-     * @return A list of all tasks
-     */
     @GetMapping
     public List<Task> getAllTasks() {
         return taskService.getAllTasks();
     }
 
-    /**
-     * Retrieves a single task by its unique ID.
-     *
-     * @param id                The ID of the task to retrieve
-     * @return                  A ResponseEntity with the task on success, or an error message on failure
-     */
     @GetMapping("/{id}")
     public ResponseEntity<?> getTask(@PathVariable Long id) {
         try {
@@ -58,24 +47,11 @@ public class TaskController {
         }
     }
 
-    /**
-     * Creates a new task.
-     *
-     * @param task The Task object to save
-     * @return     The saved Task object with its assigned ID
-     */
     @PostMapping
     public Task createTask(@RequestBody Task task) {
         return taskService.createTask(task);
     }
 
-    /**
-     * Updates an existing task's details.
-     *
-     * @param id                The ID of the task to update
-     * @param task              The Task object containing the updated details
-     * @return                  A ResponseEntity with the updated task, or an error message on failure
-     */
     @PutMapping("/{id}")
     public ResponseEntity<?> updateTask(
             @PathVariable Long id,
@@ -87,13 +63,6 @@ public class TaskController {
         }
     }
 
-    /**
-     * Updates the progress percentage of a task.
-     *
-     * @param id                The ID of the task to update
-     * @param progress          The progress value between 0 and 100
-     * @return                  A ResponseEntity with the updated task, or an error message on failure
-     */
     @PutMapping("/{id}/progress")
     public ResponseEntity<?> updateProgress(
             @PathVariable Long id,
@@ -107,36 +76,23 @@ public class TaskController {
         }
     }
 
-    /**
-     * Retrieves all tasks with a specific status.
-     *
-     * @param status The TaskStatus to filter by
-     * @return       A list of tasks matching the given status
-     */
     @GetMapping("/status/{status}")
     public List<Task> getTasksByStatus(@PathVariable TaskStatus status) {
         return taskService.getTasksByStatus(status);
     }
 
-    /**
-     * Retrieves all tasks belonging to a specific sprint.
-     *
-     * @param sprintId The ID of the sprint
-     * @return         A list of tasks in the given sprint
-     */
     @GetMapping("/sprint/{sprintId}")
     public List<Task> getTasksBySprint(@PathVariable Long sprintId) {
         return taskService.getTasksBySprint(sprintId);
     }
 
     /**
-     * US11: Deletes a task. Only an ADMIN caller may do this.
-     * The caller's role is passed via the "X-Role" header (set by the frontend
-     * after login). This is a lightweight guard, not full authentication.
+     * US11: Deletes a task and its dependent time logs.
+     * Only an ADMIN caller may do this.
      *
      * @param id    The ID of the task to delete
      * @param role  The caller's role, from the X-Role header
-     * @return      204 No Content on success, 403 Forbidden if not admin
+     * @return      204 No Content on success, 403 if not admin, 409 on failure
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteTask(
@@ -147,27 +103,19 @@ public class TaskController {
             return ResponseEntity.status(403).body("Only admins can delete tasks");
         }
 
-        taskService.deleteTask(id);
-        return ResponseEntity.noContent().build();
+        try {
+            taskService.deleteTask(id);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(409).body(e.getMessage());
+        }
     }
 
-    /**
-     * Retrieves the board view grouping tasks by their status.
-     *
-     * @return A map of TaskStatus to lists of tasks
-     */
     @GetMapping("/board")
     public Map<TaskStatus, List<Task>> getBoard() {
         return taskService.getBoardView();
     }
 
-    /**
-     * Assigns a task to a specific user.
-     *
-     * @param id                The ID of the task to assign
-     * @param userId            The ID of the user to assign the task to
-     * @return                  A ResponseEntity with the updated task, or an error message on failure
-     */
     @PutMapping("/{id}/assign")
     public ResponseEntity<?> assignTask(
             @PathVariable Long id,
@@ -179,13 +127,6 @@ public class TaskController {
         }
     }
 
-    /**
-     * Updates the status of a task.
-     *
-     * @param id                The ID of the task to update
-     * @param status            The new TaskStatus
-     * @return                  A ResponseEntity with the updated task, or an error message on failure
-     */
     @PutMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(
             @PathVariable Long id,
@@ -197,12 +138,6 @@ public class TaskController {
         }
     }
 
-    /**
-     * Retrieves all tasks belonging to a specific team.
-     *
-     * @param teamName The name of the team
-     * @return         A list of tasks assigned to the given team
-     */
     @GetMapping("/team/{teamName}")
     public List<Task> getTasksByTeam(@PathVariable String teamName) {
         return taskService.getTasksByTeam(teamName);
