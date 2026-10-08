@@ -1,9 +1,6 @@
 /**
  * Admin Board Page Stylesheet — Symph Web Application
- * Defines the visual layout and styling for the admin Kanban board,
- * including the sidebar, navbar, project header, sprint tabs, board
- * columns, task cards, drag-and-drop states, the task modal, priority
- * badges, and all supporting dialogs (confirm, alert, invite, logout).
+ * Defines the visual layout and styling for the admin Kanban board.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -17,12 +14,16 @@
     font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
+html, body {
+    width: 100%;
+    overflow-x: hidden;
+}
+
 body {
     background-color: #e3e6fa;
     color: #1a1a1a;
 }
 
-/* ===================== SVG DEFAULTS ===================== */
 svg {
     width: 1.1em;
     height: 1.1em;
@@ -34,10 +35,7 @@ svg {
     flex-shrink: 0;
 }
 
-button,
-select,
-input,
-textarea {
+button, select, input, textarea {
     font-family: inherit;
 }
 
@@ -50,11 +48,14 @@ textarea {
 .app-shell {
     display: flex;
     min-height: 100vh;
+    width: 100%;
 }
 
 .app-main {
     flex: 1;
     min-width: 0;
+    margin-left: 220px;
+    transition: margin-left 0.2s ease;
 }
 
 .sidebar {
@@ -64,9 +65,13 @@ textarea {
     flex-direction: column;
     padding: 14px 12px 20px;
     background: linear-gradient(180deg, #6f84e0 0%, #6272cf 100%);
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
     height: 100vh;
+    overflow-y: auto;
+    z-index: 50;
+    transition: width 0.2s ease;
 }
 
 .sidebar-top {
@@ -114,35 +119,20 @@ textarea {
     transition: transform 0.2s ease;
 }
 
-.sidebar {
-    transition: width 0.2s ease;
-}
-
-/* ---- Collapsed sidebar state ---- */
-.sidebar-collapsed .sidebar {
-    width: 60px;
-}
+.sidebar-collapsed .sidebar { width: 60px; }
+.sidebar-collapsed .app-main { margin-left: 60px; }
 
 .sidebar-collapsed .logo,
 .sidebar-collapsed .nav-label,
-.sidebar-collapsed .sidebar-footer {
-    display: none;
-}
+.sidebar-collapsed .sidebar-footer { display: none; }
 
 .sidebar-collapsed .sidebar-top,
-.sidebar-collapsed .nav-item {
-    justify-content: center;
-}
+.sidebar-collapsed .nav-item { justify-content: center; }
 
-.sidebar-collapsed .nav-item {
-    padding: 14px 0;
-}
+.sidebar-collapsed .nav-item { padding: 14px 0; }
 
-.sidebar-collapsed .sidebar-toggle svg {
-    transform: rotate(180deg);
-}
+.sidebar-collapsed .sidebar-toggle svg { transform: rotate(180deg); }
 
-/* ---- Navigation ---- */
 .nav {
     display: flex;
     flex-direction: column;
@@ -164,13 +154,16 @@ textarea {
     font-weight: 400;
 }
 
-.nav-item:hover {
-    background-color: #a6b3f5;
+.nav-item:hover { background-color: #a6b3f5; }
+.nav-item.active { background-color: #d5daf6; font-weight: 700; }
+
+.nav-item:focus {
+    outline: none;
 }
 
-.nav-item.active {
-    background-color: #d5daf6;
-    font-weight: 700;
+.nav-item:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
 }
 
 .dot {
@@ -181,9 +174,7 @@ textarea {
     flex-shrink: 0;
 }
 
-.dot-active {
-    background-color: #f2c94c;
-}
+.dot-active { background-color: #f2c94c; }
 
 .sidebar-footer {
     border-top: 1px solid rgba(0, 0, 0, 0.45);
@@ -192,7 +183,7 @@ textarea {
 
 .signed-in {
     font-size: 0.9rem;
-    margin-bottom: 10px;
+    margin-bottom: 0;
     padding-left: 4px;
 }
 
@@ -200,30 +191,38 @@ textarea {
 .navbar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 32px;
+    gap: 16px;
     padding: 14px 32px;
     background-color: #e3e6fa;
     position: relative;
-    z-index: 20;
+    z-index: 40;
+    min-width: 0;
 }
 
+/* Navbar logo is hidden — the only Symph logo lives in the sidebar */
+.navbar-logo {
+    display: none;
+}
+
+/* ---- Search bar ---- */
 .search-bar {
     flex: 1;
-    max-width: 960px;
-    margin: 0 auto;
+    min-width: 0;
+    max-width: none;
+    margin: 0;
     position: relative;
     color: #1a1a1a;
 }
 
 .search-bar input {
     width: 100%;
-    padding: 11px 150px 11px 44px;
+    padding: 11px 230px 11px 44px;
     border-radius: 8px;
     border: none;
     background: white;
     font-size: 0.9rem;
     font-weight: 700;
+    box-sizing: border-box;
 }
 
 .search-bar input::placeholder {
@@ -238,7 +237,14 @@ textarea {
     pointer-events: none;
 }
 
-/* ---- Team filter dropdown ---- */
+/* ---- Tag filter + team filter: each is a positioning context ---- */
+.tag-filter {
+    position: absolute;
+    right: 110px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
 .team-filter {
     position: absolute;
     right: 6px;
@@ -249,8 +255,8 @@ textarea {
 .team-filter-btn {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 10px;
+    gap: 6px;
+    padding: 6px 8px;
     border: none;
     border-radius: 6px;
     background: none;
@@ -270,11 +276,25 @@ textarea {
     background-color: #e3e6fa;
 }
 
-.team-filter-menu {
-    left: auto;
+/* ---- Popovers: anchor to the right edge of the button ---- */
+.popover.team-filter-menu {
+    position: absolute;
+    top: calc(100% + 8px);
     right: 0;
+    left: auto;
     width: 220px;
+    display: none;
+    flex-direction: column;
     gap: 4px;
+    background-color: #f4f5fd;
+    border-radius: 10px;
+    padding: 14px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+}
+
+.popover.team-filter-menu.visible {
+    display: flex;
 }
 
 .filter-option {
@@ -291,10 +311,7 @@ textarea {
     cursor: pointer;
 }
 
-.filter-option:hover {
-    background-color: #dddfee;
-}
-
+.filter-option:hover { background-color: #dddfee; }
 .filter-option.active {
     background-color: #6672c8;
     color: white;
@@ -310,11 +327,7 @@ textarea {
     display: flex;
     align-items: center;
     gap: 18px;
-}
-
-.nav-icon {
-    width: 26px;
-    height: 26px;
+    flex-shrink: 0;
 }
 
 /* ===== Avatars ===== */
@@ -340,6 +353,87 @@ textarea {
 .avatar-dark { background-color: #000; }
 .avatar-purple { background-color: #5b3db0; }
 
+/* ===================== NAVBAR ACCOUNT MENU ===================== */
+.account-menu-wrap {
+    position: relative;
+}
+
+.account-menu-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.account-menu-btn:focus-visible {
+    outline: 2px solid #1a1a1a;
+    outline-offset: 3px;
+}
+
+.account-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    min-width: 220px;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+    padding: 6px;
+    z-index: 2000;
+}
+
+.account-menu.visible { display: block; }
+
+.account-menu-header {
+    padding: 10px 14px 12px;
+    border-bottom: 1px solid #eef0f5;
+    margin-bottom: 6px;
+}
+
+.account-menu-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a1a1a;
+    line-height: 1.2;
+}
+
+.account-menu-sub {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
+.account-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    background: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1a1a;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+}
+
+.account-menu-item:hover { background: #eef0fb; }
+
+.account-menu-item svg {
+    width: 1.1em;
+    height: 1.1em;
+    color: #5f6699;
+    flex-shrink: 0;
+}
+
 /* ===== Project header ===== */
 .project-header {
     display: flex;
@@ -348,6 +442,8 @@ textarea {
     padding: 16px 32px;
     background-color: #6672c8;
     color: white;
+    position: relative;
+    z-index: 30;
 }
 
 .project-header-left {
@@ -381,9 +477,7 @@ textarea {
     cursor: text;
 }
 
-.project-name-input:hover {
-    border-color: rgba(255, 255, 255, 0.6);
-}
+.project-name-input:hover { border-color: rgba(255, 255, 255, 0.6); }
 
 .project-name-input:focus {
     outline: none;
@@ -401,10 +495,11 @@ textarea {
 .badge {
     background-color: #000;
     color: white;
-    padding: 9px 30px;
+    padding: 9px 24px;
     border-radius: 20px;
     font-size: 0.9rem;
     font-weight: 700;
+    white-space: nowrap;
 }
 
 .project-header-right {
@@ -413,23 +508,69 @@ textarea {
     gap: 16px;
 }
 
-.share-btn {
+/* ===================== PROJECT HEADER ⋯ MENU ===================== */
+.more-menu-wrap { position: relative; }
+
+.more-menu-btn {
+    background: none;
+    border: none;
+    color: #ffffff;
+    font-size: 1.6rem;
+    font-weight: 700;
+    cursor: pointer;
+    line-height: 1;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-family: inherit;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    background: white;
-    color: #1a1a1a;
-    border: none;
-    padding: 10px 18px;
-    border-radius: 6px;
-    font-weight: 700;
-    font-size: 0.95rem;
-    cursor: pointer;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 36px;
 }
 
-.menu-dots {
-    font-size: 1.4rem;
+.more-menu-btn:hover { background: rgba(255, 255, 255, 0.15); }
+
+.more-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 180px;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+    padding: 6px;
+    z-index: 1000;
+}
+
+.more-menu.visible { display: block; }
+
+.more-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    background: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1a1a;
     cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.more-menu-item:hover { background: #eef0fb; }
+
+.more-menu-item svg {
+    width: 1.1em;
+    height: 1.1em;
+    color: #5f6699;
+    flex-shrink: 0;
 }
 
 /* ===== Sprint tabs ===== */
@@ -464,14 +605,22 @@ textarea {
     color: white;
 }
 
+.board-controls-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+
 /* ===== Board ===== */
+/* minmax(0, 1fr) lets each column shrink below its natural width,
+   so 5 columns always fit — no horizontal scrollbar ever appears. */
 .board {
     display: grid;
-    grid-template-columns: repeat(5, minmax(140px, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 16px;
     padding: 32px 40px;
     align-items: start;
-    overflow-x: auto;
+    overflow-x: hidden;
 }
 
 .column {
@@ -481,6 +630,7 @@ textarea {
     border-radius: 24px;
     padding: 24px 16px 16px;
     min-height: 420px;
+    min-width: 0;
 }
 
 .column h2 {
@@ -498,29 +648,18 @@ textarea {
     padding: 14px 14px 46px;
     margin-bottom: 16px;
     font-weight: 400;
+    overflow-wrap: break-word;
 }
 
-.card-list {
-    min-height: 8px;
-}
+.card-list { min-height: 8px; }
 
-/* ---- Drag and drop states ---- */
-.card[draggable="true"] {
-    cursor: grab;
-}
-
-.card.dragging {
-    opacity: 0.4;
-}
-
+.card[draggable="true"] { cursor: grab; }
+.card.dragging { opacity: 0.4; }
 .column.drop-target {
     outline: 2px dashed #6672c8;
     outline-offset: -4px;
 }
-
-.card.drop-before {
-    box-shadow: 0 -4px 0 #6672c8;
-}
+.card.drop-before { box-shadow: 0 -4px 0 #6672c8; }
 
 .card-detailed {
     display: flex;
@@ -554,13 +693,8 @@ textarea {
 
 .card:hover .edit-icon,
 .card-detailed .edit-icon,
-.edit-icon:focus-visible {
-    opacity: 0.9;
-}
-
-.edit-icon:hover {
-    opacity: 1;
-}
+.edit-icon:focus-visible { opacity: 0.9; }
+.edit-icon:hover { opacity: 1; }
 
 .tag {
     padding: 3px 12px;
@@ -626,9 +760,7 @@ textarea {
     padding: 24px;
 }
 
-.modal-overlay.visible {
-    display: flex;
-}
+.modal-overlay.visible { display: flex; }
 
 .modal {
     display: flex;
@@ -698,9 +830,7 @@ textarea {
     padding: 2px 6px;
 }
 
-.modal-title-input::placeholder {
-    color: #000;
-}
+.modal-title-input::placeholder { color: #000; }
 
 .modal-title-input:focus {
     outline: none;
@@ -715,7 +845,6 @@ textarea {
     margin-bottom: 6px;
 }
 
-/* ---- Modal toolbar and pills ---- */
 .modal-toolbar,
 .toolbar-group {
     display: flex;
@@ -729,9 +858,7 @@ textarea {
     margin-bottom: 12px;
 }
 
-.pill-wrap {
-    position: relative;
-}
+.pill-wrap { position: relative; }
 
 .pill {
     display: inline-flex;
@@ -763,7 +890,6 @@ textarea {
     padding: 8px 34px 8px 18px;
 }
 
-/* ---- Popovers ---- */
 .popover {
     display: none;
     position: absolute;
@@ -779,13 +905,9 @@ textarea {
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
 }
 
-.popover.visible {
-    display: flex;
-}
+.popover.visible { display: flex; }
 
-.popover-wide {
-    width: 290px;
-}
+.popover-wide { width: 290px; }
 
 .popover-label {
     font-size: 0.8rem;
@@ -825,7 +947,6 @@ textarea {
     border: 1px solid #8a8fb5;
 }
 
-/* ---- Segmented control ---- */
 .segmented {
     display: flex;
     background-color: #dddfee;
@@ -874,9 +995,7 @@ textarea {
     color: #444;
 }
 
-.modal-section {
-    margin-bottom: 24px;
-}
+.modal-section { margin-bottom: 24px; }
 
 .modal-section h3 {
     font-size: 1.6rem;
@@ -903,9 +1022,7 @@ textarea {
     font-size: 0.75rem;
 }
 
-.modal-description:focus {
-    outline: 2px solid #6672c8;
-}
+.modal-description:focus { outline: 2px solid #6672c8; }
 
 .modal-footer {
     display: flex;
@@ -941,14 +1058,66 @@ textarea {
     cursor: pointer;
 }
 
-.modal-save-btn {
-    background-color: #000;
-    color: white;
+.modal-save-btn { background-color: #000; color: white; }
+.modal-cancel-btn { background-color: #dddfee; color: #000; }
+
+/* ===================== TASK MODAL ⋯ MENU ===================== */
+.modal-more-wrap { position: relative; }
+
+.modal-more-btn {
+    background: none;
+    border: none;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #000;
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 6px;
+    line-height: 1;
+    font-family: inherit;
 }
 
-.modal-cancel-btn {
-    background-color: #dddfee;
-    color: #000;
+.modal-more-btn:hover { background: rgba(0, 0, 0, 0.08); }
+
+.modal-more-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 180px;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+    padding: 6px;
+    z-index: 3000;
+}
+
+.modal-more-menu.visible { display: block; }
+
+.modal-more-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    background: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1a1a;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+}
+
+.modal-more-item:hover { background: #eef0fb; }
+
+.modal-more-item svg {
+    width: 1.1em;
+    height: 1.1em;
+    color: #5f6699;
+    flex-shrink: 0;
 }
 
 /* ===== Toast ===== */
@@ -977,9 +1146,16 @@ textarea {
 /* ===================== RESPONSIVE ===================== */
 @media (max-width: 720px) {
     .app-shell { flex-direction: column; }
-    .sidebar { position: static; width: 100%; height: auto; }
+    .sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+        overflow-y: visible;
+    }
+    .app-main { margin-left: 0; }
     .sidebar-top { margin-bottom: 16px; }
     .sidebar-collapsed .sidebar { width: 100%; }
+    .sidebar-collapsed .app-main { margin-left: 0; }
     .sidebar-collapsed .nav { display: none; }
     .nav { margin-bottom: 16px; }
     .navbar,
@@ -995,13 +1171,8 @@ textarea {
 }
 
 /* ===== Multiple assignees + estimate ===== */
-.tag-avatars .avatar + .avatar {
-    margin-left: -6px;
-}
-
-.tag-avatars .avatar {
-    border: 1.5px solid #5c6897;
-}
+.tag-avatars .avatar + .avatar { margin-left: -6px; }
+.tag-avatars .avatar { border: 1.5px solid #5c6897; }
 
 .card-badges {
     display: flex;
@@ -1019,9 +1190,7 @@ textarea {
     background: white;
 }
 
-.employee-list[hidden] {
-    display: none;
-}
+.employee-list[hidden] { display: none; }
 
 .employee-option {
     display: flex;
@@ -1032,9 +1201,7 @@ textarea {
     cursor: pointer;
 }
 
-.employee-option:hover {
-    background-color: #eef0fb;
-}
+.employee-option:hover { background-color: #eef0fb; }
 
 .popover .employee-option input {
     flex: none;
@@ -1054,24 +1221,7 @@ textarea {
     font-size: 0.8rem;
 }
 
-/* ===== Logout / Start Sprint / Confirm buttons ===== */
-
-.logout-btn {
-    background: white;
-    border: none;
-    padding: 8px 14px;
-    border-radius: 20px;
-    font-weight: 700;
-    font-size: 0.85rem;
-    cursor: pointer;
-    margin-left: 8px;
-    font-family: inherit;
-}
-
-.logout-btn:hover {
-    background: #F3F4F6;
-}
-
+/* ===== Start Sprint button ===== */
 .start-sprint-btn {
     background: #22C55E;
     color: white;
@@ -1082,24 +1232,17 @@ textarea {
     cursor: pointer;
     font-size: 0.9rem;
     font-family: inherit;
+    white-space: nowrap;
 }
 
-.start-sprint-btn:hover {
-    background: #16A34A;
-}
-
-.start-sprint-btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.85;
-}
+.start-sprint-btn:hover { background: #16A34A; }
+.start-sprint-btn:disabled { cursor: not-allowed; opacity: 0.85; }
 
 .start-sprint-btn.is-active {
     background: #DC2626;
     color: white;
 }
-.start-sprint-btn.is-active:hover {
-    background: #B91C1C;
-}
+.start-sprint-btn.is-active:hover { background: #B91C1C; }
 
 .start-sprint-btn.is-completed {
     background: #9CA3AF;
@@ -1110,12 +1253,9 @@ textarea {
     background: #22C55E;
     color: white;
 }
-.start-sprint-btn.is-planned:hover {
-    background: #16A34A;
-}
+.start-sprint-btn.is-planned:hover { background: #16A34A; }
 
 /* ===== Narrow modal (Confirm / Alert / No-Sprint / Logout) ===== */
-
 .modal-narrow {
     max-width: 420px;
     background-color: #ffffff;
@@ -1178,13 +1318,8 @@ textarea {
     transition: background 0.15s, transform 0.05s;
 }
 
-.modal-narrow .btn-danger:hover {
-    background: #B91C1C;
-}
-
-.modal-narrow .btn-danger:active {
-    transform: scale(0.98);
-}
+.modal-narrow .btn-danger:hover { background: #B91C1C; }
+.modal-narrow .btn-danger:active { transform: scale(0.98); }
 
 .modal-narrow::before {
     content: "⚠️";
@@ -1195,7 +1330,6 @@ textarea {
 }
 
 /* ===== Generic modal + buttons ===== */
-
 .modal-title {
     font-family: Georgia, "Times New Roman", serif;
     font-size: 22px;
@@ -1260,7 +1394,6 @@ textarea {
 .btn-danger:hover { background: #B91C1C; }
 
 /* ===== Priority badges ===== */
-
 .priority-badge {
     display: inline-flex;
     align-items: center;
@@ -1279,9 +1412,6 @@ textarea {
 .priority-urgent { background-color: #d33; }
 
 /* ===================== INVITE PRODUCT OWNER MODAL ===================== */
-/* Plain white card, left-aligned form, no ⚠️ icon, matches the original
-   Team Management invite look. */
-
 .invite-modal {
     background-color: #ffffff;
     border-radius: 16px;
@@ -1305,9 +1435,7 @@ textarea {
     font-family: inherit;
 }
 
-.invite-modal .modal-close:hover {
-    color: #111;
-}
+.invite-modal .modal-close:hover { color: #111; }
 
 .invite-modal .modal-title {
     font-family: Georgia, "Times New Roman", serif;
@@ -1324,9 +1452,7 @@ textarea {
     line-height: 1.5;
 }
 
-.invite-modal .form-field {
-    margin-bottom: 16px;
-}
+.invite-modal .form-field { margin-bottom: 16px; }
 
 .invite-modal label {
     display: block;
@@ -1365,16 +1491,10 @@ textarea {
     font-family: inherit;
 }
 
-.invite-modal .btn-primary:hover {
-    background: #2a2a2a;
-}
-
-.invite-modal .btn-primary.full-width {
-    width: 100%;
-}
+.invite-modal .btn-primary:hover { background: #2a2a2a; }
+.invite-modal .btn-primary.full-width { width: 100%; }
 
 /* ===================== US13: TAG CHIPS ===================== */
-
 .tag-chip-list {
     display: flex;
     flex-wrap: wrap;
@@ -1404,62 +1524,18 @@ textarea {
     padding: 0;
 }
 
-/* ===================== US13: TAG CHIPS ===================== */
-
-.tag-chip-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 8px;
-}
-
-.tag-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: #6672c8;
-    color: #fff;
-    border-radius: 12px;
-    padding: 4px 10px;
-    font-size: 0.75rem;
-    font-weight: 700;
-}
-
-.tag-chip button {
-    background: none;
-    border: none;
-    color: #fff;
-    cursor: pointer;
-    font-size: 0.85rem;
-    line-height: 1;
-    padding: 0;
-}
-
-/* ===================== US14: TAG FILTER ===================== */
-
-.tag-filter {
-    position: absolute;
-    right: 170px;
-    top: 50%;
-    transform: translateY(-50%);
-}
-
-.search-bar input {
-    padding-right: 320px;
-}
-
+/* ===================== US14: TAG FILTER (responsive) ===================== */
 @media (max-width: 900px) {
-    .tag-filter { right: 165px; }
-    .search-bar input { padding-right: 310px; }
+    .tag-filter { right: 110px; }
+    .search-bar input { padding-right: 220px; }
 }
 
 @media (max-width: 720px) {
-    .tag-filter { right: 160px; }
-    .search-bar input { padding-right: 300px; }
+    .tag-filter { right: 105px; }
+    .search-bar input { padding-right: 210px; }
 }
 
 /* ===================== US16: PROGRESS ===================== */
-
 .progress-value-label {
     font-weight: 700;
     font-size: 0.85rem;
@@ -1474,7 +1550,6 @@ textarea {
     margin-top: 4px;
 }
 
-/* Progress bar on task cards */
 .progress-wrap {
     display: flex;
     align-items: center;
@@ -1492,7 +1567,7 @@ textarea {
 
 .progress-fill {
     height: 100%;
-    background: #4ade80;   /* green */
+    background: #4ade80;
     border-radius: 3px;
     transition: width 0.25s ease;
 }
@@ -1504,187 +1579,7 @@ textarea {
     flex-shrink: 0;
 }
 
-/* ===================== US24: LOG TIME BUTTON ===================== */
-
-.logtime-icon {
-    background: none;
-    border: none;
-    color: white;
-    cursor: pointer;
-    margin-left: 6px;
-    padding: 2px;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-}
-
-.card:hover .logtime-icon,
-.card-detailed .logtime-icon,
-.logtime-icon:focus-visible {
-    opacity: 0.9;
-}
-
-.logtime-icon:hover {
-    opacity: 1;
-}
-
-/* ===================== US24: LOG-TIME MODAL ===================== */
-
-#logTimeOverlay .modal-narrow {
-    max-width: 480px;
-    text-align: left;
-    padding: 28px;
-}
-
-#logTimeOverlay .modal-title {
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 22px;
-    font-weight: 700;
-    margin: 0 0 4px;
-    color: #1a1a1a;
-}
-
-#logTimeOverlay .modal-subtitle {
-    font-size: 13px;
-    color: #6B7280;
-    margin: 0 0 20px;
-    line-height: 1.5;
-}
-
-#logTimeOverlay .modal-close {
-    position: absolute;
-    top: 16px;
-    right: 18px;
-    background: none;
-    border: none;
-    font-size: 16px;
-    color: #6B7280;
-    cursor: pointer;
-}
-
-#logTimeOverlay .form-field {
-    margin-bottom: 16px;
-}
-
-#logTimeOverlay label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    color: #374151;
-    margin-bottom: 6px;
-}
-
-#logTimeOverlay input[type="date"],
-#logTimeOverlay input[type="time"],
-#logTimeOverlay input[type="number"],
-#logTimeOverlay input[type="text"] {
-    width: 100%;
-    padding: 10px 12px;
-    border-radius: 8px;
-    border: 1px solid #E5E7EB;
-    font-size: 14px;
-    background: #fff;
-    font-family: inherit;
-    box-sizing: border-box;
-}
-
-#logTimeOverlay .btn-primary {
-    padding: 12px 20px;
-    border: none;
-    border-radius: 10px;
-    background: #111;
-    color: #fff;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: inherit;
-}
-
-#logTimeOverlay .error-banner {
-    background: #FDE8E8;
-    color: #C0392B;
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-size: 13px;
-    line-height: 1.4;
-    margin-bottom: 16px;
-}
-
-#logTimeOverlay .error-banner[hidden] {
-    display: none;
-}
-
-/* ===================== US25: SPRINT HOURS CHIP ===================== */
-
-.sprint-hours {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #ffffff;
-    color: #1a1a1a;
-    border-radius: 20px;
-    padding: 10px 18px;
-    font-size: 0.95rem;
-    font-weight: 700;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
-    align-self: center;
-}
-
-.sprint-hours svg {
-    width: 1.2em;
-    height: 1.2em;
-    color: #6672c8;
-}
-
-.sprint-hours.is-nonzero {
-    background: #6672c8;
-    color: #ffffff;
-}
-
-.sprint-hours.is-nonzero svg {
-    color: #ffffff;
-}
-
-/* ===================== US18: CARD STATUS DROPDOWN ===================== */
-
-.card-status-select {
-    width: 100%;
-    padding: 6px 10px;
-    margin-top: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.12);
-    color: #e3e6fa;
-    font-size: 0.75rem;
-    font-weight: 700;
-    cursor: pointer;
-    -webkit-appearance: none;
-    appearance: none;
-    background-image:
-        linear-gradient(45deg, transparent 50%, #e3e6fa 50%),
-        linear-gradient(-45deg, transparent 50%, #e3e6fa 50%);
-    background-position: calc(100% - 14px) 55%, calc(100% - 9px) 55%;
-    background-size: 5px 5px;
-    background-repeat: no-repeat;
-}
-
-.card-status-select:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-}
-
-.card-status-select:focus {
-    outline: 2px solid #6672c8;
-    outline-offset: 2px;
-}
-
-.card-status-select option {
-    background: #ffffff;
-    color: #1a1a1a;
-}
-
 /* ===================== LOGGED HOURS PANEL ===================== */
-
 .logged-hours-panel {
     margin: 0 40px 32px;
     background: #cbd6ff;
@@ -1739,9 +1634,7 @@ textarea {
     font-family: inherit;
 }
 
-.logged-hours-refresh:hover {
-    background: #2a2a2a;
-}
+.logged-hours-refresh:hover { background: #2a2a2a; }
 
 .logged-hours-body {
     background: #ffffff;
@@ -1772,9 +1665,7 @@ textarea {
     letter-spacing: 0.05em;
 }
 
-.logged-hours-table tbody tr:last-child td {
-    border-bottom: none;
-}
+.logged-hours-table tbody tr:last-child td { border-bottom: none; }
 
 .logged-hours-table .muted {
     color: #6b7280;

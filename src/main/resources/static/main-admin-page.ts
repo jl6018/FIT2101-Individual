@@ -9,8 +9,11 @@
  * accumulated sprint hours (US25), team filtering, tag filtering/sorting
  * (US14), search, the task modal with progress editing (US16), card
  * editing, sprint start/end controls, tag management (US13), admin-only
- * task deletion (US11), the PRODUCT_OWNER role (US22), and the Logged
- * Hours panel for viewing time logs.
+ * task deletion (US11), the PRODUCT_OWNER role (US22), the Logged Hours
+ * panel, a profile menu on the avatar with Log out (opening a confirm
+ * modal), a ⋯ menu in the project header holding Share, and a ⋯ menu
+ * inside the task modal with a Refresh action that re-fetches the
+ * currently open task.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -36,19 +39,20 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
 (() => {
     // ===================== SHOW CURRENT USER =====================
-    const nameEl = document.getElementById("signedInName");
     const avatarEl = document.getElementById("userAvatar");
+    const profileMenuName = document.getElementById("profileMenuName");
+    const profileMenuSub = document.getElementById("profileMenuSub");
+    const roleBadgeEl = document.getElementById("roleBadge");
 
     const storedName = sessionStorage.getItem("name") || "";
     const storedRole = sessionStorage.getItem("role") || "";
 
-    if (nameEl) {
-        if (storedName) {
-            const suffix =
-                storedRole === "ADMIN" ? " (Admin)" :
-                storedRole === "PRODUCT_OWNER" ? " (Product Owner)" : "";
-            nameEl.textContent = `${storedName}${suffix}`;
-        }
+    if (profileMenuName) profileMenuName.textContent = storedName || "Admin";
+    if (profileMenuSub) {
+        profileMenuSub.textContent =
+            storedRole === "PRODUCT_OWNER" ? "Product Owner" :
+            storedRole === "ADMIN"         ? "Admin" :
+            "—";
     }
 
     if (avatarEl) {
@@ -62,13 +66,75 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         if (storedName) avatarEl.title = storedName;
     }
 
-    // ===================== LOGOUT MODAL =====================
+    // ===================== ROLE BADGE (project header) =====================
+    if (roleBadgeEl) {
+        roleBadgeEl.textContent =
+            storedRole === "PRODUCT_OWNER" ? "Product Owner" :
+            storedRole === "ADMIN"         ? "Admin" :
+            "Admin";
+    }
+
+    // ===================== MENUS (only one open at a time) =====================
+    const profileMenuBtn = document.getElementById("profileMenuBtn") as HTMLButtonElement | null;
+    const profileMenu = document.getElementById("profileMenu") as HTMLDivElement | null;
+    const headerMenuBtn = document.getElementById("headerMenuBtn") as HTMLButtonElement | null;
+    const headerMenu = document.getElementById("headerMenu") as HTMLDivElement | null;
+    const tagFilterBtn = document.getElementById("tagFilterBtn") as HTMLButtonElement | null;
+    const tagFilterMenu = document.getElementById("tagFilterMenu") as HTMLDivElement | null;
+    const teamFilterBtn = document.getElementById("teamFilterBtn") as HTMLButtonElement | null;
+    const teamFilterMenu = document.getElementById("teamFilterMenu") as HTMLDivElement | null;
+
+    function setProfileMenuOpen(open: boolean): void {
+        if (!profileMenu || !profileMenuBtn) return;
+        profileMenu.classList.toggle("visible", open);
+        profileMenuBtn.setAttribute("aria-expanded", String(open));
+    }
+    function setHeaderMenuOpen(open: boolean): void {
+        if (!headerMenu || !headerMenuBtn) return;
+        headerMenu.classList.toggle("visible", open);
+        headerMenuBtn.setAttribute("aria-expanded", String(open));
+    }
+    function setTagFilterOpen(open: boolean): void {
+        if (!tagFilterMenu || !tagFilterBtn) return;
+        tagFilterMenu.classList.toggle("visible", open);
+        tagFilterBtn.setAttribute("aria-expanded", String(open));
+    }
+    function setTeamFilterOpen(open: boolean): void {
+        if (!teamFilterMenu || !teamFilterBtn) return;
+        teamFilterMenu.classList.toggle("visible", open);
+        teamFilterBtn.setAttribute("aria-expanded", String(open));
+    }
+    function closeAllMenus(): void {
+        setProfileMenuOpen(false);
+        setHeaderMenuOpen(false);
+        setTagFilterOpen(false);
+        setTeamFilterOpen(false);
+    }
+
+    profileMenuBtn?.addEventListener("click", (event: MouseEvent) => {
+        event.stopPropagation();
+        const willOpen = !profileMenu!.classList.contains("visible");
+        closeAllMenus();
+        setProfileMenuOpen(willOpen);
+    });
+
+    headerMenuBtn?.addEventListener("click", (event: MouseEvent) => {
+        event.stopPropagation();
+        const willOpen = !headerMenu!.classList.contains("visible");
+        closeAllMenus();
+        setHeaderMenuOpen(willOpen);
+    });
+
+    // ===================== LOGOUT (opens confirmation modal) =====================
     const logoutBtn = document.getElementById("logoutBtn");
     const logoutOverlay = document.getElementById("logoutOverlay");
     const cancelLogoutBtn = document.getElementById("cancelLogoutBtn");
     const confirmLogoutBtn = document.getElementById("confirmLogoutBtn");
 
-    logoutBtn?.addEventListener("click", () => logoutOverlay?.classList.add("visible"));
+    logoutBtn?.addEventListener("click", () => {
+        closeAllMenus();
+        logoutOverlay?.classList.add("visible");
+    });
     cancelLogoutBtn?.addEventListener("click", () => logoutOverlay?.classList.remove("visible"));
     confirmLogoutBtn?.addEventListener("click", () => {
         sessionStorage.clear();
@@ -76,6 +142,31 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     });
     logoutOverlay?.addEventListener("click", (e) => {
         if (e.target === logoutOverlay) logoutOverlay.classList.remove("visible");
+    });
+
+    // Close any open menu on outside click
+    document.addEventListener("click", (event: MouseEvent) => {
+        const t = event.target as Node;
+        if (profileMenu?.classList.contains("visible")
+            && !profileMenu.contains(t) && !profileMenuBtn?.contains(t)) {
+            setProfileMenuOpen(false);
+        }
+        if (headerMenu?.classList.contains("visible")
+            && !headerMenu.contains(t) && !headerMenuBtn?.contains(t)) {
+            setHeaderMenuOpen(false);
+        }
+        if (tagFilterMenu?.classList.contains("visible")
+            && !tagFilterMenu.contains(t) && !tagFilterBtn?.contains(t)) {
+            setTagFilterOpen(false);
+        }
+        if (teamFilterMenu?.classList.contains("visible")
+            && !teamFilterMenu.contains(t) && !teamFilterBtn?.contains(t)) {
+            setTeamFilterOpen(false);
+        }
+    });
+
+    document.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (event.key === "Escape") closeAllMenus();
     });
 
     // ===================== TYPES =====================
@@ -324,49 +415,17 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         return { assignedTeams: null, assignedEmployeeIds: assignee.employeeIds.join(",") };
     }
 
-    // ===================== US25: SPRINT HOURS =====================
-    let currentSprintNumericIdForHours: number | null = null;
-
-    async function refreshSprintHours(): Promise<void> {
-        const chip = document.getElementById("sprintHours");
-        const chipValue = document.getElementById("sprintHoursValue");
-        if (!chip || !chipValue) return;
-
-        const name = SPRINT_TAB_NAMES[currentSprintId];
-        if (!name) {
-            chipValue.textContent = "0h logged";
-            chip.classList.remove("is-nonzero");
-            return;
+    function parseAssignee(t: BackendTask): Assignee | null {
+        if (t.assignedEmployeeIds) {
+            const ids = String(t.assignedEmployeeIds).split(",").map((s) => s.trim()).filter(Boolean);
+            if (ids.length > 0) return { kind: "employees", employeeIds: ids };
         }
-
-        try {
-            const sprintRes = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
-            if (sprintRes.status === 404) {
-                chipValue.textContent = "0h logged";
-                chip.classList.remove("is-nonzero");
-                return;
-            }
-            if (!sprintRes.ok) throw new Error(`HTTP ${sprintRes.status}`);
-            const sprint = (await sprintRes.json()) as Sprint;
-            currentSprintNumericIdForHours = sprint?.id ?? null;
-
-            if (!currentSprintNumericIdForHours) {
-                chipValue.textContent = "0h logged";
-                chip.classList.remove("is-nonzero");
-                return;
-            }
-
-            const totalRes = await fetch(`${TIMELOGS_API}/sprint/${currentSprintNumericIdForHours}/total`);
-            if (!totalRes.ok) throw new Error(`HTTP ${totalRes.status}`);
-            const total = Number(await totalRes.json()) || 0;
-
-            chipValue.textContent = `${total.toFixed(1)}h logged`;
-            chip.classList.toggle("is-nonzero", total > 0);
-        } catch (err) {
-            console.error("Failed to load sprint hours:", err);
-            chipValue.textContent = "0h logged";
-            chip.classList.remove("is-nonzero");
+        if (t.assignedTeams) {
+            const names = String(t.assignedTeams).split(",").map((s) => s.trim()).filter(Boolean);
+            if (names.length === 1) return { kind: "team", teamId: names[0] };
+            if (names.length > 1) return { kind: "teams", teamIds: names };
         }
+        return null;
     }
 
     // ===================== CUSTOM MODALS =====================
@@ -442,13 +501,17 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         if (e.target === document.getElementById("alertOverlay")) hideOverlay("alertOverlay");
     });
 
+    // Share now lives inside the project-header ⋯ menu
     const shareBtn = document.getElementById("shareBtn");
     const inviteOverlay = document.getElementById("inviteOverlay");
     const closeInviteBtn = document.getElementById("closeInviteBtn");
     const inviteForm = document.getElementById("inviteForm") as HTMLFormElement | null;
     const ownerEmailInput = document.getElementById("ownerEmail") as HTMLInputElement | null;
 
-    shareBtn?.addEventListener("click", () => inviteOverlay?.classList.add("visible"));
+    shareBtn?.addEventListener("click", () => {
+        closeAllMenus();
+        inviteOverlay?.classList.add("visible");
+    });
     closeInviteBtn?.addEventListener("click", () => inviteOverlay?.classList.remove("visible"));
     inviteOverlay?.addEventListener("click", (e) => {
         if (e.target === inviteOverlay) inviteOverlay.classList.remove("visible");
@@ -492,46 +555,20 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data: BackendTask[] = await res.json();
 
-            return data.map((t) => {
-                let assignee: Assignee | null = null;
-
-                if (t.assignedEmployeeIds) {
-                    const ids = t.assignedEmployeeIds
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter(Boolean);
-                    if (ids.length > 0) {
-                        assignee = { kind: "employees", employeeIds: ids };
-                    }
-                }
-
-                if (!assignee && t.assignedTeams) {
-                    const names = t.assignedTeams
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter(Boolean);
-                    if (names.length === 1) {
-                        assignee = { kind: "team", teamId: names[0] };
-                    } else if (names.length > 1) {
-                        assignee = { kind: "teams", teamIds: names };
-                    }
-                }
-
-                return {
-                    id: String(t.id),
-                    sprintId: "1",
-                    column: (t.status ?? "PRODUCT_BACKLOG") as ColumnId,
-                    title: t.name,
-                    description: t.description ?? "",
-                    assignee,
-                    dueDate: t.dueDate ?? "",
-                    estimateHours: t.estimateHours ?? 0,
-                    priority: (t.priority ?? "") as Priority,
-                    position: t.position ?? 0,
-                    tags: Array.isArray(t.tags) ? t.tags : [],
-                    progress: typeof t.progress === "number" ? t.progress : 0,
-                };
-            });
+            return data.map((t) => ({
+                id: String(t.id),
+                sprintId: "1",
+                column: (t.status ?? "PRODUCT_BACKLOG") as ColumnId,
+                title: t.name,
+                description: t.description ?? "",
+                assignee: parseAssignee(t),
+                dueDate: t.dueDate ?? "",
+                estimateHours: t.estimateHours ?? 0,
+                priority: (t.priority ?? "") as Priority,
+                position: t.position ?? 0,
+                tags: Array.isArray(t.tags) ? t.tags : [],
+                progress: typeof t.progress === "number" ? t.progress : 0,
+            }));
         } catch (err) {
             console.error("Failed to load tasks:", err);
             return [];
@@ -543,7 +580,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         renderBoard();
         renderTeamFilter();
         renderTagFilter();
-        await refreshSprintHours();
     }
 
     async function apiCreate(task: Task): Promise<Task | null> {
@@ -598,8 +634,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 progress: task.progress ?? 0,
                 sprint: { id: Number(currentSprintId) },
             };
-
-            console.log(`PUT ${API_BASE}/${numericId}`, body);
 
             const res = await fetch(`${API_BASE}/${numericId}`, {
                 method: "PUT",
@@ -722,7 +756,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
       <div class="card${footerHtml || progressHtml ? " card-detailed" : ""}" draggable="true" data-task="${escapeHtml(task.id)}">
         <div class="card-title-row">
           <span class="card-title">${escapeHtml(task.title)}</span>
-          <button type="button" class="logtime-icon" data-logtime="${escapeHtml(task.id)}" title="Log time on this task" aria-label="Log time on ${escapeHtml(task.title)}">${CLOCK_ICON}</button>
           <button type="button" class="edit-icon" data-edit="${escapeHtml(task.id)}" title="Edit task details" aria-label="Edit ${escapeHtml(task.title)}">${PENCIL_ICON}</button>
         </div>
         ${progressHtml}
@@ -754,15 +787,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
     board.addEventListener("click", (event: MouseEvent) => {
         const target = event.target as HTMLElement;
-
-        const logBtn = target.closest<HTMLElement>("[data-logtime]");
-        if (logBtn) {
-            const taskId = logBtn.dataset["logtime"];
-            const task = tasks.find((t) => t.id === taskId);
-            if (!task) return;
-            openLogTimeModal(task);
-            return;
-        }
 
         const editBtn = target.closest<HTMLElement>("[data-edit]");
         if (editBtn) {
@@ -994,7 +1018,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                     renderTeamFilter();
                     renderTagFilter();
                     void refreshSprintButton();
-                    void refreshSprintHours();
                 }
             });
         });
@@ -1013,8 +1036,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     });
 
     // ===================== TEAM FILTER =====================
-    const teamFilterBtn = requireElement<HTMLButtonElement>("teamFilterBtn");
-    const teamFilterMenu = requireElement<HTMLDivElement>("teamFilterMenu");
     const teamFilterLabel = requireElement<HTMLSpanElement>("teamFilterLabel");
 
     function renderTeamFilter(): void {
@@ -1028,40 +1049,36 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             })),
         ];
 
-        teamFilterMenu.innerHTML =
-            `<span class="popover-label">View board for</span>` +
-            options
-                .map((option) => {
-                    const active = option.id === currentTeamId;
-                    return `
+        if (teamFilterMenu) {
+            teamFilterMenu.innerHTML =
+                `<span class="popover-label">View board for</span>` +
+                options
+                    .map((option) => {
+                        const active = option.id === currentTeamId;
+                        return `
             <button type="button" class="filter-option${active ? " active" : ""}" data-team="${option.id}" role="menuitemradio" aria-checked="${active}">
               <span>${escapeHtml(option.name)}</span><span class="filter-count">${option.count}</span>
             </button>`;
-                })
-                .join("");
+                    })
+                    .join("");
+        }
 
         teamFilterLabel.textContent =
             currentTeamId === "all"
                 ? "All teams"
                 : teamName(currentTeamId) || "All teams";
-        teamFilterBtn.classList.toggle("filtered", currentTeamId !== "all");
+        teamFilterBtn?.classList.toggle("filtered", currentTeamId !== "all");
     }
 
-    function setTeamFilterOpen(open: boolean): void {
-        teamFilterMenu.classList.toggle("visible", open);
-        teamFilterBtn.setAttribute("aria-expanded", String(open));
-    }
-
-    teamFilterBtn.addEventListener("click", (event: MouseEvent) => {
+    teamFilterBtn?.addEventListener("click", (event: MouseEvent) => {
         event.stopPropagation();
         renderTeamFilter();
-
-        const willOpen = !teamFilterMenu.classList.contains("visible");
-        setTagFilterOpen(false);
+        const willOpen = !teamFilterMenu?.classList.contains("visible");
+        closeAllMenus();
         setTeamFilterOpen(willOpen);
     });
 
-    teamFilterMenu.addEventListener("click", (event: MouseEvent) => {
+    teamFilterMenu?.addEventListener("click", (event: MouseEvent) => {
         event.stopPropagation();
         const option = (event.target as HTMLElement).closest<HTMLElement>("[data-team]");
         if (!option) return;
@@ -1072,8 +1089,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     });
 
     // ===================== TAG FILTER (US14) =====================
-    const tagFilterBtn = requireElement<HTMLButtonElement>("tagFilterBtn");
-    const tagFilterMenu = requireElement<HTMLDivElement>("tagFilterMenu");
     const tagFilterLabel = requireElement<HTMLSpanElement>("tagFilterLabel");
 
     function availableTagNames(): string[] {
@@ -1110,4 +1125,679 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                   .map((name) => {
                       const active = currentTagName.toLowerCase() === name.toLowerCase();
                       return `
-            <button type="button" class="filter-option${active ? " active" : ""}" data-tag="${escapeHtml(name)}" role="menuitemradio" aria-checked="${
+            <button type="button" class="filter-option${active ? " active" : ""}" data-tag="${escapeHtml(name)}" role="menuitemradio" aria-checked="${active}">
+              <span>${escapeHtml(name)}</span><span class="filter-count">${countFor(name)}</span>
+            </button>`;
+                  })
+                  .join("");
+
+        tagFilterMenu.innerHTML =
+            `<span class="popover-label">Filter by tag</span>` + header + rows;
+
+        if (sortByTag && currentTagName === TAG_FILTER_ALL) {
+            tagFilterLabel.textContent = "Sorted by tag";
+        } else if (currentTagName === TAG_FILTER_ALL) {
+            tagFilterLabel.textContent = "All tags";
+        } else {
+            tagFilterLabel.textContent = currentTagName;
+        }
+
+        tagFilterBtn?.classList.toggle(
+            "filtered",
+            sortByTag || currentTagName !== TAG_FILTER_ALL
+        );
+    }
+
+    tagFilterBtn?.addEventListener("click", (event: MouseEvent) => {
+        event.stopPropagation();
+        renderTagFilter();
+        const willOpen = !tagFilterMenu?.classList.contains("visible");
+        closeAllMenus();
+        setTagFilterOpen(willOpen);
+    });
+
+    tagFilterMenu?.addEventListener("click", (event: MouseEvent) => {
+        event.stopPropagation();
+        const target = event.target as HTMLElement;
+
+        const sortBtn = target.closest<HTMLElement>("[data-tag-sort]");
+        if (sortBtn) {
+            sortByTag = !sortByTag;
+            setTagFilterOpen(false);
+            renderTagFilter();
+            renderBoard();
+            return;
+        }
+
+        const tagBtn = target.closest<HTMLElement>("[data-tag]");
+        if (!tagBtn) return;
+        const name = tagBtn.dataset["tag"] ?? TAG_FILTER_ALL;
+        currentTagName = name;
+        setTagFilterOpen(false);
+        renderTagFilter();
+        renderBoard();
+    });
+
+    // ===================== TASK MODAL =====================
+    const overlay = requireElement<HTMLDivElement>("taskModalOverlay");
+    const columnSelect = requireElement<HTMLSelectElement>("modalColumn");
+    const titleInput = requireElement<HTMLInputElement>("modalTitle");
+    const errorText = requireElement<HTMLParagraphElement>("modalError");
+    const descriptionBox = requireElement<HTMLTextAreaElement>("modalDescription");
+    const summary = requireElement<HTMLDivElement>("modalSummary");
+    const saveBtn = requireElement<HTMLButtonElement>("modalSaveBtn");
+    const deleteBtn = requireElement<HTMLButtonElement>("modalDeleteBtn");
+    const dueDateInput = requireElement<HTMLInputElement>("dueDateInput");
+    const assigneeSelect = requireElement<HTMLSelectElement>("assigneeSelect");
+    const employeeList = requireElement<HTMLDivElement>("employeeList");
+    const estimateInput = requireElement<HTMLInputElement>("estimateInput");
+    const prioritySelect = requireElement<HTMLSelectElement>("prioritySelect");
+
+    const tagInput = requireElement<HTMLInputElement>("tagInput");
+    const addTagBtn = requireElement<HTMLButtonElement>("addTagBtn");
+    const tagChips = requireElement<HTMLDivElement>("tagChips");
+    const tagEmpty = requireElement<HTMLParagraphElement>("tagEmpty");
+
+    const progressInput = requireElement<HTMLInputElement>("progressInput");
+    const progressValue = requireElement<HTMLSpanElement>("progressValue");
+    const progressSlider = requireElement<HTMLInputElement>("progressSlider");
+    const progressClearBtn = requireElement<HTMLButtonElement>("progressClearBtn");
+
+    // ⋯ menu inside the modal
+    const modalMoreBtn = document.getElementById("modalMoreBtn") as HTMLButtonElement | null;
+    const modalMoreMenu = document.getElementById("modalMoreMenu") as HTMLDivElement | null;
+    const modalRefreshBtn = document.getElementById("modalRefreshBtn") as HTMLButtonElement | null;
+
+    let draft: Task | null = null;
+    let assignKind: "team" | "employees" = "team";
+
+    function setModalMoreOpen(open: boolean): void {
+        if (!modalMoreMenu || !modalMoreBtn) return;
+        modalMoreMenu.classList.toggle("visible", open);
+        modalMoreBtn.setAttribute("aria-expanded", String(open));
+    }
+
+    modalMoreBtn?.addEventListener("click", (event: MouseEvent) => {
+        event.stopPropagation();
+        setModalMoreOpen(!modalMoreMenu.classList.contains("visible"));
+    });
+
+    modalRefreshBtn?.addEventListener("click", async () => {
+        if (!draft || !draft.id) {
+            setModalMoreOpen(false);
+            return;
+        }
+
+        setModalMoreOpen(false);
+        modalRefreshBtn.disabled = true;
+
+        try {
+            const res = await fetch(`${API_BASE}/${draft.id}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const fresh = (await res.json()) as BackendTask;
+
+            const mapped: Task = {
+                id: String(fresh.id),
+                sprintId: currentSprintId,
+                column: (fresh.status ?? "PRODUCT_BACKLOG") as ColumnId,
+                title: fresh.name,
+                description: fresh.description ?? "",
+                assignee: parseAssignee(fresh),
+                dueDate: fresh.dueDate ?? "",
+                estimateHours: fresh.estimateHours ?? 0,
+                priority: (fresh.priority ?? "") as Priority,
+                position: fresh.position ?? 0,
+                tags: Array.isArray(fresh.tags) ? fresh.tags : [],
+                progress: typeof fresh.progress === "number" ? fresh.progress : 0,
+            };
+
+            openModal(mapped);
+            showToast("Task refreshed");
+        } catch (err) {
+            console.error("Refresh failed:", err);
+            showAlertModal("Refresh failed", "Could not load the latest task data.");
+        } finally {
+            modalRefreshBtn.disabled = false;
+        }
+    });
+
+    function openModal(task: Task): void {
+        draft = JSON.parse(JSON.stringify(task));
+        assignKind = draft.assignee?.kind === "employees" ? "employees" : "team";
+
+        columnSelect.value = draft.column;
+        titleInput.value = draft.title;
+        descriptionBox.value = draft.description;
+        dueDateInput.value = draft.dueDate;
+        estimateInput.value = draft.estimateHours > 0 ? String(draft.estimateHours) : "";
+        prioritySelect.value = draft.priority;
+        tagInput.value = "";
+
+        const pct = Number(draft.progress) || 0;
+        progressInput.value = String(pct);
+        progressSlider.value = String(pct);
+        progressValue.textContent = `${pct}%`;
+
+        errorText.textContent = "";
+        saveBtn.textContent = draft.id ? "Save" : "Create task";
+        deleteBtn.hidden = draft.id === "" || sessionStorage.getItem("role") !== "ADMIN";
+        setDeleteArmed(false);
+
+        renderDraft();
+        renderTags();
+        closePopovers();
+        setModalMoreOpen(false);
+        overlay.classList.add("visible");
+        titleInput.focus();
+    }
+
+    function closeModal(): void {
+        overlay.classList.remove("visible");
+        closePopovers();
+        setModalMoreOpen(false);
+
+        const wasSavedTask = draft !== null && draft.id !== "";
+        draft = null;
+
+        if (wasSavedTask) void refreshFromBackend();
+    }
+
+    function renderDraft(): void {
+        if (!draft) return;
+        const chips = [
+            `<span class="summary-chip"><b>Assigned to</b> ${escapeHtml(assigneeLabel(draft.assignee))}</span>`,
+            `<span class="summary-chip"><b>Due</b> ${draft.dueDate ? formatDateBadge(draft.dueDate) : "No due date"}</span>`,
+            `<span class="summary-chip"><b>Estimate</b> ${draft.estimateHours > 0 ? formatEstimate(draft.estimateHours) : "Not set"}</span>`,
+            `<span class="summary-chip"><b>Priority</b> ${draft.priority || "None"}</span>`,
+            `<span class="summary-chip"><b>Progress</b> ${Math.max(0, Math.min(100, Number(draft.progress) || 0))}%</span>`,
+        ];
+        summary.innerHTML = chips.join("");
+        renderAssignControls();
+    }
+
+    function renderAssignControls(): void {
+        if (!draft) return;
+
+        document.querySelectorAll<HTMLElement>("[data-assign-kind]").forEach((segment) => {
+            segment.classList.toggle("active", segment.dataset["assignKind"] === assignKind);
+        });
+
+        assigneeSelect.hidden = assignKind !== "team";
+        employeeList.hidden = assignKind !== "employees";
+
+        const assignee = draft.assignee;
+        const currentTeam = assignee?.kind === "team" ? assignee.teamId : null;
+
+        assigneeSelect.innerHTML =
+            `<option value="">Choose a team…</option>` +
+            TEAMS.map((t) => `<option value="${t.name}">${escapeHtml(t.name)}</option>`).join("");
+        assigneeSelect.value = currentTeam ?? "";
+
+        const visibleEmployees = currentTeam
+            ? EMPLOYEES.filter((e) => e.team === currentTeam)
+            : [];
+
+        const ticked = assignee?.kind === "employees" ? assignee.employeeIds : [];
+
+        employeeList.innerHTML = visibleEmployees.length === 0
+            ? `<p class="employee-empty">${currentTeam ? "No employees in this team yet." : "Choose a team first."}</p>`
+            : visibleEmployees.map((employee) => `
+            <label class="employee-option">
+              <input type="checkbox" value="${escapeHtml(employee.id)}" ${ticked.includes(employee.id) ? "checked" : ""} />
+              <span>${escapeHtml(employee.name)}</span>
+              <span class="employee-team">${escapeHtml(employee.team)}</span>
+            </label>`).join("");
+    }
+
+    // ===================== TAGS (US13) =====================
+    function renderTags(): void {
+        if (!draft) return;
+        const tags = draft.tags ?? [];
+
+        tagEmpty.hidden = tags.length > 0;
+        tagChips.innerHTML = tags
+            .map((t) => `
+      <span class="tag-chip" data-tag-id="${t.id}">
+        ${escapeHtml(t.name)}
+        <button type="button" aria-label="Remove ${escapeHtml(t.name)}" data-remove-tag="${t.id}">✕</button>
+      </span>`)
+            .join("");
+    }
+
+    async function addTagToDraft(): Promise<void> {
+        if (!draft) return;
+
+        const name = tagInput.value.trim().toLowerCase();
+        if (!name) return;
+
+        if ((draft.tags ?? []).some((t) => t.name.toLowerCase() === name)) {
+            tagInput.value = "";
+            return;
+        }
+
+        if (!draft.id) {
+            showToast("Save the task first, then add tags.");
+            return;
+        }
+
+        try {
+            const res = await fetch(`${TAGS_API}/task/${Number(draft.id)}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name }),
+            });
+            if (!res.ok) throw new Error(await res.text());
+
+            const updated = await res.json();
+            draft.tags = Array.isArray(updated.tags) ? updated.tags : [];
+            tagInput.value = "";
+            renderTags();
+        } catch (err) {
+            console.error("Add tag failed:", err);
+            showToast("Could not add tag");
+        }
+    }
+
+    async function removeTagFromDraft(tagId: number): Promise<void> {
+        if (!draft || !draft.id) return;
+        try {
+            const res = await fetch(`${TAGS_API}/task/${Number(draft.id)}/${tagId}`, {
+                method: "DELETE",
+            });
+            if (!res.ok) throw new Error(await res.text());
+
+            const updated = await res.json();
+            draft.tags = Array.isArray(updated.tags) ? updated.tags : [];
+            renderTags();
+        } catch (err) {
+            console.error("Remove tag failed:", err);
+            showToast("Could not remove tag");
+        }
+    }
+
+    async function saveModal(): Promise<void> {
+        if (!draft) return;
+
+        const title = titleInput.value.trim();
+        if (title.length < 2) {
+            errorText.textContent = "Give the task a name of at least 2 characters.";
+            titleInput.focus();
+            return;
+        }
+
+        draft.title = title;
+        draft.description = descriptionBox.value.trim();
+        draft.column = columnSelect.value as ColumnId;
+        draft.progress = Math.max(0, Math.min(100, Number(progressInput.value) || 0));
+
+        const isNew = draft.id === "";
+        const ok = isNew ? (await apiCreate(draft)) !== null : await apiUpdate(draft);
+        if (!ok) return;
+
+        closeModal();
+        await refreshFromBackend();
+        showToast(isNew ? "Task created" : "Changes saved");
+    }
+
+    let deleteArmed = false;
+
+    function setDeleteArmed(armed: boolean): void {
+        deleteArmed = armed;
+        deleteBtn.textContent = armed ? "Click again to delete" : "Delete task";
+        deleteBtn.classList.toggle("armed", armed);
+    }
+
+    deleteBtn.addEventListener("click", async () => {
+        if (!draft) return;
+        if (!deleteArmed) { setDeleteArmed(true); return; }
+
+        const ok = await apiDelete(draft.id);
+        if (!ok) return;
+
+        closeModal();
+        await refreshFromBackend();
+        showToast("Task deleted");
+    });
+
+    deleteBtn.addEventListener("blur", () => setDeleteArmed(false));
+
+    function closePopovers(): void {
+        overlay.querySelectorAll(".popover.visible").forEach((p) => p.classList.remove("visible"));
+        setModalMoreOpen(false);
+    }
+
+    document.querySelectorAll<HTMLElement>("[data-popover]").forEach((button) => {
+        button.addEventListener("click", (event) => {
+            event.stopPropagation();
+            const popover = document.getElementById(button.dataset["popover"] ?? "");
+            if (!popover) return;
+            const wasOpen = popover.classList.contains("visible");
+            closePopovers();
+            if (!wasOpen) {
+                popover.classList.add("visible");
+                popover.querySelector<HTMLElement>("input, select")?.focus();
+            }
+        });
+    });
+
+    overlay.querySelectorAll(".popover").forEach((popover) => {
+        popover.addEventListener("click", (event) => event.stopPropagation());
+    });
+
+    overlay.addEventListener("click", (event: MouseEvent) => {
+        if (!modalMoreMenu?.classList.contains("visible")) return;
+        const target = event.target as Node;
+        if (modalMoreMenu.contains(target) || modalMoreBtn?.contains(target)) return;
+        setModalMoreOpen(false);
+    });
+
+    dueDateInput.addEventListener("change", () => {
+        if (!draft) return;
+        draft.dueDate = dueDateInput.value;
+        renderDraft();
+    });
+
+    requireElement<HTMLButtonElement>("dueDateClearBtn").addEventListener("click", () => {
+        if (!draft) return;
+        draft.dueDate = "";
+        dueDateInput.value = "";
+        renderDraft();
+    });
+
+    estimateInput.addEventListener("input", () => {
+        if (!draft) return;
+        const hours = Number(estimateInput.value);
+        draft.estimateHours = Number.isFinite(hours) && hours > 0 ? hours : 0;
+        renderDraft();
+    });
+
+    requireElement<HTMLButtonElement>("estimateClearBtn").addEventListener("click", () => {
+        if (!draft) return;
+        draft.estimateHours = 0;
+        estimateInput.value = "";
+        renderDraft();
+    });
+
+    prioritySelect.addEventListener("change", () => {
+        if (!draft) return;
+        draft.priority = prioritySelect.value as Priority;
+        renderDraft();
+    });
+
+    requireElement<HTMLButtonElement>("priorityClearBtn").addEventListener("click", () => {
+        if (!draft) return;
+        draft.priority = "";
+        prioritySelect.value = "";
+        renderDraft();
+    });
+
+    function syncProgress(value: string | number): void {
+        const pct = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+        if (draft) draft.progress = pct;
+        progressInput.value = String(pct);
+        progressSlider.value = String(pct);
+        progressValue.textContent = `${pct}%`;
+    }
+
+    progressInput.addEventListener("input", () => syncProgress(progressInput.value));
+    progressSlider.addEventListener("input", () => syncProgress(progressSlider.value));
+
+    progressClearBtn.addEventListener("click", () => {
+        if (!draft) return;
+        syncProgress(0);
+        renderDraft();
+    });
+
+    document.querySelectorAll<HTMLElement>("[data-assign-kind]").forEach((segment) => {
+        segment.addEventListener("click", () => {
+            assignKind = segment.dataset["assignKind"] === "employees" ? "employees" : "team";
+            renderAssignControls();
+        });
+    });
+
+    assigneeSelect.addEventListener("change", () => {
+        if (!draft) return;
+        draft.assignee = assigneeSelect.value ? { kind: "team", teamId: assigneeSelect.value } : null;
+        renderAssignControls();
+    });
+
+    employeeList.addEventListener("change", () => {
+        if (!draft) return;
+        const employeeIds = Array.from(employeeList.querySelectorAll<HTMLInputElement>("input:checked")).map((box) => box.value);
+        draft.assignee = employeeIds.length > 0 ? { kind: "employees", employeeIds } : null;
+        const chip = summary.querySelector(".summary-chip");
+        if (chip) chip.innerHTML = `<b>Assigned to</b> ${escapeHtml(assigneeLabel(draft.assignee))}`;
+    });
+
+    requireElement<HTMLButtonElement>("unassignBtn").addEventListener("click", () => {
+        if (!draft) return;
+        draft.assignee = null;
+        renderDraft();
+    });
+
+    addTagBtn.addEventListener("click", () => {
+        void addTagToDraft();
+    });
+
+    tagInput.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            void addTagToDraft();
+        }
+    });
+
+    tagChips.addEventListener("click", (event: MouseEvent) => {
+        const btn = (event.target as HTMLElement).closest<HTMLElement>("[data-remove-tag]");
+        if (!btn) return;
+        void removeTagFromDraft(Number(btn.dataset["removeTag"]));
+    });
+
+    saveBtn.addEventListener("click", () => { void saveModal(); });
+    titleInput.addEventListener("input", () => (errorText.textContent = ""));
+    titleInput.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (event.key === "Enter") void saveModal();
+    });
+    requireElement<HTMLButtonElement>("modalCloseBtn").addEventListener("click", closeModal);
+    requireElement<HTMLButtonElement>("modalCancelBtn").addEventListener("click", closeModal);
+
+    overlay.addEventListener("click", (event) => {
+        if (event.target === overlay) closeModal();
+        else closePopovers();
+    });
+
+    document.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (event.key !== "Escape") return;
+
+        closeAllMenus();
+        if (!overlay.classList.contains("visible")) return;
+        if (overlay.querySelector(".popover.visible")) closePopovers();
+        else if (modalMoreMenu?.classList.contains("visible")) setModalMoreOpen(false);
+        else closeModal();
+    });
+
+    // ===================== TOAST =====================
+    const toast = requireElement<HTMLDivElement>("toast");
+    let toastTimeoutId: number | undefined;
+
+    function showToast(message: string): void {
+        toast.textContent = message;
+        toast.classList.add("visible");
+        if (toastTimeoutId !== undefined) window.clearTimeout(toastTimeoutId);
+        toastTimeoutId = window.setTimeout(() => toast.classList.remove("visible"), 3000);
+    }
+
+    // ===================== PROJECT NAME =====================
+    const PROJECT_NAME_KEY = "symph.projectName";
+    const projectNameInput = requireElement<HTMLInputElement>("projectName");
+    let projectName = readSetting(PROJECT_NAME_KEY) || "Project Name";
+
+    function fitProjectName(): void {
+        const sizer = document.createElement("span");
+        sizer.className = "project-name-sizer";
+        sizer.textContent = projectNameInput.value || " ";
+        projectNameInput.parentElement?.appendChild(sizer);
+        projectNameInput.style.width = `${Math.ceil(sizer.getBoundingClientRect().width) + 26}px`;
+        sizer.remove();
+    }
+
+    function commitProjectName(): void {
+        const typed = projectNameInput.value.trim();
+        if (typed) {
+            projectName = typed;
+            writeSetting(PROJECT_NAME_KEY, projectName);
+        }
+        projectNameInput.value = projectName;
+        fitProjectName();
+    }
+
+    projectNameInput.addEventListener("input", fitProjectName);
+    projectNameInput.addEventListener("blur", commitProjectName);
+    projectNameInput.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (event.key === "Enter") projectNameInput.blur();
+        else if (event.key === "Escape") { projectNameInput.value = projectName; projectNameInput.blur(); }
+    });
+
+    projectNameInput.value = projectName;
+    fitProjectName();
+    document.fonts?.ready.then(fitProjectName);
+
+    // ===================== SIDEBAR =====================
+    const SIDEBAR_KEY = "symph.sidebarCollapsed";
+    const appShell = requireElement<HTMLDivElement>("appShell");
+    const sidebarToggle = requireElement<HTMLButtonElement>("sidebarToggle");
+
+    function setSidebarCollapsed(collapsed: boolean): void {
+        appShell.classList.toggle("sidebar-collapsed", collapsed);
+        sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+        sidebarToggle.setAttribute("aria-label", collapsed ? "Expand menu" : "Collapse menu");
+        sidebarToggle.title = collapsed ? "Expand menu" : "Collapse menu";
+    }
+
+    sidebarToggle.addEventListener("click", () => {
+        const collapsed = !appShell.classList.contains("sidebar-collapsed");
+        setSidebarCollapsed(collapsed);
+        writeSetting(SIDEBAR_KEY, collapsed ? "1" : "0");
+    });
+
+    setSidebarCollapsed(readSetting(SIDEBAR_KEY) === "1");
+
+    // ===================== START / END SPRINT (US23) =====================
+    const startSprintBtn = document.getElementById("startSprintBtn") as HTMLButtonElement | null;
+    let currentSprintStatus: string | null = null;
+    let currentSprintNumericId: number | null = null;
+
+    /**
+     * Loads the latest sprint with the given name.
+     * The backend returns 200 with an EMPTY body when no sprint with that
+     * name exists yet — so we read the response as text first and treat an
+     * empty string as "no sprint".
+     */
+    async function fetchSprintStatus(tabId: string): Promise<Sprint | null> {
+        const name = SPRINT_TAB_NAMES[tabId];
+        if (!name) return null;
+        try {
+            const res = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
+            if (!res.ok) return null;
+            const text = await res.text();
+            if (!text) return null;                 // empty body = no sprint yet
+            return JSON.parse(text) as Sprint;
+        } catch (err) {
+            console.error("Failed to load sprint:", err);
+            return null;
+        }
+    }
+
+    function renderSprintButton(status: string | null): void {
+        if (!startSprintBtn) return;
+
+        startSprintBtn.classList.remove("is-active", "is-completed", "is-planned");
+
+        if (status === "ACTIVE") {
+            startSprintBtn.textContent = "■ End Sprint";
+            startSprintBtn.classList.add("is-active");
+            startSprintBtn.disabled = false;
+            startSprintBtn.title = "Mark the current sprint as completed";
+        } else if (status === "COMPLETED") {
+            startSprintBtn.textContent = "✓ Sprint Completed";
+            startSprintBtn.classList.add("is-completed");
+            startSprintBtn.disabled = true;
+            startSprintBtn.title = "This sprint is already completed";
+        } else {
+            startSprintBtn.textContent = "▶ Start Sprint";
+            startSprintBtn.classList.add("is-planned");
+            startSprintBtn.disabled = false;
+            startSprintBtn.title = "Start the current sprint";
+        }
+    }
+
+    async function refreshSprintButton(): Promise<void> {
+        const sprint = await fetchSprintStatus(currentSprintId);
+        currentSprintStatus = sprint?.status ?? null;
+        currentSprintNumericId = sprint?.id ?? null;
+        renderSprintButton(currentSprintStatus);
+    }
+
+    startSprintBtn?.addEventListener("click", async () => {
+        if (!startSprintBtn || startSprintBtn.disabled) return;
+
+        const numericId = currentSprintNumericId;
+        if (numericId === null || !Number.isFinite(numericId) || numericId <= 0) {
+            showNoSprintModal();
+            return;
+        }
+
+        const starting = currentSprintStatus !== "ACTIVE";
+
+        const confirmMsg = starting
+            ? "Start the sprint now? Time tracking will begin."
+            : "End this sprint? The sprint will be marked as completed.";
+
+        const confirmed = await showConfirmModal({
+            title: starting ? "Start sprint?" : "End sprint?",
+            message: confirmMsg,
+            confirmText: starting ? "Start" : "End",
+            danger: !starting,
+        });
+        if (!confirmed) return;
+
+        startSprintBtn.disabled = true;
+
+        try {
+            const endpoint = starting ? "start" : "complete";
+            const res = await fetch(`${SPRINTS_API}/${numericId}/${endpoint}`, {
+                method: "PUT",
+            });
+
+            if (!res.ok) {
+                const msg = await res.text();
+                throw new Error(msg || `HTTP ${res.status}`);
+            }
+
+            const updated = (await res.json()) as Sprint;
+            currentSprintStatus = updated.status;
+            renderSprintButton(currentSprintStatus);
+            showToast(starting ? "Sprint started" : "Sprint completed");
+        } catch (err) {
+            console.error("Sprint action failed:", err);
+            showAlertModal(
+                "Sprint update failed",
+                `Failed to update sprint status (sprint ${numericId}). Check the console for details.`
+            );
+            await refreshSprintButton();
+        }
+    });
+
+    // ===================== INIT =====================
+    async function init(): Promise<void> {
+        await loadEmployeesFromBackend();
+        highlightSavedSprintTab();
+        initSprintTabs();
+        renderTeamFilter();
+        renderTagFilter();
+        await refreshSprintButton();
+        await refreshFromBackend();
+        renderTagFilter();
+        await loadLoggedHours();
+    }
+    void init();
+})();

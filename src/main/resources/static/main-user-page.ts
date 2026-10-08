@@ -221,7 +221,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
     profileMenuBtn?.addEventListener("click", (event: MouseEvent) => {
         event.stopPropagation();
-        const willOpen = !profileMenu.classList.contains("visible");
+        const willOpen = !profileMenu!.classList.contains("visible");
         setHeaderMenuOpen(false);
         setTagFilterOpen(false);
         setProfileMenuOpen(willOpen);
@@ -229,7 +229,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
     headerMenuBtn?.addEventListener("click", (event: MouseEvent) => {
         event.stopPropagation();
-        const willOpen = !headerMenu.classList.contains("visible");
+        const willOpen = !headerMenu!.classList.contains("visible");
         setProfileMenuOpen(false);
         setTagFilterOpen(false);
         setHeaderMenuOpen(willOpen);
@@ -238,7 +238,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     tagFilterBtn?.addEventListener("click", (event: MouseEvent) => {
         event.stopPropagation();
         renderTagFilter();
-        const willOpen = !tagFilterMenu.classList.contains("visible");
+        const willOpen = !tagFilterMenu!.classList.contains("visible");
         setProfileMenuOpen(false);
         setHeaderMenuOpen(false);
         setTagFilterOpen(willOpen);
@@ -276,24 +276,20 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     const cancelLogoutBtn = document.getElementById("cancelLogoutBtn") as HTMLButtonElement | null;
     const confirmLogoutBtn = document.getElementById("confirmLogoutBtn") as HTMLButtonElement | null;
 
-    // Click "Log out" in the account menu → open the confirmation modal
     logoutBtn?.addEventListener("click", () => {
         closeAllMenus();
         logoutOverlay?.classList.add("visible");
     });
 
-    // Cancel → close the modal, stay on the page
     cancelLogoutBtn?.addEventListener("click", () => {
         logoutOverlay?.classList.remove("visible");
     });
 
-    // Confirm → clear session and go to login
     confirmLogoutBtn?.addEventListener("click", () => {
         sessionStorage.clear();
         window.location.href = "index-login-page.html";
     });
 
-    // Click outside the modal → close it (same as Cancel)
     logoutOverlay?.addEventListener("click", (e: MouseEvent) => {
         if (e.target === logoutOverlay) {
             logoutOverlay.classList.remove("visible");
@@ -301,14 +297,21 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     });
 
     // ===================== SPRINT RESOLUTION =====================
+    /**
+     * Loads the latest sprint with the given name.
+     * The backend returns 200 with an EMPTY body when no sprint with that
+     * name exists yet — so we read the response as text first and treat an
+     * empty string as "no sprint".
+     */
     async function resolveCurrentSprintId(): Promise<number | null> {
         const name = SPRINT_TAB_NAMES[currentSprintId];
         if (!name) return null;
         try {
             const res = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
-            if (res.status === 404) return null;
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const sprint = (await res.json()) as Sprint;
+            if (!res.ok) return null;
+            const text = await res.text();
+            if (!text) return null;                 // empty body = no sprint yet
+            const sprint = JSON.parse(text) as Sprint;
             return sprint?.id ?? null;
         } catch (err) {
             console.error("Failed to resolve sprint:", err);

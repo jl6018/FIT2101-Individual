@@ -181,13 +181,16 @@ async function loadBurndown() {
 
     try {
         const sRes = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(sprintName)}`);
-        if (sRes.status === 404) {
+        if (!sRes.ok) throw new Error(`HTTP ${sRes.status}`);
+
+        // Backend returns 200 with an empty body when no sprint exists yet.
+        const sText = await sRes.text();
+        if (!sText) {
             burndownEmpty.textContent = `No sprint named "${sprintName}" exists yet.`;
             burndownEmpty.style.display = "block";
             return;
         }
-        if (!sRes.ok) throw new Error(`HTTP ${sRes.status}`);
-        const sprint = await sRes.json();
+        const sprint = JSON.parse(sText);
 
         const bRes = await fetch(`${TIMELOGS_API}/burndown/${sprint.id}`);
         if (!bRes.ok) throw new Error(`HTTP ${bRes.status}`);

@@ -5,12 +5,7 @@
  * (opened from the ⋯ menu in the project header), an account menu on the
  * avatar with Log out, a team badge in the project header that is
  * auto-detected from sessionStorage, and a logout confirmation modal.
- *
- * Only one of the three menus (tag filter / account / ⋯) can be open at
- * a time — clicking one closes the others.
- *
- * US07 + US08: teammates share their team's board. A task is visible if
- * it is assigned to my team by name, or to any user who is on my team.
+ * Only one of the three menus (tag filter / account / ⋯) is open at a time.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -127,8 +122,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     // ===================== ROLE BADGE (project header) =====================
-    // Auto-detect the employee's team from sessionStorage. Falls back to
-    // "Employee" if the user has no team assigned.
     const roleBadgeEl = document.getElementById("roleBadge");
     if (roleBadgeEl) {
         roleBadgeEl.textContent = storedTeam || "Employee";
@@ -194,7 +187,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         setTagFilterOpen(willOpen);
     });
 
-    // Click anywhere else closes all menus
     document.addEventListener("click", (event) => {
         const target = event.target;
 
@@ -215,7 +207,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         }
     });
 
-    // Esc closes all menus
     document.addEventListener("keydown", (event) => {
         if (event.key === "Escape") closeAllMenus();
     });
@@ -226,24 +217,20 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     const cancelLogoutBtn = document.getElementById("cancelLogoutBtn");
     const confirmLogoutBtn = document.getElementById("confirmLogoutBtn");
 
-    // Click "Log out" in the account menu → open the confirmation modal
     logoutBtn?.addEventListener("click", () => {
         closeAllMenus();
         logoutOverlay?.classList.add("visible");
     });
 
-    // Cancel → close the modal, stay on the page
     cancelLogoutBtn?.addEventListener("click", () => {
         logoutOverlay?.classList.remove("visible");
     });
 
-    // Confirm → clear session and go to login
     confirmLogoutBtn?.addEventListener("click", () => {
         sessionStorage.clear();
         window.location.href = "index-login-page.html";
     });
 
-    // Click outside the modal → close it (same as Cancel)
     logoutOverlay?.addEventListener("click", (e) => {
         if (e.target === logoutOverlay) {
             logoutOverlay.classList.remove("visible");
@@ -251,15 +238,22 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     });
 
     // ===================== SPRINT RESOLUTION =====================
+    /**
+     * Loads the latest sprint with the given name.
+     * The backend returns 200 with an EMPTY body when no sprint with that
+     * name exists yet — so we read the response as text first and treat an
+     * empty string as "no sprint".
+     */
     async function resolveCurrentSprintId() {
         const name = SPRINT_TAB_NAMES[currentSprintId];
         if (!name) return null;
 
         try {
             const res = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
-            if (res.status === 404) return null;
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const sprint = await res.json();
+            if (!res.ok) return null;
+            const text = await res.text();
+            if (!text) return null;                 // empty body = no sprint yet
+            const sprint = JSON.parse(text);
             return sprint?.id ?? null;
         } catch (err) {
             console.error("Failed to resolve sprint:", err);
