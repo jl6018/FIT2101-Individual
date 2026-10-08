@@ -1,9 +1,9 @@
 <!--
     User Board Page — Symph Web Application
-    Kanban board for employees. Includes search, tag filter, a "My Logs"
-    modal (their own time logs, deletable), sprint tabs, a read-only task
-    modal, a Log Time modal (US24), and a Logout modal.
-    US08: employees only see tasks that belong to their team.
+    Kanban board for employees. Includes search, tag filter, sprint tabs,
+    a read-only task modal, a Log Time modal (US24), a "My Logs" modal
+    (opened from the ⋯ menu in the project header), and an account menu on
+    the avatar with Log out.
 
     @author Lim Jia Li
     @version 17.0.16
@@ -46,12 +46,25 @@
     </div>
 
     <div class="navbar-icons">
-        <button id="myLogsBtn" class="logout-btn" type="button" title="My time logs">My Logs</button>
-        <span>📢</span>
-        <span>🔔</span>
-        <span id="signedInName" style="font-size: 0.85rem; margin-right: 8px;">Employee</span>
-        <div class="avatar avatar-dark" id="userAvatar">?</div>
-        <button id="logoutBtn" class="logout-btn">Log out</button>
+        <div class="account-menu-wrap">
+            <button id="profileMenuBtn" class="account-menu-btn" type="button"
+                    aria-haspopup="true" aria-expanded="false" aria-label="Account menu">
+                <div class="avatar avatar-dark" id="userAvatar">?</div>
+            </button>
+            <div class="account-menu" id="profileMenu" role="menu">
+                <div class="account-menu-header">
+                    <div class="account-menu-name" id="profileMenuName">Employee</div>
+                    <div class="account-menu-sub" id="profileMenuSub">—</div>
+                </div>
+                <button type="button" class="account-menu-item" id="logoutBtn" role="menuitem">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M15 12H3M11 7l5 5-5 5"/>
+                        <path d="M15 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/>
+                    </svg>
+                    Log out
+                </button>
+            </div>
+        </div>
     </div>
 </nav>
 
@@ -60,7 +73,19 @@
         <h1>Project Name</h1>
     </div>
     <div class="project-header-right">
-        <span class="menu-dots">⋯</span>
+        <div class="more-menu-wrap">
+            <button id="headerMenuBtn" class="more-menu-btn" type="button"
+                    aria-haspopup="true" aria-expanded="false" aria-label="More options">⋯</button>
+            <div class="more-menu" id="headerMenu" role="menu">
+                <button type="button" class="more-menu-item" id="myLogsBtn" role="menuitem">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="8.5"/>
+                        <path d="M12 7.5V12l3 2"/>
+                    </svg>
+                    My Logs
+                </button>
+            </div>
+        </div>
     </div>
 </header>
 
@@ -186,17 +211,6 @@
         </div>
 
         <p class="my-logs-total" id="myLogsTotal"></p>
-    </div>
-</div>
-
-<div class="modal-overlay" id="logoutOverlay">
-    <div class="modal modal-narrow" role="dialog" aria-modal="true">
-        <h2 class="modal-title">Log out?</h2>
-        <p class="modal-subtitle">You'll be returned to the login page.</p>
-        <div class="modal-actions">
-            <button id="cancelLogoutBtn" class="btn-secondary">Cancel</button>
-            <button id="confirmLogoutBtn" class="btn-danger">Log out</button>
-        </div>
     </div>
 </div>
 

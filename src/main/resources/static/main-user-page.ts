@@ -5,12 +5,9 @@
 /**
  * User Board Page — Symph Web Application
  * Kanban board for employees. Includes search, tag filter, sprint tabs,
- * a read-only task modal that shows who the task is assigned to and its
- * priority, a Log Time modal (US24), a "My Logs" modal with delete
- * support, and a Logout modal.
- *
- * US07 + US08: teammates share their team's board. A task is visible if
- * it is assigned to my team by name, or to any user who is on my team.
+ * a read-only task modal, a Log Time modal (US24), a "My Logs" modal
+ * (opened from the ⋯ menu in the project header), and a profile menu on
+ * the avatar with Log out.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -156,23 +153,15 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     const emptyState = document.getElementById("boardEmptyState") as HTMLParagraphElement | null;
 
     // ===================== SHOW CURRENT USER =====================
-    const nameEl = document.getElementById("signedInName");
     const avatarEl = document.getElementById("userAvatar");
+    const profileMenuName = document.getElementById("profileMenuName");
+    const profileMenuSub = document.getElementById("profileMenuSub");
 
     const storedName = sessionStorage.getItem("name") || "";
     const storedTeam = sessionStorage.getItem("team") || "";
 
-    if (nameEl) {
-        if (storedName && storedTeam) {
-            nameEl.textContent = `${storedName} (${storedTeam})`;
-        } else if (storedName) {
-            nameEl.textContent = storedName;
-        } else if (storedTeam) {
-            nameEl.textContent = storedTeam;
-        } else {
-            nameEl.textContent = "Employee";
-        }
-    }
+    if (profileMenuName) profileMenuName.textContent = storedName || "Employee";
+    if (profileMenuSub) profileMenuSub.textContent = storedTeam || "—";
 
     if (avatarEl) {
         const label = initials(storedName) || (storedName ? storedName.charAt(0).toUpperCase() : "?");
@@ -180,20 +169,63 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (storedName) avatarEl.title = storedName;
     }
 
-    // ===================== LOGOUT MODAL =====================
-    const logoutBtn = document.getElementById("logoutBtn");
-    const logoutOverlay = document.getElementById("logoutOverlay");
-    const cancelLogoutBtn = document.getElementById("cancelLogoutBtn");
-    const confirmLogoutBtn = document.getElementById("confirmLogoutBtn");
+    // ===================== PROFILE MENU =====================
+    const profileMenuBtn = document.getElementById("profileMenuBtn") as HTMLButtonElement | null;
+    const profileMenu = document.getElementById("profileMenu") as HTMLDivElement | null;
 
-    logoutBtn?.addEventListener("click", () => logoutOverlay?.classList.add("visible"));
-    cancelLogoutBtn?.addEventListener("click", () => logoutOverlay?.classList.remove("visible"));
-    confirmLogoutBtn?.addEventListener("click", () => {
+    function setProfileMenuOpen(open: boolean): void {
+        if (!profileMenu || !profileMenuBtn) return;
+        profileMenu.classList.toggle("visible", open);
+        profileMenuBtn.setAttribute("aria-expanded", String(open));
+    }
+
+    profileMenuBtn?.addEventListener("click", (event: MouseEvent) => {
+        event.stopPropagation();
+        setProfileMenuOpen(!profileMenu.classList.contains("visible"));
+    });
+
+    document.addEventListener("click", (event: MouseEvent) => {
+        if (!profileMenu?.classList.contains("visible")) return;
+        const target = event.target as Node;
+        if (profileMenu.contains(target) || profileMenuBtn?.contains(target)) return;
+        setProfileMenuOpen(false);
+    });
+
+    // ===================== HEADER ⋯ MENU =====================
+    const headerMenuBtn = document.getElementById("headerMenuBtn") as HTMLButtonElement | null;
+    const headerMenu = document.getElementById("headerMenu") as HTMLDivElement | null;
+
+    function setHeaderMenuOpen(open: boolean): void {
+        if (!headerMenu || !headerMenuBtn) return;
+        headerMenu.classList.toggle("visible", open);
+        headerMenuBtn.setAttribute("aria-expanded", String(open));
+    }
+
+    headerMenuBtn?.addEventListener("click", (event: MouseEvent) => {
+        event.stopPropagation();
+        setHeaderMenuOpen(!headerMenu.classList.contains("visible"));
+    });
+
+    document.addEventListener("click", (event: MouseEvent) => {
+        if (!headerMenu?.classList.contains("visible")) return;
+        const target = event.target as Node;
+        if (headerMenu.contains(target) || headerMenuBtn?.contains(target)) return;
+        setHeaderMenuOpen(false);
+    });
+
+    document.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (event.key === "Escape") {
+            setProfileMenuOpen(false);
+            setHeaderMenuOpen(false);
+        }
+    });
+
+    // ===================== LOGOUT =====================
+    const logoutBtn = document.getElementById("logoutBtn") as HTMLButtonElement | null;
+    logoutBtn?.addEventListener("click", () => {
+        setProfileMenuOpen(false);
         sessionStorage.clear();
         window.location.href = "index-login-page.html";
-    });
-    logoutOverlay?.addEventListener("click", (e) => {
-        if (e.target === logoutOverlay) logoutOverlay.classList.remove("visible");
     });
 
     // ===================== SPRINT RESOLUTION =====================
@@ -629,6 +661,8 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
     async function openMyLogs(): Promise<void> {
         if (!myLogsOverlay || !myLogsBody) return;
+
+        setHeaderMenuOpen(false);
 
         myLogsBody.innerHTML =
             `<tr><td colspan="5" class="muted">Loading…</td></tr>`;

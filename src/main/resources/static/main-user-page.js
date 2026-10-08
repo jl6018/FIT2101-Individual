@@ -1,9 +1,9 @@
 /**
  * User Board Page — Symph Web Application
  * Kanban board for employees. Includes search, tag filter, sprint tabs,
- * a read-only task modal that shows who the task is assigned to and its
- * priority, a Log Time modal (US24), a "My Logs" modal with delete
- * support, and a Logout modal.
+ * a read-only task modal, a Log Time modal (US24), a "My Logs" modal
+ * (opened from the ⋯ menu in the project header), and an account menu on
+ * the avatar with Log out.
  *
  * US07 + US08: teammates share their team's board. A task is visible if
  * it is assigned to my team by name, or to any user who is on my team.
@@ -98,32 +98,23 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     let currentSprintId = savedSprintId && savedSprintId !== "" ? savedSprintId : "1";
     let currentSprintNumericId = null;
 
-    // US07 + US08: teammates share their team's board.
     let teammateIds = new Set();
-    let userIdToName = new Map();   // id → display name (for chips + avatars)
+    let userIdToName = new Map();
 
     const board = requireElement("board");
     const searchInput = document.getElementById("searchInput");
     const emptyState = document.getElementById("boardEmptyState");
 
     // ===================== SHOW CURRENT USER =====================
-    const nameEl = document.getElementById("signedInName");
     const avatarEl = document.getElementById("userAvatar");
+    const profileMenuName = document.getElementById("profileMenuName");
+    const profileMenuSub = document.getElementById("profileMenuSub");
 
     const storedName = sessionStorage.getItem("name") || "";
     const storedTeam = sessionStorage.getItem("team") || "";
 
-    if (nameEl) {
-        if (storedName && storedTeam) {
-            nameEl.textContent = `${storedName} (${storedTeam})`;
-        } else if (storedName) {
-            nameEl.textContent = storedName;
-        } else if (storedTeam) {
-            nameEl.textContent = storedTeam;
-        } else {
-            nameEl.textContent = "Employee";
-        }
-    }
+    if (profileMenuName) profileMenuName.textContent = storedName || "Employee";
+    if (profileMenuSub) profileMenuSub.textContent = storedTeam || "—";
 
     if (avatarEl) {
         const label = initials(storedName) || (storedName ? storedName.charAt(0).toUpperCase() : "?");
@@ -131,20 +122,64 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (storedName) avatarEl.title = storedName;
     }
 
-    // ===================== LOGOUT MODAL =====================
-    const logoutBtn = document.getElementById("logoutBtn");
-    const logoutOverlay = document.getElementById("logoutOverlay");
-    const cancelLogoutBtn = document.getElementById("cancelLogoutBtn");
-    const confirmLogoutBtn = document.getElementById("confirmLogoutBtn");
+    // ===================== PROFILE MENU =====================
+    const profileMenuBtn = document.getElementById("profileMenuBtn");
+    const profileMenu = document.getElementById("profileMenu");
 
-    logoutBtn?.addEventListener("click", () => logoutOverlay?.classList.add("visible"));
-    cancelLogoutBtn?.addEventListener("click", () => logoutOverlay?.classList.remove("visible"));
-    confirmLogoutBtn?.addEventListener("click", () => {
+    function setProfileMenuOpen(open) {
+        if (!profileMenu || !profileMenuBtn) return;
+        profileMenu.classList.toggle("visible", open);
+        profileMenuBtn.setAttribute("aria-expanded", String(open));
+    }
+
+    profileMenuBtn?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        setProfileMenuOpen(!profileMenu.classList.contains("visible"));
+    });
+
+    // ===================== HEADER ⋯ MENU =====================
+    const headerMenuBtn = document.getElementById("headerMenuBtn");
+    const headerMenu = document.getElementById("headerMenu");
+
+    function setHeaderMenuOpen(open) {
+        if (!headerMenu || !headerMenuBtn) return;
+        headerMenu.classList.toggle("visible", open);
+        headerMenuBtn.setAttribute("aria-expanded", String(open));
+    }
+
+    headerMenuBtn?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        setHeaderMenuOpen(!headerMenu.classList.contains("visible"));
+    });
+
+    // Close menus when clicking anywhere else
+    document.addEventListener("click", (event) => {
+        if (profileMenu?.classList.contains("visible")) {
+            if (!profileMenu.contains(event.target) && !profileMenuBtn?.contains(event.target)) {
+                setProfileMenuOpen(false);
+            }
+        }
+        if (headerMenu?.classList.contains("visible")) {
+            if (!headerMenu.contains(event.target) && !headerMenuBtn?.contains(event.target)) {
+                setHeaderMenuOpen(false);
+            }
+        }
+    });
+
+    // Esc closes both menus
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+            setProfileMenuOpen(false);
+            setHeaderMenuOpen(false);
+        }
+    });
+
+    // ===================== LOGOUT =====================
+    const logoutBtn = document.getElementById("logoutBtn");
+    logoutBtn?.addEventListener("click", () => {
+        setProfileMenuOpen(false);
         sessionStorage.clear();
         window.location.href = "index-login-page.html";
-    });
-    logoutOverlay?.addEventListener("click", (e) => {
-        if (e.target === logoutOverlay) logoutOverlay.classList.remove("visible");
     });
 
     // ===================== SPRINT RESOLUTION =====================
@@ -303,12 +338,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
       </div>`;
     }
 
-    /**
-     * Small avatars (employees) or team chips (teams) for the card footer.
-     * Mirrors the admin board's rendering so both look the same.
-     */
     function renderAssignees(task) {
-        // Team-assigned → show team chip(s)
         if (task.assignedTeams) {
             const teams = String(task.assignedTeams)
                 .split(",")
@@ -320,7 +350,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
                     .join(" ");
             }
         }
-        // Employee-assigned → show small avatars
         if (task.assignedEmployeeIds) {
             const ids = String(task.assignedEmployeeIds)
                 .split(",")
@@ -482,8 +511,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         renderBoard();
     });
 
-    document.addEventListener("click", () => setTagFilterOpen(false));
-
     // ===================== US24: LOG TIME MODAL =====================
     const logTimeOverlay = requireElement("logTimeOverlay");
     const closeLogTimeBtn = requireElement("closeLogTimeBtn");
@@ -586,6 +613,8 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
     async function openMyLogs() {
         if (!myLogsOverlay) return;
+
+        setHeaderMenuOpen(false);
 
         myLogsBody.innerHTML =
             `<tr><td colspan="5" class="muted">Loading…</td></tr>`;
@@ -709,7 +738,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (!overlay) return;
         if (modalColumn) modalColumn.value = task.column;
         if (titleInput) titleInput.value = task.title;
-        // Blank description if empty — the placeholder will show "No description"
         if (descriptionBox) descriptionBox.value = task.description || "";
 
         const column = COLUMNS.find((c) => c.id === task.column);
