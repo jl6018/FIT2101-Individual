@@ -45,15 +45,22 @@ public class SprintController {
      * Retrieves the most recent sprint with the given name.
      * Used by the board page so tabs reflect the newest sprint with that name.
      *
+     * If no sprint with that name exists yet, this returns 200 with an empty
+     * body (rather than 404) so the browser does not log a red console error
+     * on first load before any sprint has been created.
+     *
      * @param name              The name of the sprint to search for
-     * @return                  A ResponseEntity with the latest matching sprint, or an error message on failure
+     * @return                  A ResponseEntity with the latest matching sprint,
+     *                          or an empty 200 response when none exists
      */
     @GetMapping("/latest")
     public ResponseEntity<?> getLatestByName(@RequestParam String name) {
         try {
             return ResponseEntity.ok(sprintService.getLatestByName(name));
         } catch (RuntimeException e) {
-            return ResponseEntity.status(404).body(e.getMessage());
+            // No sprint with this name yet — return 200 with an empty body
+            // instead of 404 so the frontend's initial load stays quiet.
+            return ResponseEntity.ok().build();
         }
     }
 
