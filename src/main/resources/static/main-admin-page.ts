@@ -7,10 +7,11 @@
  * Handles all interactive behaviour for the admin Kanban board, including
  * authentication guards, task CRUD, drag-and-drop reordering, sprint tabs,
  * accumulated sprint hours (US25), team filtering, tag filtering/sorting
- * (US14), search, the task modal with progress editing (US16), log-time
- * modal (US24), card status dropdown (US18), sprint start/end controls,
- * tag management (US13), admin-only task deletion (US11), and the
- * PRODUCT_OWNER role (US22).
+ * (US14), search, the task modal with progress editing (US16), card status
+ * dropdown (US18), sprint start/end controls, tag management (US13),
+ * admin-only task deletion (US11), the PRODUCT_OWNER role (US22), and the
+ * Logged Hours panel for viewing time logs (US25–US29). Admins do NOT log
+ * time — that happens on the employee board (US24).
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -130,6 +131,14 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         endDate: string;
         status: "PLANNED" | "ACTIVE" | "COMPLETED";
         memberCount?: number;
+    };
+    type TimeLogRow = {
+        id: number;
+        date: string | null;
+        hours: number;
+        description?: string | null;
+        task?: { id: number; name: string } | null;
+        user?: { id: number; name: string; role: string } | null;
     };
 
     // ===================== CONFIG =====================
@@ -264,6 +273,12 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     function formatDateBadge(isoDate: string): string {
         const date = new Date(`${isoDate}T00:00:00`);
         return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    }
+
+    function formatDateShort(iso: string | null | undefined): string {
+        if (!iso) return "—";
+        const d = new Date(`${iso}T00:00:00`);
+        return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
     }
 
     function readSetting(key: string): string {
@@ -616,7 +631,11 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 showAlertModal("Not allowed", "Only admins can delete tasks.");
                 return false;
             }
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!res.ok) {
+                const text = await res.text();
+                showAlertModal("Delete failed", text || `HTTP ${res.status}`);
+                return false;
+            }
             return true;
         } catch (err) {
             console.error("Delete failed:", err);
@@ -708,7 +727,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
       <div class="card${footerHtml || progressHtml ? " card-detailed" : ""}" draggable="true" data-task="${escapeHtml(task.id)}">
         <div class="card-title-row">
           <span class="card-title">${escapeHtml(task.title)}</span>
-          <button type="button" class="logtime-icon" data-logtime="${escapeHtml(task.id)}" title="Log time on this task" aria-label="Log time on ${escapeHtml(task.title)}">${CLOCK_ICON}</button>
           <button type="button" class="edit-icon" data-edit="${escapeHtml(task.id)}" title="Edit task details" aria-label="Edit ${escapeHtml(task.title)}">${PENCIL_ICON}</button>
         </div>
         ${progressHtml}
@@ -743,15 +761,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
     board.addEventListener("click", (event: MouseEvent) => {
         const target = event.target as HTMLElement;
-
-        const logBtn = target.closest<HTMLElement>("[data-logtime]");
-        if (logBtn) {
-            const taskId = logBtn.dataset["logtime"];
-            const task = tasks.find((t) => t.id === taskId);
-            if (!task) return;
-            openLogTimeModal(task);
-            return;
-        }
 
         const editBtn = target.closest<HTMLElement>("[data-edit]");
         if (editBtn) {
@@ -805,99 +814,86 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         }
     });
 
-    // ===================== US24: LOG TIME MODAL =====================
-    const logTimeOverlay = requireElement<HTMLDivElement>("logTimeOverlay");
-    const closeLogTimeBtn = requireElement<HTMLButtonElement>("closeLogTimeBtn");
-    const logTimeForm = requireElement<HTMLFormElement>("logTimeForm");
-    const logDate = requireElement<HTMLInputElement>("logDate");
-    const logStartTime = requireElement<HTMLInputElement>("logStartTime");
-    const logHours = requireElement<HTMLInputElement>("logHours");
-    const logDescription = requireElement<HTMLInputElement>("logDescription");
-    const logTimeTaskContext = requireElement<HTMLParagraphElement>("logTimeTaskContext");
-    const logTimeError = requireElement<HTMLDivElement>("logTimeError");
-    const logTimeErrorText = requireElement<HTMLSpanElement>("logTimeErrorText");
-    const logTimeSubmitBtn = requireElement<HTMLButtonElement>("logTimeSubmitBtn");
+    // ===================== LOGGED HOURS PANEL =====================
+    const loggedHoursBody = document.getElementById("loggedHoursBody") as HTMLTableSectionElement | null;
+    const loggedHoursTotal = document.getElementById("loggedHoursTotal") as HTMLParagraphElement | null;
+    const loggedHoursUserFilter = document.getElementById("loggedHoursUserFilter") as HTMLSelectElement | null;
+    const loggedHoursRangeFilter = document.getElementById("loggedHoursRangeFilter") as HTMLSelectElement | null;
+    const loggedHoursRefreshBtn = document.getElementById("loggedHoursRefreshBtn") as HTMLButtonElement | null;
 
-    let logTimeTaskId: string | null = null;
+    async function loadLoggedHours(): Promise<void> {
+        if (!loggedHoursBody) return;
 
-    function openLogTimeModal(task: Task): void {
-        if (!task || !task.id) return;
-        logTimeTaskId = task.id;
+        loggedHoursBody.innerHTML =
+            `<tr><td colspan="5" class="muted">Loading…</td></tr>`;
+        if (loggedHoursTotal) loggedHoursTotal.textContent = "";
 
-        logTimeTaskContext.textContent =
-            `Record your start time, time spent, and date for "${task.title}".`;
-
-        logDate.value = new Date().toISOString().split("T")[0];
-        logStartTime.value = "";
-        logHours.value = "";
-        logDescription.value = "";
-        logTimeError.hidden = true;
-
-        logTimeSubmitBtn.disabled = false;
-        logTimeSubmitBtn.textContent = "Save log";
-
-        logTimeOverlay.classList.add("visible");
-        logDate.focus();
-    }
-
-    function closeLogTimeModal(): void {
-        logTimeOverlay.classList.remove("visible");
-        logTimeTaskId = null;
-    }
-
-    closeLogTimeBtn.addEventListener("click", closeLogTimeModal);
-    logTimeOverlay.addEventListener("click", (e: MouseEvent) => {
-        if (e.target === logTimeOverlay) closeLogTimeModal();
-    });
-
-    logTimeForm.addEventListener("submit", async (e: SubmitEvent) => {
-        e.preventDefault();
-        logTimeError.hidden = true;
-
+        const mode = loggedHoursUserFilter?.value || "all";
         const userId = sessionStorage.getItem("userId");
 
-        const payload = {
-            date: logDate.value,
-            startTime: logStartTime.value,
-            hours: Number(logHours.value),
-            description: logDescription.value.trim() || null,
-            taskId: logTimeTaskId ? Number(logTimeTaskId) : null,
-            userId: userId ? Number(userId) : null,
-        };
-
-        if (!payload.date) { logTimeErrorText.textContent = "Please pick a date."; logTimeError.hidden = false; return; }
-        if (!payload.startTime) { logTimeErrorText.textContent = "Please pick a start time."; logTimeError.hidden = false; return; }
-        if (!payload.hours || payload.hours <= 0) { logTimeErrorText.textContent = "Hours must be greater than 0."; logTimeError.hidden = false; return; }
-        if (!payload.taskId) { logTimeErrorText.textContent = "Missing task ID."; logTimeError.hidden = false; return; }
-        if (!payload.userId) { logTimeErrorText.textContent = "You must be signed in."; logTimeError.hidden = false; return; }
-
-        logTimeSubmitBtn.disabled = true;
-        logTimeSubmitBtn.textContent = "Saving…";
-
         try {
-            const res = await fetch(TIMELOGS_API, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
+            let logs: TimeLogRow[];
 
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || `HTTP ${res.status}`);
+            if (mode === "me" && userId) {
+                const res = await fetch(`${TIMELOGS_API}/user/${userId}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                logs = (await res.json()) as TimeLogRow[];
+            } else {
+                const res = await fetch(TIMELOGS_API);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                logs = (await res.json()) as TimeLogRow[];
             }
 
-            closeLogTimeModal();
-            showToast(`Logged ${payload.hours}h on this task`);
-            await refreshSprintHours();
+            const rangeVal = loggedHoursRangeFilter?.value || "all";
+            if (rangeVal !== "all") {
+                const days = Number(rangeVal) || 7;
+                const cutoff = new Date();
+                cutoff.setDate(cutoff.getDate() - (days - 1));
+                const cutoffIso = cutoff.toISOString().split("T")[0];
+                logs = logs.filter((l) => (l.date ?? "") >= cutoffIso);
+            }
+
+            logs.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+
+            if (logs.length === 0) {
+                loggedHoursBody.innerHTML =
+                    `<tr><td colspan="5" class="muted">No logs found.</td></tr>`;
+                if (loggedHoursTotal) loggedHoursTotal.textContent = "Total: 0h";
+                return;
+            }
+
+            let total = 0;
+            loggedHoursBody.innerHTML = logs.map((l) => {
+                const hours = Number(l.hours || 0);
+                total += hours;
+                const date = formatDateShort(l.date);
+                const task = l.task?.name ?? "—";
+                const user = l.user?.name ?? "—";
+                const desc = l.description ? escapeHtml(l.description) : "—";
+                return `
+                    <tr>
+                        <td>${escapeHtml(date)}</td>
+                        <td>${escapeHtml(task)}</td>
+                        <td>${escapeHtml(user)}</td>
+                        <td>${hours.toFixed(1)}h</td>
+                        <td>${desc}</td>
+                    </tr>`;
+            }).join("");
+
+            if (loggedHoursTotal) {
+                loggedHoursTotal.textContent =
+                    `Total: ${total.toFixed(1)}h across ${logs.length} log(s)`;
+            }
         } catch (err) {
-            console.error("Log time failed:", err);
-            logTimeErrorText.textContent =
-                err instanceof Error ? err.message : "Could not save the time log.";
-            logTimeError.hidden = false;
-            logTimeSubmitBtn.disabled = false;
-            logTimeSubmitBtn.textContent = "Save log";
+            console.error("Failed to load logged hours:", err);
+            loggedHoursBody.innerHTML =
+                `<tr><td colspan="5" class="muted">Could not load logs.</td></tr>`;
         }
-    });
+    }
+
+    loggedHoursRefreshBtn?.addEventListener("click", () => { void loadLoggedHours(); });
+    loggedHoursUserFilter?.addEventListener("change", () => { void loadLoggedHours(); });
+    loggedHoursRangeFilter?.addEventListener("change", () => { void loadLoggedHours(); });
 
     // ===================== DRAG AND DROP =====================
     let draggedTaskId: string | null = null;
@@ -1089,7 +1085,10 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     teamFilterBtn.addEventListener("click", (event: MouseEvent) => {
         event.stopPropagation();
         renderTeamFilter();
-        setTeamFilterOpen(!teamFilterMenu.classList.contains("visible"));
+
+        const willOpen = !teamFilterMenu.classList.contains("visible");
+        setTagFilterOpen(false);
+        setTeamFilterOpen(willOpen);
     });
 
     teamFilterMenu.addEventListener("click", (event: MouseEvent) => {
@@ -1101,8 +1100,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         renderTeamFilter();
         renderBoard();
     });
-
-    document.addEventListener("click", () => setTeamFilterOpen(false));
 
     // ===================== TAG FILTER (US14) =====================
     const tagFilterBtn = requireElement<HTMLButtonElement>("tagFilterBtn");
@@ -1174,7 +1171,10 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     tagFilterBtn.addEventListener("click", (event: MouseEvent) => {
         event.stopPropagation();
         renderTagFilter();
-        setTagFilterOpen(!tagFilterMenu.classList.contains("visible"));
+
+        const willOpen = !tagFilterMenu.classList.contains("visible");
+        setTeamFilterOpen(false);
+        setTagFilterOpen(willOpen);
     });
 
     tagFilterMenu.addEventListener("click", (event: MouseEvent) => {
@@ -1199,7 +1199,10 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         renderBoard();
     });
 
-    document.addEventListener("click", () => setTagFilterOpen(false));
+    document.addEventListener("click", () => {
+        setTeamFilterOpen(false);
+        setTagFilterOpen(false);
+    });
 
     // ===================== TASK MODAL =====================
     const overlay = requireElement<HTMLDivElement>("taskModalOverlay");
@@ -1587,11 +1590,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     document.addEventListener("keydown", (event: KeyboardEvent) => {
         if (event.key !== "Escape") return;
 
-        if (logTimeOverlay.classList.contains("visible")) {
-            closeLogTimeModal();
-            return;
-        }
-
         setTeamFilterOpen(false);
         setTagFilterOpen(false);
         if (!overlay.classList.contains("visible")) return;
@@ -1778,6 +1776,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         await refreshFromBackend();
         renderTagFilter();
         await refreshSprintHours();
+        await loadLoggedHours();
     }
     void init();
 })();

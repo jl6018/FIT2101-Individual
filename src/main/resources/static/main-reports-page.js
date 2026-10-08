@@ -70,6 +70,7 @@ const memberModalName = requireElement("memberModalName");
 const memberModalTeam = requireElement("memberModalTeam");
 const memberChartWrap = requireElement("memberChartWrap");
 const memberEmptyState = requireElement("memberEmptyState");
+const memberLogsBody = requireElement("memberLogsBody");
 const memberModalTotal = requireElement("memberModalTotal");
 const taskLineChart = requireElement("taskLineChart");
 const taskChartEmpty = requireElement("taskChartEmpty");
@@ -161,7 +162,6 @@ async function loadBurndown() {
     burndownChart.innerHTML = "";
     burndownEmpty.style.display = "none";
 
-    // Resolve the current sprint ID
     const tabId = window.localStorage.getItem(SPRINT_KEY) || "1";
     const sprintName = SPRINT_TAB_NAMES[tabId];
     if (!sprintName) {
@@ -182,8 +182,7 @@ async function loadBurndown() {
 
         const bRes = await fetch(`${TIMELOGS_API}/burndown/${sprint.id}`);
         if (!bRes.ok) throw new Error(`HTTP ${bRes.status}`);
-        const points = await bRes.json();
-        renderBurndown(points);
+        renderBurndown(await bRes.json());
     } catch (err) {
         console.error("Failed to load burndown:", err);
         burndownEmpty.textContent = "Could not load burndown data.";
@@ -239,6 +238,7 @@ async function openMemberModal(row) {
     memberModalTeam.textContent = `${row.team} — logged sessions`;
     memberChartWrap.innerHTML = "";
     memberEmptyState.style.display = "none";
+    memberLogsBody.innerHTML = `<tr><td colspan="4" class="muted">Loading…</td></tr>`;
     memberModalTotal.textContent = "";
     openModal(memberOverlay);
 
@@ -251,6 +251,8 @@ async function openMemberModal(row) {
         console.error("Failed to load member history:", err);
         memberEmptyState.textContent = "Could not load this member's history.";
         memberEmptyState.style.display = "block";
+        memberLogsBody.innerHTML =
+            `<tr><td colspan="4" class="muted">Could not load logs.</td></tr>`;
     }
 }
 
@@ -258,10 +260,13 @@ function renderMemberChart(logs) {
     if (!logs || logs.length === 0) {
         memberChartWrap.style.display = "none";
         memberEmptyState.style.display = "block";
+        memberLogsBody.innerHTML =
+            `<tr><td colspan="4" class="muted">No entries.</td></tr>`;
         memberModalTotal.textContent = "Total: 0h across 0 day(s)";
         return;
     }
 
+    // ---- Bar chart ----
     const byDate = {};
     logs.forEach((log) => {
         byDate[log.date] = (byDate[log.date] || 0) + Number(log.hours || 0);
@@ -284,6 +289,25 @@ function renderMemberChart(logs) {
             <span class="bar-label">${date.slice(5)}</span>`;
         memberChartWrap.appendChild(item);
     });
+
+    // ---- Log entries table ----
+    const sorted = [...logs].sort((a, b) =>
+        (b.date || "").localeCompare(a.date || "")
+    );
+
+    memberLogsBody.innerHTML = sorted.map((l) => {
+        const date = l.date ?? "—";
+        const task = l.task?.name ?? "—";
+        const hours = Number(l.hours || 0);
+        const desc = l.description ? escapeHtml(l.description) : "—";
+        return `
+            <tr>
+                <td>${escapeHtml(date)}</td>
+                <td>${escapeHtml(task)}</td>
+                <td>${hours.toFixed(1)}h</td>
+                <td>${desc}</td>
+            </tr>`;
+    }).join("");
 
     const totalHours = entries.reduce((sum, e) => sum + e.hours, 0);
     memberModalTotal.textContent = `Total: ${totalHours.toFixed(1)}h across ${entries.length} day(s)`;
@@ -383,7 +407,6 @@ function renderBurndown(points) {
         : paddingLeft + (i / lastIndex) * plotWidth;
     const yFor = (v) => paddingTop + plotHeight - (v / niceMax) * plotHeight;
 
-    // Projected (dashed)
     const projectedLine = document.createElementNS(svgNS, "polyline");
     projectedLine.setAttribute("points",
         points.map((p, i) => `${xFor(i)},${yFor(p.projectedRemaining)}`).join(" "));
@@ -393,7 +416,6 @@ function renderBurndown(points) {
     projectedLine.setAttribute("stroke-dasharray", "6,4");
     burndownChart.appendChild(projectedLine);
 
-    // Actual (solid, blue)
     const actualLine = document.createElementNS(svgNS, "polyline");
     actualLine.setAttribute("points",
         points.map((p, i) => `${xFor(i)},${yFor(p.actualRemaining)}`).join(" "));
@@ -402,16 +424,11 @@ function renderBurndown(points) {
     actualLine.setAttribute("stroke-width", "2.5");
     burndownChart.appendChild(actualLine);
 
-    // Dots + x-axis date labels
     points.forEach((p, i) => {
         const x = xFor(i);
-        const yProj = yFor(p.projectedRemaining);
-        const yAct = yFor(p.actualRemaining);
+        addDot(svgNS, burndownChart, x, yFor(p.projectedRemaining), "#111111", 3);
+        addDot(svgNS, burndownChart, x, yFor(p.actualRemaining), "#4F7FFF", 3);
 
-        addDot(svgNS, burndownChart, x, yProj, "#111111", 3);
-        addDot(svgNS, burndownChart, x, yAct, "#4F7FFF", 3);
-
-        // Only label every other day to avoid crowding
         if (i === 0 || i === lastIndex || i % 2 === 0) {
             const lbl = document.createElementNS(svgNS, "text");
             lbl.setAttribute("x", String(x));
@@ -419,7 +436,7 @@ function renderBurndown(points) {
             lbl.setAttribute("text-anchor", "middle");
             lbl.setAttribute("font-size", "10");
             lbl.setAttribute("fill", "#6B7280");
-            lbl.textContent = p.date.slice(5); // MM-DD
+            lbl.textContent = p.date.slice(5);
             burndownChart.appendChild(lbl);
         }
     });
@@ -506,3 +523,6 @@ function addRotatedXLabel(svgNS, svg, x, y, text) {
 
 // ===================== INIT =====================
 void reloadAll();
+
+// Refresh when the tab regains focus (e.g. after logging time elsewhere)
+window.addEventListener("focus", () => { void reloadAll(); });

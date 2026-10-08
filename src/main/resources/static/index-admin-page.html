@@ -1,9 +1,8 @@
 <!--
     Admin Board Page — Symph Web Application
-    Provides the main Kanban board for administrators. Includes the sidebar
-    navigation, search, team filter and tag filter, project header with sprint
-    controls, sprint tabs with accumulated hours (US25), and modals for task
-    editing, log time (US24), logout, invites, and generic confirm/alert dialogs.
+    Provides the main Kanban board for administrators, plus the Logged
+    Hours panel and Reports. Admins do not log time themselves — that is
+    done by team members on the employee board (US24).
 
     @author Lim Jia Li
     @version 17.0.16
@@ -132,7 +131,6 @@
                 <button class="sprint-tab" data-sprint="3" type="button">Sprint 3</button>
             </div>
 
-            <!-- US25: accumulated sprint hours -->
             <div class="sprint-hours" id="sprintHours" title="Total hours logged in this sprint">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                     <circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>
@@ -142,6 +140,44 @@
         </div>
 
         <main class="board" id="board"></main>
+
+        <!-- ===================== LOGGED HOURS PANEL ===================== -->
+        <section class="logged-hours-panel">
+            <div class="logged-hours-header">
+                <h2>Logged Hours</h2>
+                <div class="logged-hours-controls">
+                    <select id="loggedHoursUserFilter" aria-label="Filter by user">
+                        <option value="me">My logs</option>
+                        <option value="all" selected>All users</option>
+                    </select>
+                    <select id="loggedHoursRangeFilter" aria-label="Filter by range">
+                        <option value="7">Last 7 days</option>
+                        <option value="14">Last 14 days</option>
+                        <option value="30">Last 30 days</option>
+                        <option value="all" selected>All time</option>
+                    </select>
+                    <button id="loggedHoursRefreshBtn" class="logged-hours-refresh" type="button">Refresh</button>
+                </div>
+            </div>
+
+            <div class="logged-hours-body">
+                <table class="logged-hours-table">
+                    <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Task</th>
+                        <th>User</th>
+                        <th>Hours</th>
+                        <th>Description</th>
+                    </tr>
+                    </thead>
+                    <tbody id="loggedHoursBody">
+                    <tr><td colspan="5" class="muted">Loading…</td></tr>
+                    </tbody>
+                </table>
+                <p class="logged-hours-total" id="loggedHoursTotal"></p>
+            </div>
+        </section>
     </div>
 </div>
 
@@ -292,40 +328,6 @@
                 <button class="modal-save-btn" id="modalSaveBtn" type="button">Save</button>
             </div>
         </div>
-    </div>
-</div>
-
-<!-- ===================== MODAL: Log Time (US24) ===================== -->
-<div class="modal-overlay" id="logTimeOverlay">
-    <div class="modal modal-narrow" role="dialog" aria-modal="true" aria-labelledby="logTimeTitle">
-        <button class="modal-close" id="closeLogTimeBtn" aria-label="Close" type="button">✕</button>
-        <h2 class="modal-title" id="logTimeTitle">Log Time</h2>
-        <p class="modal-subtitle" id="logTimeTaskContext">Record your start time, time spent, and date.</p>
-
-        <div class="error-banner" id="logTimeError" role="alert" hidden>
-            <span id="logTimeErrorText"></span>
-        </div>
-
-        <form id="logTimeForm">
-            <div class="form-field">
-                <label for="logDate">Date</label>
-                <input type="date" id="logDate" name="logDate" required>
-            </div>
-            <div class="form-field">
-                <label for="logStartTime">Start time</label>
-                <input type="time" id="logStartTime" name="logStartTime" required>
-            </div>
-            <div class="form-field">
-                <label for="logHours">Time spent (hours)</label>
-                <input type="number" id="logHours" name="logHours" step="0.5" min="0.5" required>
-            </div>
-            <div class="form-field">
-                <label for="logDescription">What did you work on? (optional)</label>
-                <input type="text" id="logDescription" name="logDescription" maxlength="200"
-                       placeholder="e.g. Fixed login bug">
-            </div>
-            <button type="submit" class="btn-primary full-width" id="logTimeSubmitBtn">Save log</button>
-        </form>
     </div>
 </div>
 

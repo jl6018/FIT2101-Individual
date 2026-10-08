@@ -4,11 +4,12 @@
 
 /**
  * User Board Page — Symph Web Application
- * Provides a read-only Kanban board for employees. Loads tasks scoped to the
- * current sprint, handles sprint tab switching, live search filtering,
- * tag filtering, and displays a read-only task modal. The signed-in user's
- * name and initials are pulled from sessionStorage so the header reflects
- * the real person.
+ * Kanban board for employees. Includes search, tag filter, a "My Logs"
+ * modal, sprint tabs, a read-only task modal, a Log Time modal (US24),
+ * and a Logout modal.
+ *
+ * US08: employees only see tasks that belong to their team (or that
+ * are assigned directly to them).
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -34,6 +35,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     // ===================== CONFIG =====================
     const API_BASE = "http://localhost:8080/api/tasks";
     const SPRINTS_API = "http://localhost:8080/api/sprints";
+    const TIMELOGS_API = "http://localhost:8080/api/timelogs";
 
     type ColumnId = "PRODUCT_BACKLOG" | "TO_DO" | "IN_PROGRESS" | "IN_REVIEW" | "COMPLETED";
 
@@ -60,9 +62,19 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         progress?: number | null;
         tags?: { id: number; name: string }[] | null;
         sprint?: { id: number } | null;
+        assignedTeams?: string | null;
+        assignedEmployeeIds?: string | null;
     };
 
     type Sprint = { id: number; name: string };
+
+    type BackendTimeLog = {
+        id: number;
+        date: string | null;
+        hours: number;
+        description?: string | null;
+        task?: { id: number; name: string } | null;
+    };
 
     const SPRINT_TAB_NAMES: Record<string, string> = {
         "1": "Sprint 1",
@@ -93,6 +105,12 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
     }
 
+    function formatDateShort(iso: string | null | undefined): string {
+        if (!iso) return "—";
+        const d = new Date(`${iso}T00:00:00`);
+        return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    }
+
     function initials(name: string): string {
         return name
             .split(/\s+/)
@@ -121,19 +139,17 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
     const board = requireElement<HTMLElement>("board");
     const searchInput = document.getElementById("searchInput") as HTMLInputElement | null;
+    const emptyState = document.getElementById("boardEmptyState") as HTMLParagraphElement | null;
 
     // ===================== SHOW CURRENT USER =====================
     const nameEl = document.getElementById("signedInName");
     const avatarEl = document.getElementById("userAvatar");
 
     const storedName = sessionStorage.getItem("name") || "";
-    const storedRole = sessionStorage.getItem("role") || "";
     const storedTeam = sessionStorage.getItem("team") || "";
 
     if (nameEl) {
-        if (storedRole === "ADMIN") {
-            nameEl.textContent = storedName ? `${storedName} (Admin)` : "Admin";
-        } else if (storedName && storedTeam) {
+        if (storedName && storedTeam) {
             nameEl.textContent = `${storedName} (${storedTeam})`;
         } else if (storedName) {
             nameEl.textContent = storedName;
@@ -182,30 +198,58 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         }
     }
 
+    // ===================== US08: VISIBILITY FILTER =====================
+    function taskVisibleToCurrentEmployee(task: BackendTask): boolean {
+        const myTeam = sessionStorage.getItem("team") || "";
+        const myId = sessionStorage.getItem("userId") || "";
+
+        if (myTeam && task.assignedTeams) {
+            const teams = String(task.assignedTeams)
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+            if (teams.includes(myTeam)) return true;
+        }
+
+        if (myId && task.assignedEmployeeIds) {
+            const ids = String(task.assignedEmployeeIds)
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+            if (ids.includes(myId)) return true;
+        }
+
+        return false;
+    }
+
     // ===================== BACKEND SYNC =====================
     async function fetchTasks(): Promise<Task[]> {
         try {
             currentSprintNumericId = await resolveCurrentSprintId();
 
+            let raw: BackendTask[] = [];
+
             if (currentSprintNumericId) {
                 const res = await fetch(`${API_BASE}/sprint/${currentSprintNumericId}`);
                 if (res.ok) {
-                    const data = (await res.json()) as BackendTask[];
-                    return data.map(mapTask);
+                    raw = (await res.json()) as BackendTask[];
+                } else {
+                    console.warn(`Sprint ${currentSprintNumericId} fetch failed — falling back`);
+                    const allRes = await fetch(API_BASE);
+                    if (allRes.ok) raw = (await allRes.json()) as BackendTask[];
                 }
-                console.warn(`Sprint ${currentSprintNumericId} fetch failed — falling back`);
-            }
-
-            const allRes = await fetch(API_BASE);
-            if (!allRes.ok) throw new Error(`HTTP ${allRes.status}`);
-            const all = (await allRes.json()) as BackendTask[];
-
-            return all
-                .filter((t) => {
+            } else {
+                const allRes = await fetch(API_BASE);
+                if (!allRes.ok) throw new Error(`HTTP ${allRes.status}`);
+                const all = (await allRes.json()) as BackendTask[];
+                raw = all.filter((t) => {
                     const taskSprintId = t.sprint?.id ? String(t.sprint.id) : "";
                     return taskSprintId === "";
-                })
-                .map(mapTask);
+                });
+            }
+
+            // US08 — only tasks for this employee's team (or directly assigned to them)
+            return raw.filter(taskVisibleToCurrentEmployee).map(mapTask);
         } catch (err) {
             console.error("Failed to load tasks:", err);
             return [];
@@ -265,6 +309,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
       <div class="card${footerHtml || progressHtml ? " card-detailed" : ""}" data-task="${escapeHtml(task.id)}" style="cursor: pointer;">
         <div class="card-title-row">
           <span class="card-title">${escapeHtml(task.title)}</span>
+          <button type="button" class="logtime-icon" data-logtime="${escapeHtml(task.id)}" title="Log time on this task" aria-label="Log time on ${escapeHtml(task.title)}">${CLOCK_ICON}</button>
         </div>
         ${progressHtml}
         ${footerHtml}
@@ -294,6 +339,10 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         <div class="card-list">${cards.map(renderCard).join("")}</div>
       </section>`;
         }).join("");
+
+        if (emptyState) {
+            emptyState.style.display = tasks.length === 0 ? "block" : "none";
+        }
     }
 
     // ===================== SEARCH =====================
@@ -383,6 +432,172 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
     document.addEventListener("click", () => setTagFilterOpen(false));
 
+    // ===================== US24: LOG TIME MODAL =====================
+    const logTimeOverlay = requireElement<HTMLDivElement>("logTimeOverlay");
+    const closeLogTimeBtn = requireElement<HTMLButtonElement>("closeLogTimeBtn");
+    const logTimeForm = requireElement<HTMLFormElement>("logTimeForm");
+    const logDate = requireElement<HTMLInputElement>("logDate");
+    const logStartTime = requireElement<HTMLInputElement>("logStartTime");
+    const logHours = requireElement<HTMLInputElement>("logHours");
+    const logDescription = requireElement<HTMLInputElement>("logDescription");
+    const logTimeTaskContext = requireElement<HTMLParagraphElement>("logTimeTaskContext");
+    const logTimeError = requireElement<HTMLDivElement>("logTimeError");
+    const logTimeErrorText = requireElement<HTMLSpanElement>("logTimeErrorText");
+    const logTimeSubmitBtn = requireElement<HTMLButtonElement>("logTimeSubmitBtn");
+
+    let logTimeTaskId: string | null = null;
+
+    function openLogTimeModal(task: Task): void {
+        if (!task || !task.id) return;
+        logTimeTaskId = task.id;
+
+        logTimeTaskContext.textContent =
+            `Record your start time, time spent, and date for "${task.title}".`;
+
+        logDate.value = new Date().toISOString().split("T")[0];
+        logStartTime.value = "";
+        logHours.value = "";
+        logDescription.value = "";
+        logTimeError.hidden = true;
+
+        logTimeSubmitBtn.disabled = false;
+        logTimeSubmitBtn.textContent = "Save log";
+
+        logTimeOverlay.classList.add("visible");
+        logDate.focus();
+    }
+
+    function closeLogTimeModal(): void {
+        logTimeOverlay.classList.remove("visible");
+        logTimeTaskId = null;
+    }
+
+    closeLogTimeBtn.addEventListener("click", closeLogTimeModal);
+    logTimeOverlay.addEventListener("click", (e: MouseEvent) => {
+        if (e.target === logTimeOverlay) closeLogTimeModal();
+    });
+
+    logTimeForm.addEventListener("submit", async (e: SubmitEvent) => {
+        e.preventDefault();
+        logTimeError.hidden = true;
+
+        const userId = sessionStorage.getItem("userId");
+
+        const payload = {
+            date: logDate.value,
+            startTime: logStartTime.value,
+            hours: Number(logHours.value),
+            description: logDescription.value.trim() || null,
+            taskId: logTimeTaskId ? Number(logTimeTaskId) : null,
+            userId: userId ? Number(userId) : null,
+        };
+
+        if (!payload.date) { logTimeErrorText.textContent = "Please pick a date."; logTimeError.hidden = false; return; }
+        if (!payload.startTime) { logTimeErrorText.textContent = "Please pick a start time."; logTimeError.hidden = false; return; }
+        if (!payload.hours || payload.hours <= 0) { logTimeErrorText.textContent = "Hours must be greater than 0."; logTimeError.hidden = false; return; }
+        if (!payload.taskId) { logTimeErrorText.textContent = "Missing task ID."; logTimeError.hidden = false; return; }
+        if (!payload.userId) { logTimeErrorText.textContent = "You must be signed in."; logTimeError.hidden = false; return; }
+
+        logTimeSubmitBtn.disabled = true;
+        logTimeSubmitBtn.textContent = "Saving…";
+
+        try {
+            const res = await fetch(TIMELOGS_API, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || `HTTP ${res.status}`);
+            }
+
+            closeLogTimeModal();
+            alert(`Logged ${payload.hours}h on this task`);
+        } catch (err) {
+            console.error("Log time failed:", err);
+            logTimeErrorText.textContent =
+                err instanceof Error ? err.message : "Could not save the time log.";
+            logTimeError.hidden = false;
+            logTimeSubmitBtn.disabled = false;
+            logTimeSubmitBtn.textContent = "Save log";
+        }
+    });
+
+    // ===================== MY LOGS MODAL =====================
+    const myLogsBtn = document.getElementById("myLogsBtn") as HTMLButtonElement | null;
+    const myLogsOverlay = document.getElementById("myLogsOverlay") as HTMLDivElement | null;
+    const closeMyLogsBtn = document.getElementById("closeMyLogsBtn") as HTMLButtonElement | null;
+    const myLogsBody = document.getElementById("myLogsBody") as HTMLTableSectionElement | null;
+    const myLogsTotal = document.getElementById("myLogsTotal") as HTMLParagraphElement | null;
+
+    async function openMyLogs(): Promise<void> {
+        if (!myLogsOverlay || !myLogsBody) return;
+
+        myLogsBody.innerHTML =
+            `<tr><td colspan="4" class="muted">Loading…</td></tr>`;
+        if (myLogsTotal) myLogsTotal.textContent = "";
+        myLogsOverlay.classList.add("visible");
+
+        const userId = sessionStorage.getItem("userId");
+        if (!userId) {
+            myLogsBody.innerHTML =
+                `<tr><td colspan="4" class="muted">You must be signed in.</td></tr>`;
+            return;
+        }
+
+        try {
+            const res = await fetch(`${TIMELOGS_API}/user/${userId}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const logs = (await res.json()) as BackendTimeLog[];
+
+            if (!Array.isArray(logs) || logs.length === 0) {
+                myLogsBody.innerHTML =
+                    `<tr><td colspan="4" class="muted">You haven't logged any time yet.</td></tr>`;
+                if (myLogsTotal) myLogsTotal.textContent = "Total: 0h across 0 log(s)";
+                return;
+            }
+
+            logs.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+
+            let total = 0;
+            myLogsBody.innerHTML = logs.map((l) => {
+                const hours = Number(l.hours || 0);
+                total += hours;
+                const date = formatDateShort(l.date);
+                const task = l.task?.name ?? "—";
+                const desc = l.description ? escapeHtml(l.description) : "—";
+                return `
+                    <tr>
+                        <td>${escapeHtml(date)}</td>
+                        <td>${escapeHtml(task)}</td>
+                        <td>${hours.toFixed(1)}h</td>
+                        <td>${desc}</td>
+                    </tr>`;
+            }).join("");
+
+            if (myLogsTotal) {
+                myLogsTotal.textContent =
+                    `Total: ${total.toFixed(1)}h across ${logs.length} log(s)`;
+            }
+        } catch (err) {
+            console.error("Failed to load my logs:", err);
+            myLogsBody.innerHTML =
+                `<tr><td colspan="4" class="muted">Could not load your logs.</td></tr>`;
+        }
+    }
+
+    function closeMyLogs(): void {
+        myLogsOverlay?.classList.remove("visible");
+    }
+
+    myLogsBtn?.addEventListener("click", () => { void openMyLogs(); });
+    closeMyLogsBtn?.addEventListener("click", closeMyLogs);
+    myLogsOverlay?.addEventListener("click", (e: MouseEvent) => {
+        if (e.target === myLogsOverlay) closeMyLogs();
+    });
+
     // ===================== TASK MODAL (READ-ONLY) =====================
     const overlay = document.getElementById("taskModalOverlay");
     const modalColumn = document.getElementById("modalColumn") as HTMLSelectElement | null;
@@ -424,6 +639,14 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         });
         document.addEventListener("keydown", (event) => {
             if (event.key === "Escape") {
+                if (logTimeOverlay.classList.contains("visible")) {
+                    closeLogTimeModal();
+                    return;
+                }
+                if (myLogsOverlay?.classList.contains("visible")) {
+                    closeMyLogs();
+                    return;
+                }
                 if (tagFilterMenu?.classList.contains("visible")) {
                     setTagFilterOpen(false);
                     return;
@@ -436,9 +659,18 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     // ===================== BOARD CLICK =====================
     board.addEventListener("click", (event) => {
         const target = event.target as HTMLElement;
+
+        const logBtn = target.closest<HTMLElement>("[data-logtime]");
+        if (logBtn) {
+            const taskId = logBtn.dataset["logtime"];
+            const task = tasks.find((t) => t.id === taskId);
+            if (!task) return;
+            openLogTimeModal(task);
+            return;
+        }
+
         const card = target.closest<HTMLElement>("[data-task]");
         if (!card) return;
-
         const id = card.dataset["task"];
         const task = tasks.find((t) => t.id === id);
         if (task) openModal(task);
