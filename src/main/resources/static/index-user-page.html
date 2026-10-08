@@ -2,8 +2,10 @@
     User Board Page — Symph Web Application
     Kanban board for employees. Includes search, tag filter, sprint tabs,
     a read-only task modal, a Log Time modal (US24), a "My Logs" modal
-    (opened from the ⋯ menu in the project header), and an account menu on
-    the avatar with Log out.
+    (opened from the ⋯ menu in the project header), an account menu on the
+    avatar with Log out, a team badge in the project header that is
+    auto-detected from sessionStorage, and a logout confirmation modal.
+    Only one of the three menus (tag filter / account / ⋯) is open at a time.
 
     @author Lim Jia Li
     @version 17.0.16
@@ -71,6 +73,7 @@
 <header class="project-header">
     <div class="project-header-left">
         <h1>Project Name</h1>
+        <span class="badge" id="roleBadge">Employee</span>
     </div>
     <div class="project-header-right">
         <div class="more-menu-wrap">
@@ -101,6 +104,7 @@
 
 <main class="board" id="board"></main>
 
+<!-- ===================== MODAL: Task (read-only) ===================== -->
 <div class="modal-overlay" id="taskModalOverlay">
     <div class="modal" role="dialog" aria-modal="true" aria-label="Task details">
         <div class="modal-header">
@@ -154,6 +158,7 @@
     </div>
 </div>
 
+<!-- ===================== MODAL: Log Time (US24) ===================== -->
 <div class="modal-overlay" id="logTimeOverlay">
     <div class="modal modal-narrow" role="dialog" aria-modal="true" aria-labelledby="logTimeTitle">
         <button class="modal-close" id="closeLogTimeBtn" aria-label="Close" type="button">✕</button>
@@ -187,6 +192,7 @@
     </div>
 </div>
 
+<!-- ===================== MODAL: My Logs ===================== -->
 <div class="modal-overlay" id="myLogsOverlay">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="myLogsTitle">
         <button class="modal-close" id="closeMyLogsBtn" aria-label="Close" type="button">✕</button>
@@ -211,6 +217,18 @@
         </div>
 
         <p class="my-logs-total" id="myLogsTotal"></p>
+    </div>
+</div>
+
+<!-- ===================== MODAL: Logout Confirmation ===================== -->
+<div class="modal-overlay" id="logoutOverlay">
+    <div class="modal modal-narrow" role="dialog" aria-modal="true">
+        <h2 class="modal-title">Log out?</h2>
+        <p class="modal-subtitle">You'll need to sign in again to access the board.</p>
+        <div class="modal-actions">
+            <button id="cancelLogoutBtn" class="btn-secondary">Cancel</button>
+            <button id="confirmLogoutBtn" class="btn-danger">Log out</button>
+        </div>
     </div>
 </div>
 

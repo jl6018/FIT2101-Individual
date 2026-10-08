@@ -6,8 +6,15 @@
  * User Board Page — Symph Web Application
  * Kanban board for employees. Includes search, tag filter, sprint tabs,
  * a read-only task modal, a Log Time modal (US24), a "My Logs" modal
- * (opened from the ⋯ menu in the project header), and a profile menu on
- * the avatar with Log out.
+ * (opened from the ⋯ menu in the project header), an account menu on the
+ * avatar with Log out, a team badge in the project header that is
+ * auto-detected from sessionStorage, and a logout confirmation modal.
+ *
+ * Only one of the three menus (tag filter / account / ⋯) can be open at
+ * a time — clicking one closes the others.
+ *
+ * US07 + US08: teammates share their team's board. A task is visible if
+ * it is assigned to my team by name, or to any user who is on my team.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -169,9 +176,24 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (storedName) avatarEl.title = storedName;
     }
 
-    // ===================== PROFILE MENU =====================
+    // ===================== ROLE BADGE (project header) =====================
+    // Auto-detect the employee's team from sessionStorage. Falls back to
+    // "Employee" if the user has no team assigned.
+    const roleBadgeEl = document.getElementById("roleBadge");
+    if (roleBadgeEl) {
+        roleBadgeEl.textContent = storedTeam || "Employee";
+    }
+
+    // ===================== MENUS (only one open at a time) =====================
     const profileMenuBtn = document.getElementById("profileMenuBtn") as HTMLButtonElement | null;
     const profileMenu = document.getElementById("profileMenu") as HTMLDivElement | null;
+
+    const headerMenuBtn = document.getElementById("headerMenuBtn") as HTMLButtonElement | null;
+    const headerMenu = document.getElementById("headerMenu") as HTMLDivElement | null;
+
+    const tagFilterBtn = document.getElementById("tagFilterBtn") as HTMLButtonElement | null;
+    const tagFilterMenu = document.getElementById("tagFilterMenu") as HTMLDivElement | null;
+    const tagFilterLabel = document.getElementById("tagFilterLabel") as HTMLSpanElement | null;
 
     function setProfileMenuOpen(open: boolean): void {
         if (!profileMenu || !profileMenuBtn) return;
@@ -179,53 +201,103 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         profileMenuBtn.setAttribute("aria-expanded", String(open));
     }
 
-    profileMenuBtn?.addEventListener("click", (event: MouseEvent) => {
-        event.stopPropagation();
-        setProfileMenuOpen(!profileMenu.classList.contains("visible"));
-    });
-
-    document.addEventListener("click", (event: MouseEvent) => {
-        if (!profileMenu?.classList.contains("visible")) return;
-        const target = event.target as Node;
-        if (profileMenu.contains(target) || profileMenuBtn?.contains(target)) return;
-        setProfileMenuOpen(false);
-    });
-
-    // ===================== HEADER ⋯ MENU =====================
-    const headerMenuBtn = document.getElementById("headerMenuBtn") as HTMLButtonElement | null;
-    const headerMenu = document.getElementById("headerMenu") as HTMLDivElement | null;
-
     function setHeaderMenuOpen(open: boolean): void {
         if (!headerMenu || !headerMenuBtn) return;
         headerMenu.classList.toggle("visible", open);
         headerMenuBtn.setAttribute("aria-expanded", String(open));
     }
 
+    function setTagFilterOpen(open: boolean): void {
+        if (!tagFilterMenu || !tagFilterBtn) return;
+        tagFilterMenu.classList.toggle("visible", open);
+        tagFilterBtn.setAttribute("aria-expanded", String(open));
+    }
+
+    function closeAllMenus(): void {
+        setProfileMenuOpen(false);
+        setHeaderMenuOpen(false);
+        setTagFilterOpen(false);
+    }
+
+    profileMenuBtn?.addEventListener("click", (event: MouseEvent) => {
+        event.stopPropagation();
+        const willOpen = !profileMenu.classList.contains("visible");
+        setHeaderMenuOpen(false);
+        setTagFilterOpen(false);
+        setProfileMenuOpen(willOpen);
+    });
+
     headerMenuBtn?.addEventListener("click", (event: MouseEvent) => {
         event.stopPropagation();
-        setHeaderMenuOpen(!headerMenu.classList.contains("visible"));
+        const willOpen = !headerMenu.classList.contains("visible");
+        setProfileMenuOpen(false);
+        setTagFilterOpen(false);
+        setHeaderMenuOpen(willOpen);
     });
 
-    document.addEventListener("click", (event: MouseEvent) => {
-        if (!headerMenu?.classList.contains("visible")) return;
-        const target = event.target as Node;
-        if (headerMenu.contains(target) || headerMenuBtn?.contains(target)) return;
+    tagFilterBtn?.addEventListener("click", (event: MouseEvent) => {
+        event.stopPropagation();
+        renderTagFilter();
+        const willOpen = !tagFilterMenu.classList.contains("visible");
+        setProfileMenuOpen(false);
         setHeaderMenuOpen(false);
+        setTagFilterOpen(willOpen);
     });
 
-    document.addEventListener("keydown", (event: KeyboardEvent) => {
-        if (event.key === "Escape") {
+    // Click anywhere else closes all menus
+    document.addEventListener("click", (event: MouseEvent) => {
+        const target = event.target as Node;
+
+        if (profileMenu?.classList.contains("visible")
+            && !profileMenu.contains(target)
+            && !profileMenuBtn?.contains(target)) {
             setProfileMenuOpen(false);
+        }
+        if (headerMenu?.classList.contains("visible")
+            && !headerMenu.contains(target)
+            && !headerMenuBtn?.contains(target)) {
             setHeaderMenuOpen(false);
         }
+        if (tagFilterMenu?.classList.contains("visible")
+            && !tagFilterMenu.contains(target)
+            && !tagFilterBtn?.contains(target)) {
+            setTagFilterOpen(false);
+        }
+    });
+
+    // Esc closes all menus
+    document.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (event.key === "Escape") closeAllMenus();
     });
 
     // ===================== LOGOUT =====================
     const logoutBtn = document.getElementById("logoutBtn") as HTMLButtonElement | null;
+    const logoutOverlay = document.getElementById("logoutOverlay") as HTMLDivElement | null;
+    const cancelLogoutBtn = document.getElementById("cancelLogoutBtn") as HTMLButtonElement | null;
+    const confirmLogoutBtn = document.getElementById("confirmLogoutBtn") as HTMLButtonElement | null;
+
+    // Click "Log out" in the account menu → open the confirmation modal
     logoutBtn?.addEventListener("click", () => {
-        setProfileMenuOpen(false);
+        closeAllMenus();
+        logoutOverlay?.classList.add("visible");
+    });
+
+    // Cancel → close the modal, stay on the page
+    cancelLogoutBtn?.addEventListener("click", () => {
+        logoutOverlay?.classList.remove("visible");
+    });
+
+    // Confirm → clear session and go to login
+    confirmLogoutBtn?.addEventListener("click", () => {
         sessionStorage.clear();
         window.location.href = "index-login-page.html";
+    });
+
+    // Click outside the modal → close it (same as Cancel)
+    logoutOverlay?.addEventListener("click", (e: MouseEvent) => {
+        if (e.target === logoutOverlay) {
+            logoutOverlay.classList.remove("visible");
+        }
     });
 
     // ===================== SPRINT RESOLUTION =====================
@@ -486,11 +558,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         }
     });
 
-    // ===================== TAG FILTER =====================
-    const tagFilterBtn = document.getElementById("tagFilterBtn");
-    const tagFilterMenu = document.getElementById("tagFilterMenu");
-    const tagFilterLabel = document.getElementById("tagFilterLabel");
-
+    // ===================== TAG FILTER RENDER =====================
     function availableTagNames(): string[] {
         const names = new Set<string>();
         tasks.forEach((t) => (t.tags ?? []).forEach((tag) => names.add(tag.name)));
@@ -534,18 +602,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         tagFilterBtn?.classList.toggle("filtered", currentTagName !== TAG_FILTER_ALL);
     }
 
-    function setTagFilterOpen(open: boolean): void {
-        if (!tagFilterMenu || !tagFilterBtn) return;
-        tagFilterMenu.classList.toggle("visible", open);
-        tagFilterBtn.setAttribute("aria-expanded", String(open));
-    }
-
-    tagFilterBtn?.addEventListener("click", (event: MouseEvent) => {
-        event.stopPropagation();
-        renderTagFilter();
-        setTagFilterOpen(!tagFilterMenu.classList.contains("visible"));
-    });
-
     tagFilterMenu?.addEventListener("click", (event: MouseEvent) => {
         event.stopPropagation();
         const target = event.target as HTMLElement;
@@ -556,8 +612,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         renderTagFilter();
         renderBoard();
     });
-
-    document.addEventListener("click", () => setTagFilterOpen(false));
 
     // ===================== US24: LOG TIME MODAL =====================
     const logTimeOverlay = requireElement<HTMLDivElement>("logTimeOverlay");
@@ -662,7 +716,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     async function openMyLogs(): Promise<void> {
         if (!myLogsOverlay || !myLogsBody) return;
 
-        setHeaderMenuOpen(false);
+        closeAllMenus();
 
         myLogsBody.innerHTML =
             `<tr><td colspan="5" class="muted">Loading…</td></tr>`;
@@ -819,6 +873,10 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         });
         document.addEventListener("keydown", (event) => {
             if (event.key === "Escape") {
+                if (logoutOverlay?.classList.contains("visible")) {
+                    logoutOverlay.classList.remove("visible");
+                    return;
+                }
                 if (logTimeOverlay.classList.contains("visible")) {
                     closeLogTimeModal();
                     return;
