@@ -21,45 +21,38 @@
 </head>
 <body>
 
-<div class="app-shell">
+<div class="app-shell" id="appShell">
     <aside class="sidebar">
-        <a class="logo" href="index-admin-page.html">
-            <img src="images/symph-logo.png" alt="Symph" />
-        </a>
+        <div class="sidebar-top">
+            <a class="logo" href="index-admin-page.html">
+                <img src="images/symph-logo.png" alt="Symph" />
+            </a>
+            <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Collapse menu" aria-expanded="true">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+            </button>
+        </div>
 
         <nav class="nav">
             <a href="index-admin-page.html" class="nav-item">
-                <span class="dot"></span> Sprint Board
+                <span class="dot"></span> <span class="nav-label">Sprint Board</span>
             </a>
             <a href="index-sprint-planning-page.html" class="nav-item">
-                <span class="dot"></span> Sprint Planning
+                <span class="dot"></span> <span class="nav-label">Sprint Planning</span>
             </a>
             <a href="index-team-management-page.html" class="nav-item">
-                <span class="dot"></span> Team Management
+                <span class="dot"></span> <span class="nav-label">Team Management</span>
             </a>
             <a href="index-reports-page.html" class="nav-item active">
-                <span class="dot dot-active"></span> Reports
+                <span class="dot dot-active"></span> <span class="nav-label">Reports</span>
             </a>
         </nav>
 
         <div class="sidebar-footer">
             <div class="signed-in">Signed in as <strong id="signedInName">Admin</strong></div>
-            <button id="logoutBtn" class="switch-account-btn">Log out</button>
         </div>
     </aside>
 
     <main class="main">
-        <div class="top-bar">
-            <span class="top-bar-badge">Admin</span>
-            <input type="text" class="top-bar-search" placeholder="Search">
-            <div class="top-bar-icons">
-                <button class="icon-btn" aria-label="Announcements">📣</button>
-                <button class="icon-btn" aria-label="Notifications">🔔</button>
-                <button class="icon-btn" aria-label="Help">❓</button>
-                <span class="icon-avatar">U</span>
-            </div>
-        </div>
-
         <h1>Reports</h1>
         <p class="page-subtitle">Time contribution, hours per task, and sprint burndown</p>
 
@@ -72,7 +65,6 @@
             </div>
         </section>
 
-        <!-- US26 / US27 / US28 -->
         <section class="panel">
             <h2 id="contributionTitle">Team contribution</h2>
             <p class="muted">Average hours per day = total hours logged in this range ÷ days that member
@@ -91,7 +83,6 @@
             </table>
         </section>
 
-        <!-- US29 -->
         <section class="panel">
             <h2>Hours per task</h2>
             <p class="muted">Total logged hours against each task in this range, ordered from
@@ -103,7 +94,6 @@
             <p id="taskChartEmpty" class="muted" style="display:none;">No hours logged in this range yet.</p>
         </section>
 
-        <!-- US30: Sprint burndown -->
         <section class="panel">
             <h2>Sprint burndown</h2>
             <p class="muted">Actual vs projected remaining work for the sprint you selected on the
@@ -150,18 +140,6 @@
         </table>
 
         <p class="modal-total" id="memberModalTotal"></p>
-    </div>
-</div>
-
-<!-- Modal: Logout -->
-<div class="modal-overlay" id="logoutOverlay">
-    <div class="modal modal-narrow" role="dialog" aria-modal="true">
-        <h2 class="modal-title">Log out?</h2>
-        <p class="modal-subtitle">You'll be returned to the login page.</p>
-        <div class="modal-actions">
-            <button id="cancelLogoutBtn" class="btn-secondary">Cancel</button>
-            <button id="confirmLogoutBtn" class="btn-danger">Log out</button>
-        </div>
     </div>
 </div>
 

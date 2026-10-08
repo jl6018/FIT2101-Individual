@@ -1,8 +1,7 @@
 /**
  * Reports Page Stylesheet — Symph Web Application
- * Defines the visual layout and styling for the Reports page, including
- * the sidebar, top bar, time range selector, contribution table, bar
- * charts, sprint burndown chart, member history modal, and logout modal.
+ * Sidebar matches the admin board. Main content fills the full width
+ * and uses the page's lavender background (no white card wrapper).
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -22,12 +21,17 @@
 /* ===================== GLOBAL RESET ===================== */
 * {
     box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
 }
 
 body {
-    margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background: #FFFFFF;
+    background-color: #e3e6fa;
     color: var(--black);
 }
 
@@ -35,31 +39,92 @@ body {
 .app-shell {
     display: flex;
     min-height: 100vh;
+    width: 100%;
+    background-color: #e3e6fa;
 }
 
+.app-main {
+    flex: 1;
+    min-width: 0;
+}
+
+/* ===================== SIDEBAR ===================== */
 .sidebar {
-    width: 240px;
+    width: 220px;
     flex-shrink: 0;
-    background: var(--lavender);
-    padding: 24px 16px;
     display: flex;
     flex-direction: column;
+    padding: 14px 12px 20px;
+    background: linear-gradient(180deg, #6f84e0 0%, #6272cf 100%);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    transition: width 0.2s ease;
+}
+
+.sidebar-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 44px;
 }
 
 .logo {
-    font-size: 20px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    margin-bottom: 24px;
+    display: block;
+    background-color: #e3e6fa;
+    border-radius: 10px;
+    padding: 8px 10px;
+    line-height: 0;
+    text-decoration: none;
 }
 
-.logo .s1 { color: #6B7280; }
-.logo .s2 { color: #6366F1; }
+.logo img {
+    height: 44px;
+    width: auto;
+}
+
+.sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.25);
+    color: #111;
+    cursor: pointer;
+}
+
+.sidebar-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.45);
+}
+
+.sidebar-toggle svg {
+    width: 20px;
+    height: 20px;
+    transition: transform 0.2s ease;
+}
+
+.sidebar-collapsed .sidebar { width: 60px; }
+
+.sidebar-collapsed .logo,
+.sidebar-collapsed .nav-label,
+.sidebar-collapsed .sidebar-footer { display: none; }
+
+.sidebar-collapsed .sidebar-top,
+.sidebar-collapsed .nav-item { justify-content: center; }
+
+.sidebar-collapsed .nav-item { padding: 14px 0; }
+
+.sidebar-collapsed .sidebar-toggle svg { transform: rotate(180deg); }
 
 .nav {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 12px;
     flex-grow: 1;
 }
 
@@ -67,118 +132,47 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 12px;
-    border-radius: 8px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background-color: #8f9ff0;
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.2);
     text-decoration: none;
-    color: var(--black);
-    font-size: 14px;
-    font-weight: 500;
+    color: #111;
+    font-size: 0.9rem;
+    font-weight: 400;
 }
 
-.nav-item:hover { background: var(--lavender-dark); }
-.nav-item.active { background: var(--lavender-dark); font-weight: 700; }
+.nav-item:hover { background-color: #a6b3f5; }
+.nav-item.active { background-color: #d5daf6; font-weight: 700; }
 
 .dot {
-    width: 8px;
-    height: 8px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
-    background: #FFFFFF;
-    border: 1px solid #9CA3AF;
-}
-
-.dot-active {
-    background: #F5B324;
-    border-color: #F5B324;
-}
-
-.sidebar-footer {
-    border-top: 1px solid rgba(0, 0, 0, 0.1);
-    padding-top: 16px;
-    margin-top: 16px;
-}
-
-.signed-in {
-    font-size: 13px;
-    margin-bottom: 8px;
-}
-
-.switch-account-btn {
-    width: 100%;
-    padding: 8px;
-    border-radius: 8px;
-    border: none;
-    background: #FFFFFF;
-    font-size: 13px;
-    cursor: pointer;
-}
-
-.switch-account-btn:hover { background: #F3F4F6; }
-
-/* ===================== TOP BAR ===================== */
-.top-bar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: var(--lavender);
-    border-radius: 10px;
-    padding: 10px 16px;
-    margin-bottom: 24px;
-}
-
-.top-bar-badge {
-    background: #fff;
-    border-radius: 20px;
-    padding: 4px 14px;
-    font-size: 13px;
-    font-weight: 600;
+    background-color: #e3e6fa;
     flex-shrink: 0;
 }
 
-.top-bar-search {
-    flex-grow: 1;
-    max-width: 320px;
-    padding: 8px 14px;
-    border-radius: 20px;
-    border: none;
-    font-size: 13px;
-    background: #fff;
+.dot-active { background-color: #f2c94c; }
+
+.sidebar-footer {
+    border-top: 1px solid rgba(0, 0, 0, 0.45);
+    padding-top: 14px;
 }
 
-.top-bar-search:focus { outline: 2px solid #6366F1; }
-
-.top-bar-icons {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-left: auto;
+.signed-in {
+    font-size: 0.9rem;
+    margin-bottom: 0;
+    padding-left: 4px;
 }
 
-.icon-btn {
-    background: none;
-    border: none;
-    font-size: 15px;
-    cursor: pointer;
-    padding: 4px;
-}
-
-.icon-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: var(--black);
-    color: #fff;
-    font-size: 12px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* ===================== MAIN CONTENT ===================== */
+/* ===================== MAIN CONTENT (full width, no white bg) ========== */
 .main {
     flex-grow: 1;
+    width: 100%;
     padding: 32px 40px;
-    max-width: 900px;
+    background-color: #e3e6fa;
+    min-height: 100vh;
 }
 
 h1 {
@@ -341,8 +335,10 @@ h1 {
 
 .burndown-svg {
     width: 100%;
-    max-width: 600px;
+    max-width: 720px;
     height: auto;
+    display: block;
+    margin: 0 auto;
 }
 
 .legend {
@@ -466,81 +462,7 @@ h1 {
 
 .btn-danger:hover { background: var(--danger-dark); }
 
-/* ===================== LOGO IMAGE ===================== */
-.logo {
-    display: inline-block;
-    line-height: 0;
-    margin-bottom: 24px;
-}
-
-.logo img {
-    height: 48px;
-    width: auto;
-    max-width: 100%;
-}
-
-/* ===================== US29: HOURS-PER-TASK LINE CHART ===================== */
-
-.line-chart-wrap {
-    width: 100%;
-    background: #fff;
-    border-radius: 8px;
-    padding: 12px;
-    overflow-x: auto;
-}
-
-.line-chart-svg {
-    width: 100%;
-    max-width: 720px;
-    height: auto;
-    display: block;
-    margin: 0 auto;
-}
-
-/* ===================== US30: BURNDOWN ===================== */
-
-.burndown-wrap {
-    width: 100%;
-    background: #fff;
-    border-radius: 8px;
-    padding: 12px;
-    overflow-x: auto;
-}
-
-.burndown-svg {
-    width: 100%;
-    max-width: 720px;
-    height: auto;
-    display: block;
-    margin: 0 auto;
-}
-
-.legend {
-    display: flex;
-    gap: 20px;
-    margin-top: 12px;
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    color: #6B7280;
-}
-
-.legend-swatch {
-    width: 18px;
-    height: 3px;
-    border-radius: 2px;
-    display: inline-block;
-}
-
-.legend-swatch.projected { background: #111111; }
-.legend-swatch.actual { background: #4F7FFF; }
-
 /* ===================== US28: MEMBER LOGS TABLE ===================== */
-
 .member-logs-heading {
     font-size: 14px;
     font-weight: 700;
@@ -579,4 +501,21 @@ h1 {
     color: #6B7280;
     font-style: italic;
     text-align: center;
+}
+
+/* ===================== US29: HOURS-PER-TASK LINE CHART ===================== */
+.line-chart-wrap {
+    width: 100%;
+    background: #fff;
+    border-radius: 8px;
+    padding: 12px;
+    overflow-x: auto;
+}
+
+.line-chart-svg {
+    width: 100%;
+    max-width: 720px;
+    height: auto;
+    display: block;
+    margin: 0 auto;
 }

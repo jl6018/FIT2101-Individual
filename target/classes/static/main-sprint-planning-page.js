@@ -30,6 +30,31 @@ if (role !== 'ADMIN' && role !== 'PRODUCT_OWNER') {
     throw new Error('Only admins and product owners can access Sprint Planning');
 }
 
+// ===================== SIDEBAR COLLAPSE =====================
+const SIDEBAR_KEY = "symph.sidebarCollapsed";
+const appShell = document.getElementById("appShell");
+const sidebarToggle = document.getElementById("sidebarToggle");
+
+function readSetting(key) {
+    try { return window.localStorage.getItem(key) ?? ""; } catch { return ""; }
+}
+function writeSetting(key, value) {
+    try { window.localStorage.setItem(key, value); } catch { /* ignore */ }
+}
+function setSidebarCollapsed(collapsed) {
+    if (!appShell || !sidebarToggle) return;
+    appShell.classList.toggle("sidebar-collapsed", collapsed);
+    sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+    sidebarToggle.setAttribute("aria-label", collapsed ? "Expand menu" : "Collapse menu");
+    sidebarToggle.title = collapsed ? "Expand menu" : "Collapse menu";
+}
+sidebarToggle?.addEventListener("click", () => {
+    const collapsed = !appShell.classList.contains("sidebar-collapsed");
+    setSidebarCollapsed(collapsed);
+    writeSetting(SIDEBAR_KEY, collapsed ? "1" : "0");
+});
+setSidebarCollapsed(readSetting(SIDEBAR_KEY) === "1");
+
 // ===================== SHOW CURRENT USER =====================
 const nameEl = document.getElementById('signedInName');
 if (nameEl) {
@@ -57,22 +82,6 @@ function escapeHtml(text) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 }
-
-// ===================== LOGOUT MODAL =====================
-const logoutBtn = requireElement('logoutBtn');
-const logoutOverlay = requireElement('logoutOverlay');
-const cancelLogoutBtn = requireElement('cancelLogoutBtn');
-const confirmLogoutBtn = requireElement('confirmLogoutBtn');
-
-logoutBtn.addEventListener('click', () => logoutOverlay.classList.add('visible'));
-cancelLogoutBtn.addEventListener('click', () => logoutOverlay.classList.remove('visible'));
-confirmLogoutBtn.addEventListener('click', () => {
-    sessionStorage.clear();
-    window.location.href = 'index-login-page.html';
-});
-logoutOverlay.addEventListener('click', (e) => {
-    if (e.target === logoutOverlay) logoutOverlay.classList.remove('visible');
-});
 
 // ===================== CONFIG =====================
 const SPRINTS_API = "http://localhost:8080/api/sprints";
@@ -112,7 +121,6 @@ startSprintPlanningBtn.addEventListener('click', async () => {
     sprintStartDateInput.value = new Date().toISOString().split('T')[0];
     recalculateEndDate();
 
-    // Seed the task list with one blank row
     taskListEl.innerHTML = '';
     addTaskRow();
 
@@ -166,10 +174,6 @@ sprintStartDateInput.addEventListener('change', recalculateEndDate);
 sprintDurationSelect.addEventListener('change', recalculateEndDate);
 
 // ===================== TASK LIST BUILDER (US22) =====================
-/**
- * Adds one blank task row to the task-list builder.
- * Each row contains name, description, and due date inputs.
- */
 function addTaskRow() {
     const row = document.createElement('div');
     row.className = 'task-row';
@@ -190,11 +194,6 @@ function addTaskRow() {
 
 addTaskRowBtn.addEventListener('click', addTaskRow);
 
-/**
- * Reads every task row in the builder.
- *
- * @returns {Array} A list of { name, description, dueDate }
- */
 function readTaskRows() {
     const rows = taskListEl.querySelectorAll('.task-row');
     const tasks = [];
@@ -372,7 +371,6 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
     const memberCount = checkedMembers.length;
 
     try {
-        // 1. Create the sprint
         const res = await fetch(SPRINTS_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -392,7 +390,6 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
 
         const createdSprint = await res.json();
 
-        // 2. Create the tasks the PO added
         const taskRows = readTaskRows();
         const taskResults = await Promise.all(taskRows.map((t) =>
             fetch(TASKS_API, {

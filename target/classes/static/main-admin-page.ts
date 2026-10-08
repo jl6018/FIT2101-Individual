@@ -7,11 +7,13 @@
  * Handles all interactive behaviour for the admin Kanban board, including
  * authentication guards, task CRUD, drag-and-drop reordering, sprint tabs,
  * accumulated sprint hours (US25), team filtering, tag filtering/sorting
- * (US14), search, the task modal with progress editing (US16), card status
- * dropdown (US18), sprint start/end controls, tag management (US13),
- * admin-only task deletion (US11), the PRODUCT_OWNER role (US22), and the
- * Logged Hours panel for viewing time logs (US25–US29). Admins do NOT log
- * time — that happens on the employee board (US24).
+ * (US14), search, the task modal with progress editing (US16), card
+ * editing, sprint start/end controls, tag management (US13), admin-only
+ * task deletion (US11), the PRODUCT_OWNER role (US22), the Logged Hours
+ * panel, a profile menu on the avatar with Log out (opening a confirm
+ * modal), a ⋯ menu in the project header holding Share, and a ⋯ menu
+ * inside the task modal with a Refresh action that re-fetches the
+ * currently open task.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -37,19 +39,20 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
 (() => {
     // ===================== SHOW CURRENT USER =====================
-    const nameEl = document.getElementById("signedInName");
     const avatarEl = document.getElementById("userAvatar");
+    const profileMenuName = document.getElementById("profileMenuName");
+    const profileMenuSub = document.getElementById("profileMenuSub");
+    const roleBadgeEl = document.getElementById("roleBadge");
 
     const storedName = sessionStorage.getItem("name") || "";
     const storedRole = sessionStorage.getItem("role") || "";
 
-    if (nameEl) {
-        if (storedName) {
-            const suffix =
-                storedRole === "ADMIN" ? " (Admin)" :
-                storedRole === "PRODUCT_OWNER" ? " (Product Owner)" : "";
-            nameEl.textContent = `${storedName}${suffix}`;
-        }
+    if (profileMenuName) profileMenuName.textContent = storedName || "Admin";
+    if (profileMenuSub) {
+        profileMenuSub.textContent =
+            storedRole === "PRODUCT_OWNER" ? "Product Owner" :
+            storedRole === "ADMIN"         ? "Admin" :
+            "—";
     }
 
     if (avatarEl) {
@@ -63,13 +66,75 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         if (storedName) avatarEl.title = storedName;
     }
 
-    // ===================== LOGOUT MODAL =====================
+    // ===================== ROLE BADGE (project header) =====================
+    if (roleBadgeEl) {
+        roleBadgeEl.textContent =
+            storedRole === "PRODUCT_OWNER" ? "Product Owner" :
+            storedRole === "ADMIN"         ? "Admin" :
+            "Admin";
+    }
+
+    // ===================== MENUS (only one open at a time) =====================
+    const profileMenuBtn = document.getElementById("profileMenuBtn") as HTMLButtonElement | null;
+    const profileMenu = document.getElementById("profileMenu") as HTMLDivElement | null;
+    const headerMenuBtn = document.getElementById("headerMenuBtn") as HTMLButtonElement | null;
+    const headerMenu = document.getElementById("headerMenu") as HTMLDivElement | null;
+    const tagFilterBtn = document.getElementById("tagFilterBtn") as HTMLButtonElement | null;
+    const tagFilterMenu = document.getElementById("tagFilterMenu") as HTMLDivElement | null;
+    const teamFilterBtn = document.getElementById("teamFilterBtn") as HTMLButtonElement | null;
+    const teamFilterMenu = document.getElementById("teamFilterMenu") as HTMLDivElement | null;
+
+    function setProfileMenuOpen(open: boolean): void {
+        if (!profileMenu || !profileMenuBtn) return;
+        profileMenu.classList.toggle("visible", open);
+        profileMenuBtn.setAttribute("aria-expanded", String(open));
+    }
+    function setHeaderMenuOpen(open: boolean): void {
+        if (!headerMenu || !headerMenuBtn) return;
+        headerMenu.classList.toggle("visible", open);
+        headerMenuBtn.setAttribute("aria-expanded", String(open));
+    }
+    function setTagFilterOpen(open: boolean): void {
+        if (!tagFilterMenu || !tagFilterBtn) return;
+        tagFilterMenu.classList.toggle("visible", open);
+        tagFilterBtn.setAttribute("aria-expanded", String(open));
+    }
+    function setTeamFilterOpen(open: boolean): void {
+        if (!teamFilterMenu || !teamFilterBtn) return;
+        teamFilterMenu.classList.toggle("visible", open);
+        teamFilterBtn.setAttribute("aria-expanded", String(open));
+    }
+    function closeAllMenus(): void {
+        setProfileMenuOpen(false);
+        setHeaderMenuOpen(false);
+        setTagFilterOpen(false);
+        setTeamFilterOpen(false);
+    }
+
+    profileMenuBtn?.addEventListener("click", (event: MouseEvent) => {
+        event.stopPropagation();
+        const willOpen = !profileMenu!.classList.contains("visible");
+        closeAllMenus();
+        setProfileMenuOpen(willOpen);
+    });
+
+    headerMenuBtn?.addEventListener("click", (event: MouseEvent) => {
+        event.stopPropagation();
+        const willOpen = !headerMenu!.classList.contains("visible");
+        closeAllMenus();
+        setHeaderMenuOpen(willOpen);
+    });
+
+    // ===================== LOGOUT (opens confirmation modal) =====================
     const logoutBtn = document.getElementById("logoutBtn");
     const logoutOverlay = document.getElementById("logoutOverlay");
     const cancelLogoutBtn = document.getElementById("cancelLogoutBtn");
     const confirmLogoutBtn = document.getElementById("confirmLogoutBtn");
 
-    logoutBtn?.addEventListener("click", () => logoutOverlay?.classList.add("visible"));
+    logoutBtn?.addEventListener("click", () => {
+        closeAllMenus();
+        logoutOverlay?.classList.add("visible");
+    });
     cancelLogoutBtn?.addEventListener("click", () => logoutOverlay?.classList.remove("visible"));
     confirmLogoutBtn?.addEventListener("click", () => {
         sessionStorage.clear();
@@ -77,6 +142,31 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     });
     logoutOverlay?.addEventListener("click", (e) => {
         if (e.target === logoutOverlay) logoutOverlay.classList.remove("visible");
+    });
+
+    // Close any open menu on outside click
+    document.addEventListener("click", (event: MouseEvent) => {
+        const t = event.target as Node;
+        if (profileMenu?.classList.contains("visible")
+            && !profileMenu.contains(t) && !profileMenuBtn?.contains(t)) {
+            setProfileMenuOpen(false);
+        }
+        if (headerMenu?.classList.contains("visible")
+            && !headerMenu.contains(t) && !headerMenuBtn?.contains(t)) {
+            setHeaderMenuOpen(false);
+        }
+        if (tagFilterMenu?.classList.contains("visible")
+            && !tagFilterMenu.contains(t) && !tagFilterBtn?.contains(t)) {
+            setTagFilterOpen(false);
+        }
+        if (teamFilterMenu?.classList.contains("visible")
+            && !teamFilterMenu.contains(t) && !teamFilterBtn?.contains(t)) {
+            setTeamFilterOpen(false);
+        }
+    });
+
+    document.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (event.key === "Escape") closeAllMenus();
     });
 
     // ===================== TYPES =====================
@@ -325,49 +415,17 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         return { assignedTeams: null, assignedEmployeeIds: assignee.employeeIds.join(",") };
     }
 
-    // ===================== US25: SPRINT HOURS =====================
-    let currentSprintNumericIdForHours: number | null = null;
-
-    async function refreshSprintHours(): Promise<void> {
-        const chip = document.getElementById("sprintHours");
-        const chipValue = document.getElementById("sprintHoursValue");
-        if (!chip || !chipValue) return;
-
-        const name = SPRINT_TAB_NAMES[currentSprintId];
-        if (!name) {
-            chipValue.textContent = "0h logged";
-            chip.classList.remove("is-nonzero");
-            return;
+    function parseAssignee(t: BackendTask): Assignee | null {
+        if (t.assignedEmployeeIds) {
+            const ids = String(t.assignedEmployeeIds).split(",").map((s) => s.trim()).filter(Boolean);
+            if (ids.length > 0) return { kind: "employees", employeeIds: ids };
         }
-
-        try {
-            const sprintRes = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
-            if (sprintRes.status === 404) {
-                chipValue.textContent = "0h logged";
-                chip.classList.remove("is-nonzero");
-                return;
-            }
-            if (!sprintRes.ok) throw new Error(`HTTP ${sprintRes.status}`);
-            const sprint = (await sprintRes.json()) as Sprint;
-            currentSprintNumericIdForHours = sprint?.id ?? null;
-
-            if (!currentSprintNumericIdForHours) {
-                chipValue.textContent = "0h logged";
-                chip.classList.remove("is-nonzero");
-                return;
-            }
-
-            const totalRes = await fetch(`${TIMELOGS_API}/sprint/${currentSprintNumericIdForHours}/total`);
-            if (!totalRes.ok) throw new Error(`HTTP ${totalRes.status}`);
-            const total = Number(await totalRes.json()) || 0;
-
-            chipValue.textContent = `${total.toFixed(1)}h logged`;
-            chip.classList.toggle("is-nonzero", total > 0);
-        } catch (err) {
-            console.error("Failed to load sprint hours:", err);
-            chipValue.textContent = "0h logged";
-            chip.classList.remove("is-nonzero");
+        if (t.assignedTeams) {
+            const names = String(t.assignedTeams).split(",").map((s) => s.trim()).filter(Boolean);
+            if (names.length === 1) return { kind: "team", teamId: names[0] };
+            if (names.length > 1) return { kind: "teams", teamIds: names };
         }
+        return null;
     }
 
     // ===================== CUSTOM MODALS =====================
@@ -443,13 +501,17 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         if (e.target === document.getElementById("alertOverlay")) hideOverlay("alertOverlay");
     });
 
+    // Share now lives inside the project-header ⋯ menu
     const shareBtn = document.getElementById("shareBtn");
     const inviteOverlay = document.getElementById("inviteOverlay");
     const closeInviteBtn = document.getElementById("closeInviteBtn");
     const inviteForm = document.getElementById("inviteForm") as HTMLFormElement | null;
     const ownerEmailInput = document.getElementById("ownerEmail") as HTMLInputElement | null;
 
-    shareBtn?.addEventListener("click", () => inviteOverlay?.classList.add("visible"));
+    shareBtn?.addEventListener("click", () => {
+        closeAllMenus();
+        inviteOverlay?.classList.add("visible");
+    });
     closeInviteBtn?.addEventListener("click", () => inviteOverlay?.classList.remove("visible"));
     inviteOverlay?.addEventListener("click", (e) => {
         if (e.target === inviteOverlay) inviteOverlay.classList.remove("visible");
@@ -493,46 +555,20 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data: BackendTask[] = await res.json();
 
-            return data.map((t) => {
-                let assignee: Assignee | null = null;
-
-                if (t.assignedEmployeeIds) {
-                    const ids = t.assignedEmployeeIds
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter(Boolean);
-                    if (ids.length > 0) {
-                        assignee = { kind: "employees", employeeIds: ids };
-                    }
-                }
-
-                if (!assignee && t.assignedTeams) {
-                    const names = t.assignedTeams
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter(Boolean);
-                    if (names.length === 1) {
-                        assignee = { kind: "team", teamId: names[0] };
-                    } else if (names.length > 1) {
-                        assignee = { kind: "teams", teamIds: names };
-                    }
-                }
-
-                return {
-                    id: String(t.id),
-                    sprintId: "1",
-                    column: (t.status ?? "PRODUCT_BACKLOG") as ColumnId,
-                    title: t.name,
-                    description: t.description ?? "",
-                    assignee,
-                    dueDate: t.dueDate ?? "",
-                    estimateHours: t.estimateHours ?? 0,
-                    priority: (t.priority ?? "") as Priority,
-                    position: t.position ?? 0,
-                    tags: Array.isArray(t.tags) ? t.tags : [],
-                    progress: typeof t.progress === "number" ? t.progress : 0,
-                };
-            });
+            return data.map((t) => ({
+                id: String(t.id),
+                sprintId: "1",
+                column: (t.status ?? "PRODUCT_BACKLOG") as ColumnId,
+                title: t.name,
+                description: t.description ?? "",
+                assignee: parseAssignee(t),
+                dueDate: t.dueDate ?? "",
+                estimateHours: t.estimateHours ?? 0,
+                priority: (t.priority ?? "") as Priority,
+                position: t.position ?? 0,
+                tags: Array.isArray(t.tags) ? t.tags : [],
+                progress: typeof t.progress === "number" ? t.progress : 0,
+            }));
         } catch (err) {
             console.error("Failed to load tasks:", err);
             return [];
@@ -544,7 +580,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         renderBoard();
         renderTeamFilter();
         renderTagFilter();
-        await refreshSprintHours();
     }
 
     async function apiCreate(task: Task): Promise<Task | null> {
@@ -599,8 +634,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 progress: task.progress ?? 0,
                 sprint: { id: Number(currentSprintId) },
             };
-
-            console.log(`PUT ${API_BASE}/${numericId}`, body);
 
             const res = await fetch(`${API_BASE}/${numericId}`, {
                 method: "PUT",
@@ -719,10 +752,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
         const progressHtml = renderProgressBar(task);
 
-        const columnOptions = COLUMNS.map((col) =>
-            `<option value="${col.id}"${col.id === task.column ? " selected" : ""}>${escapeHtml(col.name)}</option>`
-        ).join("");
-
         return `
       <div class="card${footerHtml || progressHtml ? " card-detailed" : ""}" draggable="true" data-task="${escapeHtml(task.id)}">
         <div class="card-title-row">
@@ -730,9 +759,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
           <button type="button" class="edit-icon" data-edit="${escapeHtml(task.id)}" title="Edit task details" aria-label="Edit ${escapeHtml(task.title)}">${PENCIL_ICON}</button>
         </div>
         ${progressHtml}
-        <select class="card-status-select" data-status-for="${escapeHtml(task.id)}" aria-label="Change status">
-          ${columnOptions}
-        </select>
         ${footerHtml}
       </div>`;
     }
@@ -779,38 +805,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 draftTask.assignee = { kind: "team", teamId: currentTeamId };
             }
             openModal(draftTask);
-        }
-    });
-
-    // ===================== US18: STATUS DROPDOWN ON CARD =====================
-    board.addEventListener("change", async (event: Event) => {
-        const select = (event.target as HTMLElement).closest<HTMLSelectElement>("[data-status-for]");
-        if (!select) return;
-
-        const taskId = select.dataset["statusFor"];
-        const task = tasks.find((t) => t.id === taskId);
-        if (!task) return;
-
-        const newColumn = select.value as ColumnId;
-        if (newColumn === task.column) return;
-
-        const oldColumn = task.column;
-        task.column = newColumn;
-
-        if (newColumn === "COMPLETED" && (task.progress ?? 0) < 100) {
-            task.progress = 100;
-        } else if (
-            oldColumn === "COMPLETED" &&
-            (newColumn === "TO_DO" || newColumn === "IN_PROGRESS" || newColumn === "IN_REVIEW")
-        ) {
-            task.progress = 0;
-        }
-
-        const ok = await apiUpdate(task);
-        if (ok) {
-            const to = COLUMNS.find((c) => c.id === newColumn)?.name ?? newColumn;
-            showToast(`Moved to ${to}`);
-            await refreshFromBackend();
         }
     });
 
@@ -1024,7 +1018,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                     renderTeamFilter();
                     renderTagFilter();
                     void refreshSprintButton();
-                    void refreshSprintHours();
                 }
             });
         });
@@ -1043,8 +1036,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     });
 
     // ===================== TEAM FILTER =====================
-    const teamFilterBtn = requireElement<HTMLButtonElement>("teamFilterBtn");
-    const teamFilterMenu = requireElement<HTMLDivElement>("teamFilterMenu");
     const teamFilterLabel = requireElement<HTMLSpanElement>("teamFilterLabel");
 
     function renderTeamFilter(): void {
@@ -1058,40 +1049,36 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             })),
         ];
 
-        teamFilterMenu.innerHTML =
-            `<span class="popover-label">View board for</span>` +
-            options
-                .map((option) => {
-                    const active = option.id === currentTeamId;
-                    return `
+        if (teamFilterMenu) {
+            teamFilterMenu.innerHTML =
+                `<span class="popover-label">View board for</span>` +
+                options
+                    .map((option) => {
+                        const active = option.id === currentTeamId;
+                        return `
             <button type="button" class="filter-option${active ? " active" : ""}" data-team="${option.id}" role="menuitemradio" aria-checked="${active}">
               <span>${escapeHtml(option.name)}</span><span class="filter-count">${option.count}</span>
             </button>`;
-                })
-                .join("");
+                    })
+                    .join("");
+        }
 
         teamFilterLabel.textContent =
             currentTeamId === "all"
                 ? "All teams"
                 : teamName(currentTeamId) || "All teams";
-        teamFilterBtn.classList.toggle("filtered", currentTeamId !== "all");
+        teamFilterBtn?.classList.toggle("filtered", currentTeamId !== "all");
     }
 
-    function setTeamFilterOpen(open: boolean): void {
-        teamFilterMenu.classList.toggle("visible", open);
-        teamFilterBtn.setAttribute("aria-expanded", String(open));
-    }
-
-    teamFilterBtn.addEventListener("click", (event: MouseEvent) => {
+    teamFilterBtn?.addEventListener("click", (event: MouseEvent) => {
         event.stopPropagation();
         renderTeamFilter();
-
-        const willOpen = !teamFilterMenu.classList.contains("visible");
-        setTagFilterOpen(false);
+        const willOpen = !teamFilterMenu?.classList.contains("visible");
+        closeAllMenus();
         setTeamFilterOpen(willOpen);
     });
 
-    teamFilterMenu.addEventListener("click", (event: MouseEvent) => {
+    teamFilterMenu?.addEventListener("click", (event: MouseEvent) => {
         event.stopPropagation();
         const option = (event.target as HTMLElement).closest<HTMLElement>("[data-team]");
         if (!option) return;
@@ -1102,8 +1089,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     });
 
     // ===================== TAG FILTER (US14) =====================
-    const tagFilterBtn = requireElement<HTMLButtonElement>("tagFilterBtn");
-    const tagFilterMenu = requireElement<HTMLDivElement>("tagFilterMenu");
     const tagFilterLabel = requireElement<HTMLSpanElement>("tagFilterLabel");
 
     function availableTagNames(): string[] {
@@ -1157,27 +1142,21 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             tagFilterLabel.textContent = currentTagName;
         }
 
-        tagFilterBtn.classList.toggle(
+        tagFilterBtn?.classList.toggle(
             "filtered",
             sortByTag || currentTagName !== TAG_FILTER_ALL
         );
     }
 
-    function setTagFilterOpen(open: boolean): void {
-        tagFilterMenu.classList.toggle("visible", open);
-        tagFilterBtn.setAttribute("aria-expanded", String(open));
-    }
-
-    tagFilterBtn.addEventListener("click", (event: MouseEvent) => {
+    tagFilterBtn?.addEventListener("click", (event: MouseEvent) => {
         event.stopPropagation();
         renderTagFilter();
-
-        const willOpen = !tagFilterMenu.classList.contains("visible");
-        setTeamFilterOpen(false);
+        const willOpen = !tagFilterMenu?.classList.contains("visible");
+        closeAllMenus();
         setTagFilterOpen(willOpen);
     });
 
-    tagFilterMenu.addEventListener("click", (event: MouseEvent) => {
+    tagFilterMenu?.addEventListener("click", (event: MouseEvent) => {
         event.stopPropagation();
         const target = event.target as HTMLElement;
 
@@ -1197,11 +1176,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         setTagFilterOpen(false);
         renderTagFilter();
         renderBoard();
-    });
-
-    document.addEventListener("click", () => {
-        setTeamFilterOpen(false);
-        setTagFilterOpen(false);
     });
 
     // ===================== TASK MODAL =====================
@@ -1229,19 +1203,73 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     const progressSlider = requireElement<HTMLInputElement>("progressSlider");
     const progressClearBtn = requireElement<HTMLButtonElement>("progressClearBtn");
 
+    // ⋯ menu inside the modal
+    const modalMoreBtn = document.getElementById("modalMoreBtn") as HTMLButtonElement | null;
+    const modalMoreMenu = document.getElementById("modalMoreMenu") as HTMLDivElement | null;
+    const modalRefreshBtn = document.getElementById("modalRefreshBtn") as HTMLButtonElement | null;
+
     let draft: Task | null = null;
-    let assignKind: "team" | "teams" | "employees" = "team";
+    let assignKind: "team" | "employees" = "team";
+
+    function setModalMoreOpen(open: boolean): void {
+        if (!modalMoreMenu || !modalMoreBtn) return;
+        modalMoreMenu.classList.toggle("visible", open);
+        modalMoreBtn.setAttribute("aria-expanded", String(open));
+    }
+
+    modalMoreBtn?.addEventListener("click", (event: MouseEvent) => {
+        event.stopPropagation();
+        setModalMoreOpen(!modalMoreMenu.classList.contains("visible"));
+    });
+
+    modalRefreshBtn?.addEventListener("click", async () => {
+        if (!draft || !draft.id) {
+            setModalMoreOpen(false);
+            return;
+        }
+
+        setModalMoreOpen(false);
+        modalRefreshBtn.disabled = true;
+
+        try {
+            const res = await fetch(`${API_BASE}/${draft.id}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const fresh = (await res.json()) as BackendTask;
+
+            const mapped: Task = {
+                id: String(fresh.id),
+                sprintId: currentSprintId,
+                column: (fresh.status ?? "PRODUCT_BACKLOG") as ColumnId,
+                title: fresh.name,
+                description: fresh.description ?? "",
+                assignee: parseAssignee(fresh),
+                dueDate: fresh.dueDate ?? "",
+                estimateHours: fresh.estimateHours ?? 0,
+                priority: (fresh.priority ?? "") as Priority,
+                position: fresh.position ?? 0,
+                tags: Array.isArray(fresh.tags) ? fresh.tags : [],
+                progress: typeof fresh.progress === "number" ? fresh.progress : 0,
+            };
+
+            openModal(mapped);
+            showToast("Task refreshed");
+        } catch (err) {
+            console.error("Refresh failed:", err);
+            showAlertModal("Refresh failed", "Could not load the latest task data.");
+        } finally {
+            modalRefreshBtn.disabled = false;
+        }
+    });
 
     function openModal(task: Task): void {
-        draft = JSON.parse(JSON.stringify(task)) as Task;
-        assignKind = draft.assignee?.kind ?? "team";
+        draft = JSON.parse(JSON.stringify(task));
+        assignKind = draft.assignee?.kind === "employees" ? "employees" : "team";
 
         columnSelect.value = draft.column;
         titleInput.value = draft.title;
         descriptionBox.value = draft.description;
         dueDateInput.value = draft.dueDate;
-        estimateInput.value =
-            draft.estimateHours > 0 ? String(draft.estimateHours) : "";
+        estimateInput.value = draft.estimateHours > 0 ? String(draft.estimateHours) : "";
         prioritySelect.value = draft.priority;
         tagInput.value = "";
 
@@ -1252,15 +1280,13 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
         errorText.textContent = "";
         saveBtn.textContent = draft.id ? "Save" : "Create task";
-
-        const isAdmin = sessionStorage.getItem("role") === "ADMIN";
-        deleteBtn.hidden = draft.id === "" || !isAdmin;
-
+        deleteBtn.hidden = draft.id === "" || sessionStorage.getItem("role") !== "ADMIN";
         setDeleteArmed(false);
 
         renderDraft();
         renderTags();
         closePopovers();
+        setModalMoreOpen(false);
         overlay.classList.add("visible");
         titleInput.focus();
     }
@@ -1268,6 +1294,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     function closeModal(): void {
         overlay.classList.remove("visible");
         closePopovers();
+        setModalMoreOpen(false);
 
         const wasSavedTask = draft !== null && draft.id !== "";
         draft = null;
@@ -1277,7 +1304,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
     function renderDraft(): void {
         if (!draft) return;
-        const chips: string[] = [
+        const chips = [
             `<span class="summary-chip"><b>Assigned to</b> ${escapeHtml(assigneeLabel(draft.assignee))}</span>`,
             `<span class="summary-chip"><b>Due</b> ${draft.dueDate ? formatDateBadge(draft.dueDate) : "No due date"}</span>`,
             `<span class="summary-chip"><b>Estimate</b> ${draft.estimateHours > 0 ? formatEstimate(draft.estimateHours) : "Not set"}</span>`,
@@ -1291,7 +1318,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     function renderAssignControls(): void {
         if (!draft) return;
 
-        document.querySelectorAll<HTMLButtonElement>("[data-assign-kind]").forEach((segment) => {
+        document.querySelectorAll<HTMLElement>("[data-assign-kind]").forEach((segment) => {
             segment.classList.toggle("active", segment.dataset["assignKind"] === assignKind);
         });
 
@@ -1312,19 +1339,14 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
         const ticked = assignee?.kind === "employees" ? assignee.employeeIds : [];
 
-        employeeList.innerHTML =
-            visibleEmployees.length === 0
-                ? `<p class="employee-empty">${currentTeam ? "No employees in this team yet." : "Choose a team first."}</p>`
-                : visibleEmployees
-                      .map(
-                          (employee) => `
+        employeeList.innerHTML = visibleEmployees.length === 0
+            ? `<p class="employee-empty">${currentTeam ? "No employees in this team yet." : "Choose a team first."}</p>`
+            : visibleEmployees.map((employee) => `
             <label class="employee-option">
               <input type="checkbox" value="${escapeHtml(employee.id)}" ${ticked.includes(employee.id) ? "checked" : ""} />
               <span>${escapeHtml(employee.name)}</span>
               <span class="employee-team">${escapeHtml(employee.team)}</span>
-            </label>`
-                      )
-                      .join("");
+            </label>`).join("");
     }
 
     // ===================== TAGS (US13) =====================
@@ -1334,13 +1356,11 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
         tagEmpty.hidden = tags.length > 0;
         tagChips.innerHTML = tags
-            .map(
-                (t) => `
+            .map((t) => `
       <span class="tag-chip" data-tag-id="${t.id}">
         ${escapeHtml(t.name)}
         <button type="button" aria-label="Remove ${escapeHtml(t.name)}" data-remove-tag="${t.id}">✕</button>
-      </span>`
-            )
+      </span>`)
             .join("");
     }
 
@@ -1368,7 +1388,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             });
             if (!res.ok) throw new Error(await res.text());
 
-            const updated = (await res.json()) as BackendTask;
+            const updated = await res.json();
             draft.tags = Array.isArray(updated.tags) ? updated.tags : [];
             tagInput.value = "";
             renderTags();
@@ -1386,7 +1406,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             });
             if (!res.ok) throw new Error(await res.text());
 
-            const updated = (await res.json()) as BackendTask;
+            const updated = await res.json();
             draft.tags = Array.isArray(updated.tags) ? updated.tags : [];
             renderTags();
         } catch (err) {
@@ -1442,13 +1462,12 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     deleteBtn.addEventListener("blur", () => setDeleteArmed(false));
 
     function closePopovers(): void {
-        overlay
-            .querySelectorAll<HTMLElement>(".popover.visible")
-            .forEach((p) => p.classList.remove("visible"));
+        overlay.querySelectorAll(".popover.visible").forEach((p) => p.classList.remove("visible"));
+        setModalMoreOpen(false);
     }
 
-    document.querySelectorAll<HTMLButtonElement>("[data-popover]").forEach((button) => {
-        button.addEventListener("click", (event: MouseEvent) => {
+    document.querySelectorAll<HTMLElement>("[data-popover]").forEach((button) => {
+        button.addEventListener("click", (event) => {
             event.stopPropagation();
             const popover = document.getElementById(button.dataset["popover"] ?? "");
             if (!popover) return;
@@ -1461,8 +1480,15 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         });
     });
 
-    overlay.querySelectorAll<HTMLElement>(".popover").forEach((popover) => {
-        popover.addEventListener("click", (event: MouseEvent) => event.stopPropagation());
+    overlay.querySelectorAll(".popover").forEach((popover) => {
+        popover.addEventListener("click", (event) => event.stopPropagation());
+    });
+
+    overlay.addEventListener("click", (event: MouseEvent) => {
+        if (!modalMoreMenu?.classList.contains("visible")) return;
+        const target = event.target as Node;
+        if (modalMoreMenu.contains(target) || modalMoreBtn?.contains(target)) return;
+        setModalMoreOpen(false);
     });
 
     dueDateInput.addEventListener("change", () => {
@@ -1522,7 +1548,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         renderDraft();
     });
 
-    document.querySelectorAll<HTMLButtonElement>("[data-assign-kind]").forEach((segment) => {
+    document.querySelectorAll<HTMLElement>("[data-assign-kind]").forEach((segment) => {
         segment.addEventListener("click", () => {
             assignKind = segment.dataset["assignKind"] === "employees" ? "employees" : "team";
             renderAssignControls();
@@ -1531,22 +1557,16 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
     assigneeSelect.addEventListener("change", () => {
         if (!draft) return;
-        draft.assignee = assigneeSelect.value
-            ? { kind: "team", teamId: assigneeSelect.value }
-            : null;
+        draft.assignee = assigneeSelect.value ? { kind: "team", teamId: assigneeSelect.value } : null;
         renderAssignControls();
     });
 
     employeeList.addEventListener("change", () => {
         if (!draft) return;
-        const employeeIds = Array.from(
-            employeeList.querySelectorAll<HTMLInputElement>("input:checked")
-        ).map((box) => box.value);
-        draft.assignee =
-            employeeIds.length > 0 ? { kind: "employees", employeeIds } : null;
+        const employeeIds = Array.from(employeeList.querySelectorAll<HTMLInputElement>("input:checked")).map((box) => box.value);
+        draft.assignee = employeeIds.length > 0 ? { kind: "employees", employeeIds } : null;
         const chip = summary.querySelector(".summary-chip");
-        if (chip)
-            chip.innerHTML = `<b>Assigned to</b> ${escapeHtml(assigneeLabel(draft.assignee))}`;
+        if (chip) chip.innerHTML = `<b>Assigned to</b> ${escapeHtml(assigneeLabel(draft.assignee))}`;
     });
 
     requireElement<HTMLButtonElement>("unassignBtn").addEventListener("click", () => {
@@ -1572,9 +1592,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         void removeTagFromDraft(Number(btn.dataset["removeTag"]));
     });
 
-    saveBtn.addEventListener("click", () => {
-        void saveModal();
-    });
+    saveBtn.addEventListener("click", () => { void saveModal(); });
     titleInput.addEventListener("input", () => (errorText.textContent = ""));
     titleInput.addEventListener("keydown", (event: KeyboardEvent) => {
         if (event.key === "Enter") void saveModal();
@@ -1582,7 +1600,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     requireElement<HTMLButtonElement>("modalCloseBtn").addEventListener("click", closeModal);
     requireElement<HTMLButtonElement>("modalCancelBtn").addEventListener("click", closeModal);
 
-    overlay.addEventListener("click", (event: MouseEvent) => {
+    overlay.addEventListener("click", (event) => {
         if (event.target === overlay) closeModal();
         else closePopovers();
     });
@@ -1590,10 +1608,10 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     document.addEventListener("keydown", (event: KeyboardEvent) => {
         if (event.key !== "Escape") return;
 
-        setTeamFilterOpen(false);
-        setTagFilterOpen(false);
+        closeAllMenus();
         if (!overlay.classList.contains("visible")) return;
         if (overlay.querySelector(".popover.visible")) closePopovers();
+        else if (modalMoreMenu?.classList.contains("visible")) setModalMoreOpen(false);
         else closeModal();
     });
 
@@ -1636,10 +1654,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     projectNameInput.addEventListener("blur", commitProjectName);
     projectNameInput.addEventListener("keydown", (event: KeyboardEvent) => {
         if (event.key === "Enter") projectNameInput.blur();
-        else if (event.key === "Escape") {
-            projectNameInput.value = projectName;
-            projectNameInput.blur();
-        }
+        else if (event.key === "Escape") { projectNameInput.value = projectName; projectNameInput.blur(); }
     });
 
     projectNameInput.value = projectName;
@@ -1668,24 +1683,31 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
     // ===================== START / END SPRINT (US23) =====================
     const startSprintBtn = document.getElementById("startSprintBtn") as HTMLButtonElement | null;
-    let currentSprintStatus: Sprint["status"] | null = null;
+    let currentSprintStatus: string | null = null;
     let currentSprintNumericId: number | null = null;
 
+    /**
+     * Loads the latest sprint with the given name.
+     * The backend returns 200 with an EMPTY body when no sprint with that
+     * name exists yet — so we read the response as text first and treat an
+     * empty string as "no sprint".
+     */
     async function fetchSprintStatus(tabId: string): Promise<Sprint | null> {
         const name = SPRINT_TAB_NAMES[tabId];
         if (!name) return null;
         try {
             const res = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
-            if (res.status === 404) return null;
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return (await res.json()) as Sprint;
+            if (!res.ok) return null;
+            const text = await res.text();
+            if (!text) return null;                 // empty body = no sprint yet
+            return JSON.parse(text) as Sprint;
         } catch (err) {
             console.error("Failed to load sprint:", err);
             return null;
         }
     }
 
-    function renderSprintButton(status: Sprint["status"] | null): void {
+    function renderSprintButton(status: string | null): void {
         if (!startSprintBtn) return;
 
         startSprintBtn.classList.remove("is-active", "is-completed", "is-planned");
@@ -1751,7 +1773,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 throw new Error(msg || `HTTP ${res.status}`);
             }
 
-            const updated: Sprint = await res.json();
+            const updated = (await res.json()) as Sprint;
             currentSprintStatus = updated.status;
             renderSprintButton(currentSprintStatus);
             showToast(starting ? "Sprint started" : "Sprint completed");
@@ -1775,7 +1797,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         await refreshSprintButton();
         await refreshFromBackend();
         renderTagFilter();
-        await refreshSprintHours();
         await loadLoggedHours();
     }
     void init();

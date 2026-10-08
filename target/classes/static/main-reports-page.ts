@@ -25,6 +25,31 @@ if (sessionStorage.getItem("loggedIn") !== "true") {
     throw new Error("Not logged in");
 }
 
+// ===================== SIDEBAR COLLAPSE =====================
+const SIDEBAR_KEY = "symph.sidebarCollapsed";
+const appShell = document.getElementById("appShell");
+const sidebarToggle = document.getElementById("sidebarToggle");
+
+function readSetting(key: string): string {
+    try { return window.localStorage.getItem(key) ?? ""; } catch { return ""; }
+}
+function writeSetting(key: string, value: string): void {
+    try { window.localStorage.setItem(key, value); } catch { /* ignore */ }
+}
+function setSidebarCollapsed(collapsed: boolean): void {
+    if (!appShell || !sidebarToggle) return;
+    appShell.classList.toggle("sidebar-collapsed", collapsed);
+    sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+    sidebarToggle.setAttribute("aria-label", collapsed ? "Expand menu" : "Collapse menu");
+    sidebarToggle.title = collapsed ? "Expand menu" : "Collapse menu";
+}
+sidebarToggle?.addEventListener("click", () => {
+    const collapsed = !appShell.classList.contains("sidebar-collapsed");
+    setSidebarCollapsed(collapsed);
+    writeSetting(SIDEBAR_KEY, collapsed ? "1" : "0");
+});
+setSidebarCollapsed(readSetting(SIDEBAR_KEY) === "1");
+
 // ===================== SHOW CURRENT USER =====================
 const nameEl = document.getElementById("signedInName");
 if (nameEl) {
@@ -89,21 +114,6 @@ const taskLineChart = requireElement<SVGSVGElement>("taskLineChart");
 const taskChartEmpty = requireElement<HTMLParagraphElement>("taskChartEmpty");
 const burndownChart = requireElement<SVGSVGElement>("burndownChart");
 const burndownEmpty = requireElement<HTMLParagraphElement>("burndownEmpty");
-
-const logoutBtn = requireElement<HTMLButtonElement>("logoutBtn");
-const logoutOverlay = requireElement<HTMLDivElement>("logoutOverlay");
-const cancelLogoutBtn = requireElement<HTMLButtonElement>("cancelLogoutBtn");
-const confirmLogoutBtn = requireElement<HTMLButtonElement>("confirmLogoutBtn");
-
-logoutBtn.addEventListener("click", () => logoutOverlay.classList.add("visible"));
-cancelLogoutBtn.addEventListener("click", () => logoutOverlay.classList.remove("visible"));
-confirmLogoutBtn.addEventListener("click", () => {
-    sessionStorage.clear();
-    window.location.href = "index-login-page.html";
-});
-logoutOverlay.addEventListener("click", (e: MouseEvent) => {
-    if (e.target === logoutOverlay) logoutOverlay.classList.remove("visible");
-});
 
 // ===================== STATE =====================
 let selectedWeeks = 1;
@@ -184,13 +194,16 @@ async function loadBurndown(): Promise<void> {
 
     try {
         const sRes = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(sprintName)}`);
-        if (sRes.status === 404) {
+        if (!sRes.ok) throw new Error(`HTTP ${sRes.status}`);
+
+        // Backend returns 200 with an empty body when no sprint exists yet.
+        const sText = await sRes.text();
+        if (!sText) {
             burndownEmpty.textContent = `No sprint named "${sprintName}" exists yet.`;
             burndownEmpty.style.display = "block";
             return;
         }
-        if (!sRes.ok) throw new Error(`HTTP ${sRes.status}`);
-        const sprint = (await sRes.json()) as Sprint;
+        const sprint = JSON.parse(sText) as Sprint;
 
         const bRes = await fetch(`${TIMELOGS_API}/burndown/${sprint.id}`);
         if (!bRes.ok) throw new Error(`HTTP ${bRes.status}`);

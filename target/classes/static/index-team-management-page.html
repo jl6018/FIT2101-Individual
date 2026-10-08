@@ -1,7 +1,7 @@
 <!--
     Team Management Page — Symph Web Application
     Displays a table of team members and provides modals for adding and
-    removing members, plus logout. Member rows are rendered dynamically.
+    removing members. Member rows are rendered dynamically.
 
     @author Lim Jia Li
     @version 17.0.16
@@ -15,7 +15,6 @@
     <title>Symph — Team Management</title>
     <link rel="stylesheet" href="style-team-management-page.css">
 
-    <!-- Prevent caching so the page always reflects the latest data -->
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -23,33 +22,35 @@
 
 <body>
 
-<div class="app-shell">
+<div class="app-shell" id="appShell">
     <!-- ===================== SIDEBAR ===================== -->
     <aside class="sidebar">
-        <a class="logo" href="index-admin-page.html">
-            <img src="images/symph-logo.png" alt="Symph" />
-        </a>
+        <div class="sidebar-top">
+            <a class="logo" href="index-admin-page.html">
+                <img src="images/symph-logo.png" alt="Symph" />
+            </a>
+            <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Collapse menu" aria-expanded="true">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+            </button>
+        </div>
 
-        <!-- Primary navigation menu -->
         <nav class="nav">
             <a href="index-admin-page.html" class="nav-item">
-                <span class="dot"></span> Sprint Board
+                <span class="dot"></span> <span class="nav-label">Sprint Board</span>
             </a>
             <a href="index-sprint-planning-page.html" class="nav-item">
-                <span class="dot"></span> Sprint Planning
+                <span class="dot"></span> <span class="nav-label">Sprint Planning</span>
             </a>
             <a href="index-team-management-page.html" class="nav-item active">
-                <span class="dot dot-active"></span> Team Management
+                <span class="dot dot-active"></span> <span class="nav-label">Team Management</span>
             </a>
             <a href="index-reports-page.html" class="nav-item">
-                <span class="dot"></span> Reports
+                <span class="dot"></span> <span class="nav-label">Reports</span>
             </a>
         </nav>
 
-        <!-- Signed-in user info and logout -->
         <div class="sidebar-footer">
             <div class="signed-in">Signed in as <strong id="signedInName">Admin</strong></div>
-            <button id="logoutBtn" class="switch-account-btn">Log out</button>
         </div>
     </aside>
 
@@ -57,12 +58,10 @@
     <main class="main">
         <h1>Team Management</h1>
 
-        <!-- Action row: add member button -->
         <div class="action-row">
             <button id="addMemberBtn" class="btn-primary">+ Add member</button>
         </div>
 
-        <!-- Members table (rows rendered dynamically) -->
         <table class="members-table">
             <thead>
             <tr>
@@ -84,7 +83,6 @@
         <button class="modal-close" id="closeAddMemberBtn" aria-label="Close">✕</button>
         <h2 class="modal-title">Add Member</h2>
 
-        <!-- Add member form -->
         <form id="addMemberForm">
             <div class="form-field">
                 <label for="memberUser">Select user</label>
@@ -135,20 +133,6 @@
     </div>
 </div>
 
-<!-- ===================== MODAL: Logout ===================== -->
-<div class="modal-overlay" id="logoutOverlay">
-    <div class="modal modal-narrow" role="dialog" aria-modal="true">
-        <h2 class="modal-title">Log out?</h2>
-        <p class="modal-subtitle">You'll need to sign in again to access the board.</p>
-
-        <div class="modal-actions">
-            <button id="cancelLogoutBtn" class="btn-secondary">Cancel</button>
-            <button id="confirmLogoutBtn" class="btn-danger">Log out</button>
-        </div>
-    </div>
-</div>
-
-<!-- ===================== TOAST NOTIFICATION ===================== -->
 <div class="toast" id="toast"></div>
 
 <script src="main-team-management-page.js" type="module" defer></script>

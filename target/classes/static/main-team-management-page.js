@@ -2,7 +2,7 @@
  * Team Management Page — Symph Web Application
  * Compiled from main-team-management-page.ts — do not hand-edit.
  * Handles adding and removing team members, loading users and team
- * memberships from the backend, and the logout flow.
+ * memberships from the backend.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -23,6 +23,31 @@ if (sessionStorage.getItem('loggedIn') !== 'true') {
     throw new Error('Not logged in');
 }
 
+// ===================== SIDEBAR COLLAPSE =====================
+const SIDEBAR_KEY = "symph.sidebarCollapsed";
+const appShell = document.getElementById("appShell");
+const sidebarToggle = document.getElementById("sidebarToggle");
+
+function readSetting(key) {
+    try { return window.localStorage.getItem(key) ?? ""; } catch { return ""; }
+}
+function writeSetting(key, value) {
+    try { window.localStorage.setItem(key, value); } catch { /* ignore */ }
+}
+function setSidebarCollapsed(collapsed) {
+    if (!appShell || !sidebarToggle) return;
+    appShell.classList.toggle("sidebar-collapsed", collapsed);
+    sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+    sidebarToggle.setAttribute("aria-label", collapsed ? "Expand menu" : "Collapse menu");
+    sidebarToggle.title = collapsed ? "Expand menu" : "Collapse menu";
+}
+sidebarToggle?.addEventListener("click", () => {
+    const collapsed = !appShell.classList.contains("sidebar-collapsed");
+    setSidebarCollapsed(collapsed);
+    writeSetting(SIDEBAR_KEY, collapsed ? "1" : "0");
+});
+setSidebarCollapsed(readSetting(SIDEBAR_KEY) === "1");
+
 // ===================== SHOW CURRENT USER =====================
 const nameEl = document.getElementById('signedInName');
 if (nameEl) {
@@ -33,34 +58,11 @@ if (nameEl) {
     }
 }
 
-/**
- * Retrieves a DOM element by its ID and throws if not found.
- *
- * @param {string} id      The ID of the element to retrieve
- * @returns {HTMLElement}  The matching DOM element
- * @throws {Error}         if no element with the given ID exists
- */
 function requireElement(id) {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
     return el;
 }
-
-// ===================== LOGOUT MODAL =====================
-const logoutBtn = requireElement('logoutBtn');
-const logoutOverlay = requireElement('logoutOverlay');
-const cancelLogoutBtn = requireElement('cancelLogoutBtn');
-const confirmLogoutBtn = requireElement('confirmLogoutBtn');
-
-logoutBtn.addEventListener('click', () => logoutOverlay.classList.add('visible'));
-cancelLogoutBtn.addEventListener('click', () => logoutOverlay.classList.remove('visible'));
-confirmLogoutBtn.addEventListener('click', () => {
-    sessionStorage.clear();
-    window.location.href = 'index-login-page.html';
-});
-logoutOverlay.addEventListener('click', (e) => {
-    if (e.target === logoutOverlay) logoutOverlay.classList.remove('visible');
-});
 
 // ===================== ELEMENTS =====================
 const addMemberBtn = requireElement('addMemberBtn');
@@ -82,18 +84,7 @@ let rowPendingRemoval = null;
 let registeredUsers = [];
 
 // ===================== MODAL OPEN/CLOSE =====================
-/**
- * Shows a modal overlay by adding the "visible" class.
- *
- * @param {HTMLElement} overlay The overlay element to show
- */
 function openModal(overlay) { overlay.classList.add('visible'); }
-
-/**
- * Hides a modal overlay by removing the "visible" class.
- *
- * @param {HTMLElement} overlay The overlay element to hide
- */
 function closeModal(overlay) { overlay.classList.remove('visible'); }
 
 addMemberBtn.addEventListener('click', () => openModal(addMemberOverlay));
@@ -108,12 +99,6 @@ closeAddMemberBtn.addEventListener('click', () => closeModal(addMemberOverlay));
 // ===================== TOAST =====================
 let toastTimeoutId;
 
-/**
- * Displays a toast notification for 3 seconds.
- *
- * @param {string} message           The message to display
- * @param {string} [type='success']  Whether the toast is a success or error notification
- */
 function showToast(message, type = 'success') {
     toast.textContent = message;
     toast.classList.remove('success', 'error');
@@ -124,9 +109,6 @@ function showToast(message, type = 'success') {
 }
 
 // ===================== LOAD USERS =====================
-/**
- * Loads all registered employees and populates the member selection dropdown.
- */
 async function loadMembers() {
     try {
         const res = await fetch('/api/users');
@@ -148,9 +130,6 @@ async function loadMembers() {
 }
 
 // ===================== LOAD TABLE =====================
-/**
- * Loads all users with a team assignment and renders them in the members table.
- */
 async function loadTeamMemberships() {
     try {
         const res = await fetch('/api/users');

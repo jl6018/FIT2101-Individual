@@ -1,11 +1,11 @@
 /**
  * User Board Page — Symph Web Application
  * Kanban board for employees. Includes search, tag filter, sprint tabs,
- * a read-only task modal, a Log Time modal (US24), a "My Logs" modal with
- * delete support, and a Logout modal.
- *
- * US07 + US08: teammates share their team's board. A task is visible if
- * it is assigned to my team by name, or to any user who is on my team.
+ * a read-only task modal, a Log Time modal (US24), a "My Logs" modal
+ * (opened from the ⋯ menu in the project header), an account menu on the
+ * avatar with Log out, a team badge in the project header that is
+ * auto-detected from sessionStorage, and a logout confirmation modal.
+ * Only one of the three menus (tag filter / account / ⋯) is open at a time.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -72,7 +72,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     function initials(name) {
-        return name
+        return String(name)
             .split(/\s+/)
             .filter(Boolean)
             .slice(0, 2)
@@ -97,33 +97,23 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     let currentSprintId = savedSprintId && savedSprintId !== "" ? savedSprintId : "1";
     let currentSprintNumericId = null;
 
-    // US07 + US08: teammates share their team's board. We cache the IDs of
-    // every user on my team (including myself) so a task assigned to any
-    // of them is considered visible to me.
     let teammateIds = new Set();
+    let userIdToName = new Map();
 
     const board = requireElement("board");
     const searchInput = document.getElementById("searchInput");
     const emptyState = document.getElementById("boardEmptyState");
 
     // ===================== SHOW CURRENT USER =====================
-    const nameEl = document.getElementById("signedInName");
     const avatarEl = document.getElementById("userAvatar");
+    const profileMenuName = document.getElementById("profileMenuName");
+    const profileMenuSub = document.getElementById("profileMenuSub");
 
     const storedName = sessionStorage.getItem("name") || "";
     const storedTeam = sessionStorage.getItem("team") || "";
 
-    if (nameEl) {
-        if (storedName && storedTeam) {
-            nameEl.textContent = `${storedName} (${storedTeam})`;
-        } else if (storedName) {
-            nameEl.textContent = storedName;
-        } else if (storedTeam) {
-            nameEl.textContent = storedTeam;
-        } else {
-            nameEl.textContent = "Employee";
-        }
-    }
+    if (profileMenuName) profileMenuName.textContent = storedName || "Employee";
+    if (profileMenuSub) profileMenuSub.textContent = storedTeam || "—";
 
     if (avatarEl) {
         const label = initials(storedName) || (storedName ? storedName.charAt(0).toUpperCase() : "?");
@@ -131,32 +121,139 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (storedName) avatarEl.title = storedName;
     }
 
-    // ===================== LOGOUT MODAL =====================
+    // ===================== ROLE BADGE (project header) =====================
+    const roleBadgeEl = document.getElementById("roleBadge");
+    if (roleBadgeEl) {
+        roleBadgeEl.textContent = storedTeam || "Employee";
+    }
+
+    // ===================== MENUS (only one open at a time) =====================
+    const profileMenuBtn = document.getElementById("profileMenuBtn");
+    const profileMenu = document.getElementById("profileMenu");
+
+    const headerMenuBtn = document.getElementById("headerMenuBtn");
+    const headerMenu = document.getElementById("headerMenu");
+
+    const tagFilterBtn = document.getElementById("tagFilterBtn");
+    const tagFilterMenu = document.getElementById("tagFilterMenu");
+    const tagFilterLabel = document.getElementById("tagFilterLabel");
+
+    function setProfileMenuOpen(open) {
+        if (!profileMenu || !profileMenuBtn) return;
+        profileMenu.classList.toggle("visible", open);
+        profileMenuBtn.setAttribute("aria-expanded", String(open));
+    }
+
+    function setHeaderMenuOpen(open) {
+        if (!headerMenu || !headerMenuBtn) return;
+        headerMenu.classList.toggle("visible", open);
+        headerMenuBtn.setAttribute("aria-expanded", String(open));
+    }
+
+    function setTagFilterOpen(open) {
+        if (!tagFilterMenu || !tagFilterBtn) return;
+        tagFilterMenu.classList.toggle("visible", open);
+        tagFilterBtn.setAttribute("aria-expanded", String(open));
+    }
+
+    function closeAllMenus() {
+        setProfileMenuOpen(false);
+        setHeaderMenuOpen(false);
+        setTagFilterOpen(false);
+    }
+
+    profileMenuBtn?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const willOpen = !profileMenu.classList.contains("visible");
+        setHeaderMenuOpen(false);
+        setTagFilterOpen(false);
+        setProfileMenuOpen(willOpen);
+    });
+
+    headerMenuBtn?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const willOpen = !headerMenu.classList.contains("visible");
+        setProfileMenuOpen(false);
+        setTagFilterOpen(false);
+        setHeaderMenuOpen(willOpen);
+    });
+
+    tagFilterBtn?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        renderTagFilter();
+        const willOpen = !tagFilterMenu.classList.contains("visible");
+        setProfileMenuOpen(false);
+        setHeaderMenuOpen(false);
+        setTagFilterOpen(willOpen);
+    });
+
+    document.addEventListener("click", (event) => {
+        const target = event.target;
+
+        if (profileMenu?.classList.contains("visible")
+            && !profileMenu.contains(target)
+            && !profileMenuBtn?.contains(target)) {
+            setProfileMenuOpen(false);
+        }
+        if (headerMenu?.classList.contains("visible")
+            && !headerMenu.contains(target)
+            && !headerMenuBtn?.contains(target)) {
+            setHeaderMenuOpen(false);
+        }
+        if (tagFilterMenu?.classList.contains("visible")
+            && !tagFilterMenu.contains(target)
+            && !tagFilterBtn?.contains(target)) {
+            setTagFilterOpen(false);
+        }
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeAllMenus();
+    });
+
+    // ===================== LOGOUT =====================
     const logoutBtn = document.getElementById("logoutBtn");
     const logoutOverlay = document.getElementById("logoutOverlay");
     const cancelLogoutBtn = document.getElementById("cancelLogoutBtn");
     const confirmLogoutBtn = document.getElementById("confirmLogoutBtn");
 
-    logoutBtn?.addEventListener("click", () => logoutOverlay?.classList.add("visible"));
-    cancelLogoutBtn?.addEventListener("click", () => logoutOverlay?.classList.remove("visible"));
+    logoutBtn?.addEventListener("click", () => {
+        closeAllMenus();
+        logoutOverlay?.classList.add("visible");
+    });
+
+    cancelLogoutBtn?.addEventListener("click", () => {
+        logoutOverlay?.classList.remove("visible");
+    });
+
     confirmLogoutBtn?.addEventListener("click", () => {
         sessionStorage.clear();
         window.location.href = "index-login-page.html";
     });
+
     logoutOverlay?.addEventListener("click", (e) => {
-        if (e.target === logoutOverlay) logoutOverlay.classList.remove("visible");
+        if (e.target === logoutOverlay) {
+            logoutOverlay.classList.remove("visible");
+        }
     });
 
     // ===================== SPRINT RESOLUTION =====================
+    /**
+     * Loads the latest sprint with the given name.
+     * The backend returns 200 with an EMPTY body when no sprint with that
+     * name exists yet — so we read the response as text first and treat an
+     * empty string as "no sprint".
+     */
     async function resolveCurrentSprintId() {
         const name = SPRINT_TAB_NAMES[currentSprintId];
         if (!name) return null;
 
         try {
             const res = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
-            if (res.status === 404) return null;
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const sprint = await res.json();
+            if (!res.ok) return null;
+            const text = await res.text();
+            if (!text) return null;                 // empty body = no sprint yet
+            const sprint = JSON.parse(text);
             return sprint?.id ?? null;
         } catch (err) {
             console.error("Failed to resolve sprint:", err);
@@ -165,14 +262,9 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     // ===================== US07 + US08: TEAMMATES =====================
-    /**
-     * Loads every user whose team matches the signed-in employee's team,
-     * plus their own user ID. Cached in `teammateIds` and used by
-     * taskVisibleToCurrentEmployee so tasks assigned to any teammate are
-     * considered part of the shared team board.
-     */
     async function loadTeammates() {
         teammateIds = new Set();
+        userIdToName = new Map();
 
         const myTeam = sessionStorage.getItem("team") || "";
         const myId = sessionStorage.getItem("userId") || "";
@@ -185,9 +277,11 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const users = await res.json();
             users.forEach((u) => {
+                const id = String(u.id);
+                userIdToName.set(id, u.name || `User ${id}`);
                 const teamName = (u.team && u.team.name) ? u.team.name : "";
                 if (teamName === myTeam) {
-                    teammateIds.add(String(u.id));
+                    teammateIds.add(id);
                 }
             });
         } catch (err) {
@@ -195,13 +289,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         }
     }
 
-    /**
-     * Returns true if the current employee is allowed to see this task.
-     * A task belongs to my team's board when:
-     *   - it is assigned to my team by name, OR
-     *   - it is assigned to any user who is on my team (including me).
-     * If I have no team, nothing is visible.
-     */
     function taskVisibleToCurrentEmployee(task) {
         const myTeam = sessionStorage.getItem("team") || "";
         if (!myTeam) return false;
@@ -223,6 +310,27 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         }
 
         return false;
+    }
+
+    function assigneeLabel(task) {
+        if (task.assignedEmployeeIds) {
+            const ids = String(task.assignedEmployeeIds)
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+            const names = ids
+                .map((id) => userIdToName.get(id))
+                .filter(Boolean);
+            if (names.length > 0) return names.join(", ");
+        }
+        if (task.assignedTeams) {
+            const teams = String(task.assignedTeams)
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+            if (teams.length > 0) return teams.join(", ");
+        }
+        return "Unassigned";
     }
 
     // ===================== BACKEND SYNC =====================
@@ -269,6 +377,8 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             priority: t.priority ?? "",
             progress: typeof t.progress === "number" ? t.progress : 0,
             tags: Array.isArray(t.tags) ? t.tags : [],
+            assignedTeams: t.assignedTeams ?? null,
+            assignedEmployeeIds: t.assignedEmployeeIds ?? null,
         };
     }
 
@@ -290,6 +400,33 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
       </div>`;
     }
 
+    function renderAssignees(task) {
+        if (task.assignedTeams) {
+            const teams = String(task.assignedTeams)
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+            if (teams.length > 0) {
+                return teams
+                    .map((name) => `<span class="team-chip">${escapeHtml(name)}</span>`)
+                    .join(" ");
+            }
+        }
+        if (task.assignedEmployeeIds) {
+            const ids = String(task.assignedEmployeeIds)
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+            return ids
+                .map((id) => {
+                    const name = userIdToName.get(id) || `User ${id}`;
+                    return `<div class="avatar avatar-small avatar-purple" title="${escapeHtml(name)}">${escapeHtml(initials(name))}</div>`;
+                })
+                .join("");
+        }
+        return "";
+    }
+
     function renderCard(task) {
         const priorityBadge = renderPriorityBadge(task);
         const badges = [
@@ -301,8 +438,13 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             .map((t) => `<span class="tag">${escapeHtml(t.name)}</span>`)
             .join("");
 
-        const footerHtml = badges || tagBadges
-            ? `<div class="card-footer-row"><div class="card-badges">${badges}${tagBadges}</div></div>`
+        const assigneesHtml = renderAssignees(task);
+
+        const footerHtml = badges || tagBadges || assigneesHtml
+            ? `<div class="card-footer-row">
+                 <div class="card-badges">${badges}${tagBadges}</div>
+                 <div class="tag-avatars">${assigneesHtml}</div>
+               </div>`
             : "";
 
         const progressHtml = renderProgressBar(task);
@@ -361,11 +503,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         }
     });
 
-    // ===================== TAG FILTER =====================
-    const tagFilterBtn = document.getElementById("tagFilterBtn");
-    const tagFilterMenu = document.getElementById("tagFilterMenu");
-    const tagFilterLabel = document.getElementById("tagFilterLabel");
-
+    // ===================== TAG FILTER RENDER =====================
     function availableTagNames() {
         const names = new Set();
         tasks.forEach((t) => (t.tags ?? []).forEach((tag) => names.add(tag.name)));
@@ -409,18 +547,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         tagFilterBtn?.classList.toggle("filtered", currentTagName !== TAG_FILTER_ALL);
     }
 
-    function setTagFilterOpen(open) {
-        if (!tagFilterMenu || !tagFilterBtn) return;
-        tagFilterMenu.classList.toggle("visible", open);
-        tagFilterBtn.setAttribute("aria-expanded", String(open));
-    }
-
-    tagFilterBtn?.addEventListener("click", (event) => {
-        event.stopPropagation();
-        renderTagFilter();
-        setTagFilterOpen(!tagFilterMenu.classList.contains("visible"));
-    });
-
     tagFilterMenu?.addEventListener("click", (event) => {
         event.stopPropagation();
         const tagBtn = event.target.closest("[data-tag]");
@@ -430,8 +556,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         renderTagFilter();
         renderBoard();
     });
-
-    document.addEventListener("click", () => setTagFilterOpen(false));
 
     // ===================== US24: LOG TIME MODAL =====================
     const logTimeOverlay = requireElement("logTimeOverlay");
@@ -535,6 +659,8 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
     async function openMyLogs() {
         if (!myLogsOverlay) return;
+
+        closeAllMenus();
 
         myLogsBody.innerHTML =
             `<tr><td colspan="5" class="muted">Loading…</td></tr>`;
@@ -658,13 +784,16 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (!overlay) return;
         if (modalColumn) modalColumn.value = task.column;
         if (titleInput) titleInput.value = task.title;
-        if (descriptionBox) descriptionBox.value = task.description || "No description";
+        if (descriptionBox) descriptionBox.value = task.description || "";
 
         const column = COLUMNS.find((c) => c.id === task.column);
         if (summary) {
+            const priorityLabel = task.priority ? escapeHtml(task.priority) : "None";
             const chips = [
+                `<span class="summary-chip"><b>Assigned to</b> ${escapeHtml(assigneeLabel(task))}</span>`,
                 `<span class="summary-chip"><b>Due</b> ${task.dueDate ? formatDateBadge(task.dueDate) : "No due date"}</span>`,
                 `<span class="summary-chip"><b>Estimate</b> ${task.estimateHours > 0 ? `${task.estimateHours}h` : "Not set"}</span>`,
+                `<span class="summary-chip"><b>Priority</b> ${priorityLabel}</span>`,
                 `<span class="summary-chip"><b>Progress</b> ${Math.max(0, Math.min(100, Number(task.progress) || 0))}%</span>`,
                 `<span class="summary-chip"><b>Column</b> ${column ? column.name : ""}</span>`,
             ];
@@ -686,6 +815,10 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         });
         document.addEventListener("keydown", (event) => {
             if (event.key === "Escape") {
+                if (logoutOverlay?.classList.contains("visible")) {
+                    logoutOverlay.classList.remove("visible");
+                    return;
+                }
                 if (logTimeOverlay.classList.contains("visible")) {
                     closeLogTimeModal();
                     return;

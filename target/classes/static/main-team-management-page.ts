@@ -5,7 +5,7 @@
 /**
  * Team Management Page — Symph Web Application
  * Handles adding and removing team members, loading users and team
- * memberships from the backend, and the logout flow.
+ * memberships from the backend.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -24,6 +24,31 @@ if (sessionStorage.getItem('loggedIn') !== 'true') {
     throw new Error('Not logged in');
 }
 
+// ===================== SIDEBAR COLLAPSE =====================
+const SIDEBAR_KEY = "symph.sidebarCollapsed";
+const appShell = document.getElementById("appShell");
+const sidebarToggle = document.getElementById("sidebarToggle");
+
+function readSetting(key: string): string {
+    try { return window.localStorage.getItem(key) ?? ""; } catch { return ""; }
+}
+function writeSetting(key: string, value: string): void {
+    try { window.localStorage.setItem(key, value); } catch { /* ignore */ }
+}
+function setSidebarCollapsed(collapsed: boolean): void {
+    if (!appShell || !sidebarToggle) return;
+    appShell.classList.toggle("sidebar-collapsed", collapsed);
+    sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+    sidebarToggle.setAttribute("aria-label", collapsed ? "Expand menu" : "Collapse menu");
+    sidebarToggle.title = collapsed ? "Expand menu" : "Collapse menu";
+}
+sidebarToggle?.addEventListener("click", () => {
+    const collapsed = !appShell.classList.contains("sidebar-collapsed");
+    setSidebarCollapsed(collapsed);
+    writeSetting(SIDEBAR_KEY, collapsed ? "1" : "0");
+});
+setSidebarCollapsed(readSetting(SIDEBAR_KEY) === "1");
+
 // ===================== SHOW CURRENT USER =====================
 const nameEl = document.getElementById('signedInName');
 if (nameEl) {
@@ -34,34 +59,11 @@ if (nameEl) {
     }
 }
 
-/**
- * Retrieves a DOM element by its ID and throws if not found.
- *
- * @param id The ID of the element to retrieve
- * @returns  The element cast to the expected type
- * @throws Error if no element with the given ID exists
- */
 function requireElement<T extends HTMLElement>(id: string): T {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
     return el as T;
 }
-
-// ===================== LOGOUT MODAL =====================
-const logoutBtn = requireElement<HTMLButtonElement>('logoutBtn');
-const logoutOverlay = requireElement<HTMLDivElement>('logoutOverlay');
-const cancelLogoutBtn = requireElement<HTMLButtonElement>('cancelLogoutBtn');
-const confirmLogoutBtn = requireElement<HTMLButtonElement>('confirmLogoutBtn');
-
-logoutBtn.addEventListener('click', () => logoutOverlay.classList.add('visible'));
-cancelLogoutBtn.addEventListener('click', () => logoutOverlay.classList.remove('visible'));
-confirmLogoutBtn.addEventListener('click', () => {
-    sessionStorage.clear();
-    window.location.href = 'index-login-page.html';
-});
-logoutOverlay.addEventListener('click', (e: MouseEvent) => {
-    if (e.target === logoutOverlay) logoutOverlay.classList.remove('visible');
-});
 
 // ===================== ELEMENTS =====================
 const addMemberBtn = requireElement<HTMLButtonElement>('addMemberBtn');
@@ -83,18 +85,7 @@ let rowPendingRemoval: HTMLTableRowElement | null = null;
 let registeredUsers: { id: number; name: string; email: string; role: string }[] = [];
 
 // ===================== MODAL OPEN/CLOSE =====================
-/**
- * Shows a modal overlay by adding the "visible" class.
- *
- * @param overlay The overlay element to show
- */
 function openModal(overlay: HTMLDivElement): void { overlay.classList.add('visible'); }
-
-/**
- * Hides a modal overlay by removing the "visible" class.
- *
- * @param overlay The overlay element to hide
- */
 function closeModal(overlay: HTMLDivElement): void { overlay.classList.remove('visible'); }
 
 addMemberBtn.addEventListener('click', () => openModal(addMemberOverlay));
@@ -109,12 +100,6 @@ closeAddMemberBtn.addEventListener('click', () => closeModal(addMemberOverlay));
 // ===================== TOAST =====================
 let toastTimeoutId: number | undefined;
 
-/**
- * Displays a toast notification for 3 seconds.
- *
- * @param message The message to display
- * @param type    Whether the toast is a success or error notification
- */
 function showToast(message: string, type: 'success' | 'error' = 'success'): void {
     toast.textContent = message;
     toast.classList.remove('success', 'error');
@@ -125,9 +110,6 @@ function showToast(message: string, type: 'success' | 'error' = 'success'): void
 }
 
 // ===================== LOAD USERS =====================
-/**
- * Loads all registered employees and populates the member selection dropdown.
- */
 async function loadMembers(): Promise<void> {
     try {
         const res = await fetch('/api/users');
@@ -149,9 +131,6 @@ async function loadMembers(): Promise<void> {
 }
 
 // ===================== LOAD TABLE (ONLY ASSIGNED) =====================
-/**
- * Loads all users with a team assignment and renders them in the members table.
- */
 async function loadTeamMemberships(): Promise<void> {
     try {
         const res = await fetch('/api/users');
