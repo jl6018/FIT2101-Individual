@@ -204,6 +204,8 @@ textarea {
     gap: 32px;
     padding: 14px 32px;
     background-color: #e3e6fa;
+    position: relative;
+    z-index: 20;
 }
 
 .search-bar {
@@ -1679,4 +1681,117 @@ textarea {
 .card-status-select option {
     background: #ffffff;
     color: #1a1a1a;
+}
+
+/* ===================== LOGGED HOURS PANEL ===================== */
+
+.logged-hours-panel {
+    margin: 0 40px 32px;
+    background: #cbd6ff;
+    border-radius: 16px;
+    padding: 20px 24px;
+}
+
+.logged-hours-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.logged-hours-header h2 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin: 0;
+}
+
+.logged-hours-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.logged-hours-controls select {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid #8a8fb5;
+    background: #ffffff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.logged-hours-refresh {
+    padding: 8px 18px;
+    border: none;
+    border-radius: 20px;
+    background: #111111;
+    color: #ffffff;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.logged-hours-refresh:hover {
+    background: #2a2a2a;
+}
+
+.logged-hours-body {
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 4px 4px 8px;
+    overflow-x: auto;
+}
+
+.logged-hours-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.logged-hours-table th,
+.logged-hours-table td {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: top;
+}
+
+.logged-hours-table th {
+    color: #4b5563;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+}
+
+.logged-hours-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.logged-hours-table .muted {
+    color: #6b7280;
+    font-style: italic;
+    text-align: center;
+}
+
+.logged-hours-total {
+    margin: 10px 14px 4px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+@media (max-width: 720px) {
+    .logged-hours-panel {
+        margin-left: 16px;
+        margin-right: 16px;
+    }
 }

@@ -1,8 +1,9 @@
 <!--
     User Board Page — Symph Web Application
-    Provides a read-only Kanban board for employees. Includes a top navbar,
-    project header, sprint tabs, and a read-only task modal. All editing
-    controls are disabled for this view.
+    Kanban board for employees. Includes search, tag filter, a "My Logs"
+    modal (their own time logs, deletable), sprint tabs, a read-only task
+    modal, a Log Time modal (US24), and a Logout modal.
+    US08: employees only see tasks that belong to their team.
 
     @author Lim Jia Li
     @version 17.0.16
@@ -16,59 +17,65 @@
 
     <link rel="stylesheet" href="style-user-page.css"/>
 
-    <!-- Prevent caching so the board always reflects the latest data -->
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 </head>
 <body>
 
-<!-- ===================== NAVBAR ===================== -->
 <nav class="navbar">
     <div class="logo"><img src="images/symph-logo.png" alt="Symph" /></div>
+
     <div class="search-bar">
-        <input type="text" placeholder="Search" />
-        <span class="search-icon">🔍</span>
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/>
+        </svg>
+        <input type="text" id="searchInput" placeholder="Search" aria-label="Search tasks" />
+
+        <div class="tag-filter">
+            <button id="tagFilterBtn" class="team-filter-btn" type="button" aria-haspopup="true"
+                    aria-expanded="false" title="Filter by tag">
+                <span id="tagFilterLabel">All tags</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20 12l-8 8-9-9V4h7l10 8z"/>
+                    <circle cx="7.5" cy="7.5" r="1.2"/>
+                </svg>
+            </button>
+            <div class="popover team-filter-menu" id="tagFilterMenu" role="menu"></div>
+        </div>
     </div>
-    <!-- Notification, avatar, and logout controls -->
+
     <div class="navbar-icons">
+        <button id="myLogsBtn" class="logout-btn" type="button" title="My time logs">My Logs</button>
         <span>📢</span>
         <span>🔔</span>
         <span id="signedInName" style="font-size: 0.85rem; margin-right: 8px;">Employee</span>
-        <div class="avatar avatar-dark">U</div>
+        <div class="avatar avatar-dark" id="userAvatar">?</div>
         <button id="logoutBtn" class="logout-btn">Log out</button>
     </div>
 </nav>
 
-<!-- ===================== PROJECT HEADER ===================== -->
 <header class="project-header">
     <div class="project-header-left">
         <h1>Project Name</h1>
     </div>
-    <!-- Member avatars and share control -->
     <div class="project-header-right">
-        <div class="avatar-stack">
-            <div class="avatar avatar-teal">T</div>
-            <div class="avatar avatar-pink">H</div>
-            <div class="avatar avatar-gray">B</div>
-            <span class="avatar-more">+2</span>
-        </div>
-        <button class="share-btn">👤+ Share</button>
         <span class="menu-dots">⋯</span>
     </div>
 </header>
 
-<!-- ===================== SPRINT TABS ===================== -->
 <div class="sprint-tabs">
     <button class="sprint-tab active" data-sprint="1">Sprint 1</button>
     <button class="sprint-tab" data-sprint="2">Sprint 2</button>
     <button class="sprint-tab" data-sprint="3">Sprint 3</button>
 </div>
 
-<!-- Kanban board columns rendered dynamically -->
+<p id="boardEmptyState" class="board-empty" style="display:none;">
+    You have no tasks assigned yet. Please contact your admin.
+</p>
+
 <main class="board" id="board"></main>
 
-<!-- ===================== MODAL: View Task (read-only) ===================== -->
 <div class="modal-overlay" id="taskModalOverlay">
     <div class="modal" role="dialog" aria-modal="true" aria-label="Task details">
         <div class="modal-header">
@@ -91,7 +98,6 @@
                 <input class="modal-title-input" id="modalTitle" type="text" readonly />
             </div>
 
-            <!-- Read-only metadata pills -->
             <div class="modal-toolbar">
                 <div class="toolbar-group">
                     <button class="pill" type="button" disabled>
@@ -111,7 +117,6 @@
 
             <div class="modal-summary" id="modalSummary"></div>
 
-            <!-- Read-only description -->
             <section class="modal-section">
                 <h3>Description</h3>
                 <textarea class="modal-description" id="modalDescription" readonly placeholder="No description"></textarea>
@@ -124,7 +129,66 @@
     </div>
 </div>
 
-<!-- ===================== MODAL: Logout ===================== -->
+<div class="modal-overlay" id="logTimeOverlay">
+    <div class="modal modal-narrow" role="dialog" aria-modal="true" aria-labelledby="logTimeTitle">
+        <button class="modal-close" id="closeLogTimeBtn" aria-label="Close" type="button">✕</button>
+        <h2 class="modal-title" id="logTimeTitle">Log Time</h2>
+        <p class="modal-subtitle" id="logTimeTaskContext">Record your start time, time spent, and date.</p>
+
+        <div class="error-banner" id="logTimeError" role="alert" hidden>
+            <span id="logTimeErrorText"></span>
+        </div>
+
+        <form id="logTimeForm">
+            <div class="form-field">
+                <label for="logDate">Date</label>
+                <input type="date" id="logDate" name="logDate" required>
+            </div>
+            <div class="form-field">
+                <label for="logStartTime">Start time</label>
+                <input type="time" id="logStartTime" name="logStartTime" required>
+            </div>
+            <div class="form-field">
+                <label for="logHours">Time spent (hours)</label>
+                <input type="number" id="logHours" name="logHours" step="0.5" min="0.5" required>
+            </div>
+            <div class="form-field">
+                <label for="logDescription">What did you work on? (optional)</label>
+                <input type="text" id="logDescription" name="logDescription" maxlength="200"
+                       placeholder="e.g. Fixed login bug">
+            </div>
+            <button type="submit" class="btn-primary full-width" id="logTimeSubmitBtn">Save log</button>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="myLogsOverlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="myLogsTitle">
+        <button class="modal-close" id="closeMyLogsBtn" aria-label="Close" type="button">✕</button>
+        <h2 class="modal-title" id="myLogsTitle">My Logged Time</h2>
+        <p class="modal-subtitle" id="myLogsSubtitle">Every time entry you've recorded. Click ✕ to delete a mistake.</p>
+
+        <div class="my-logs-table-wrap">
+            <table class="my-logs-table">
+                <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Task</th>
+                    <th>Hours</th>
+                    <th>Description</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody id="myLogsBody">
+                <tr><td colspan="5" class="muted">Loading…</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p class="my-logs-total" id="myLogsTotal"></p>
+    </div>
+</div>
+
 <div class="modal-overlay" id="logoutOverlay">
     <div class="modal modal-narrow" role="dialog" aria-modal="true">
         <h2 class="modal-title">Log out?</h2>

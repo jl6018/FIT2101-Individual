@@ -538,3 +538,45 @@ h1 {
 
 .legend-swatch.projected { background: #111111; }
 .legend-swatch.actual { background: #4F7FFF; }
+
+/* ===================== US28: MEMBER LOGS TABLE ===================== */
+
+.member-logs-heading {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 8px 0 8px;
+    color: #1a1a1a;
+}
+
+.member-logs-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 12px;
+    font-size: 12.5px;
+}
+
+.member-logs-table th,
+.member-logs-table td {
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 1px solid #E5E7EB;
+    vertical-align: top;
+}
+
+.member-logs-table th {
+    font-weight: 600;
+    color: #6B7280;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.member-logs-table td:nth-child(3) {
+    white-space: nowrap;
+}
+
+.member-logs-table .muted {
+    color: #6B7280;
+    font-style: italic;
+    text-align: center;
+}

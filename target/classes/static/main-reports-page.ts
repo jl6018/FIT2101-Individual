@@ -6,6 +6,7 @@
  * Reports Page — Symph Web Application
  * Per-member time contribution (US26/27), member-history modal (US28),
  * line chart of hours per task (US29), and sprint burndown (US30).
+ * Also shows the detailed log entries (with description) per member.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -40,14 +41,22 @@ const SPRINT_TAB_NAMES: Record<string, string> = { "1": "Sprint 1", "2": "Sprint
 
 // ===================== TYPES =====================
 interface SummaryRow {
-    userId: number; name: string; team: string;
-    totalHours: number; daysWorked: number; avgPerDay: number;
+    userId: number;
+    name: string;
+    team: string;
+    totalHours: number;
+    daysWorked: number;
+    avgPerDay: number;
 }
-interface LogEntry { id: number; date: string; hours: number; }
+interface LogEntry {
+    id: number;
+    date: string;
+    hours: number;
+    description?: string | null;
+    task?: { id: number; name: string } | null;
+}
 interface TaskHoursRow { taskId: number; taskName: string; totalHours: number; }
-interface BurndownPoint {
-    date: string; projectedRemaining: number; actualRemaining: number;
-}
+interface BurndownPoint { date: string; projectedRemaining: number; actualRemaining: number; }
 interface Sprint { id: number; name: string; status: string; }
 
 // ===================== HELPERS =====================
@@ -74,6 +83,7 @@ const memberModalName = requireElement<HTMLHeadingElement>("memberModalName");
 const memberModalTeam = requireElement<HTMLParagraphElement>("memberModalTeam");
 const memberChartWrap = requireElement<HTMLDivElement>("memberChartWrap");
 const memberEmptyState = requireElement<HTMLParagraphElement>("memberEmptyState");
+const memberLogsBody = requireElement<HTMLTableSectionElement>("memberLogsBody");
 const memberModalTotal = requireElement<HTMLParagraphElement>("memberModalTotal");
 const taskLineChart = requireElement<SVGSVGElement>("taskLineChart");
 const taskChartEmpty = requireElement<HTMLParagraphElement>("taskChartEmpty");
@@ -240,6 +250,7 @@ async function openMemberModal(row: SummaryRow): Promise<void> {
     memberModalTeam.textContent = `${row.team} — logged sessions`;
     memberChartWrap.innerHTML = "";
     memberEmptyState.style.display = "none";
+    memberLogsBody.innerHTML = `<tr><td colspan="4" class="muted">Loading…</td></tr>`;
     memberModalTotal.textContent = "";
     openModal(memberOverlay);
 
@@ -252,6 +263,8 @@ async function openMemberModal(row: SummaryRow): Promise<void> {
         console.error("Failed to load member history:", err);
         memberEmptyState.textContent = "Could not load this member's history.";
         memberEmptyState.style.display = "block";
+        memberLogsBody.innerHTML =
+            `<tr><td colspan="4" class="muted">Could not load logs.</td></tr>`;
     }
 }
 
@@ -259,10 +272,13 @@ function renderMemberChart(logs: LogEntry[]): void {
     if (!logs || logs.length === 0) {
         memberChartWrap.style.display = "none";
         memberEmptyState.style.display = "block";
+        memberLogsBody.innerHTML =
+            `<tr><td colspan="4" class="muted">No entries.</td></tr>`;
         memberModalTotal.textContent = "Total: 0h across 0 day(s)";
         return;
     }
 
+    // ---- Bar chart ----
     const byDate: Record<string, number> = {};
     logs.forEach((log) => { byDate[log.date] = (byDate[log.date] || 0) + Number(log.hours || 0); });
 
@@ -283,6 +299,25 @@ function renderMemberChart(logs: LogEntry[]): void {
             <span class="bar-label">${date.slice(5)}</span>`;
         memberChartWrap.appendChild(item);
     });
+
+    // ---- Log entries table ----
+    const sorted = [...logs].sort((a, b) =>
+        (b.date || "").localeCompare(a.date || "")
+    );
+
+    memberLogsBody.innerHTML = sorted.map((l) => {
+        const date = l.date ?? "—";
+        const task = l.task?.name ?? "—";
+        const hours = Number(l.hours || 0);
+        const desc = l.description ? escapeHtml(l.description) : "—";
+        return `
+            <tr>
+                <td>${escapeHtml(date)}</td>
+                <td>${escapeHtml(task)}</td>
+                <td>${hours.toFixed(1)}h</td>
+                <td>${desc}</td>
+            </tr>`;
+    }).join("");
 
     const totalHours = entries.reduce((sum, e) => sum + e.hours, 0);
     memberModalTotal.textContent = `Total: ${totalHours.toFixed(1)}h across ${entries.length} day(s)`;
@@ -498,3 +533,6 @@ function renderBurndown(points: BurndownPoint[]): void {
 
 // ===================== INIT =====================
 void reloadAll();
+
+// Refresh when the tab regains focus
+window.addEventListener("focus", () => { void reloadAll(); });
