@@ -19,7 +19,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Manages time log creation, retrieval, and reporting calculations.
+ * Manages time log creation, retrieval, deletion, and reporting calculations.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -80,6 +80,19 @@ public class TimeLogService {
         return timeLogRepository.save(timeLog);
     }
 
+    /**
+     * Deletes a single time log by its ID.
+     *
+     * @param id                The ID of the log to delete
+     * @throws RuntimeException if no log with the given ID exists
+     */
+    public void deleteLog(Long id) {
+        if (!timeLogRepository.existsById(id)) {
+            throw new RuntimeException("Time log not found");
+        }
+        timeLogRepository.deleteById(id);
+    }
+
     public List<TimeLog> getLogsByUser(Long userId) {
         return timeLogRepository.findByUserId(userId);
     }
@@ -90,6 +103,7 @@ public class TimeLogService {
 
     public double getTotalHoursForUserInRange(Long userId, LocalDate start, LocalDate end) {
         return timeLogRepository.findByUserId(userId).stream()
+                .filter(log -> log.getDate() != null)
                 .filter(log -> !log.getDate().isBefore(start) && !log.getDate().isAfter(end))
                 .mapToDouble(TimeLog::getHours)
                 .sum();
@@ -112,8 +126,6 @@ public class TimeLogService {
         List<TimeLogSummary> rows = new ArrayList<>();
 
         for (User u : allUsers) {
-            if (!"EMPLOYEE".equals(u.getRole())) continue;
-
             List<TimeLog> mine = byUser.getOrDefault(u.getId(), Collections.emptyList());
             double total = mine.stream().mapToDouble(TimeLog::getHours).sum();
             long daysWorked = mine.stream().map(TimeLog::getDate).filter(Objects::nonNull).distinct().count();
@@ -156,19 +168,6 @@ public class TimeLogService {
         return rows;
     }
 
-    /**
-     * US30: burndown chart data for a sprint.
-     *
-     * <p>Projected line: linear descent from total estimate hours on day 1
-     * down to 0 on the sprint's end date.</p>
-     *
-     * <p>Actual line: total estimate hours minus the cumulative hours logged
-     * up to and including each day.</p>
-     *
-     * @param sprintId The sprint ID
-     * @return         One point per calendar day of the sprint
-     * @throws RuntimeException if the sprint does not exist
-     */
     public List<BurndownPoint> getBurndown(Long sprintId) {
         Sprint sprint = sprintRepository.findById(sprintId)
                 .orElseThrow(() -> new RuntimeException("Sprint not found"));
@@ -179,18 +178,15 @@ public class TimeLogService {
             return Collections.emptyList();
         }
 
-        // Total estimate hours for every task in this sprint
         List<Task> tasks = taskRepository.findBySprintId(sprintId);
         double totalEstimate = tasks.stream()
                 .mapToDouble(Task::getEstimateHours)
                 .sum();
 
-        // Guard: no estimates → can't draw anything meaningful
         if (totalEstimate <= 0) {
             return Collections.emptyList();
         }
 
-        // Load all logs in the sprint range, grouped by date
         List<TimeLog> logs = timeLogRepository
                 .findByTaskSprintIdAndDateBetween(sprintId, start, end);
 
