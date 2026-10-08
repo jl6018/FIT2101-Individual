@@ -1,8 +1,9 @@
 /**
  * User Board Page — Symph Web Application
  * Kanban board for employees. Includes search, tag filter, sprint tabs,
- * a read-only task modal, a Log Time modal (US24), a "My Logs" modal with
- * delete support, and a Logout modal.
+ * a read-only task modal that shows who the task is assigned to and its
+ * priority, a Log Time modal (US24), a "My Logs" modal with delete
+ * support, and a Logout modal.
  *
  * US07 + US08: teammates share their team's board. A task is visible if
  * it is assigned to my team by name, or to any user who is on my team.
@@ -72,7 +73,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     function initials(name) {
-        return name
+        return String(name)
             .split(/\s+/)
             .filter(Boolean)
             .slice(0, 2)
@@ -97,10 +98,9 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     let currentSprintId = savedSprintId && savedSprintId !== "" ? savedSprintId : "1";
     let currentSprintNumericId = null;
 
-    // US07 + US08: teammates share their team's board. We cache the IDs of
-    // every user on my team (including myself) so a task assigned to any
-    // of them is considered visible to me.
+    // US07 + US08: teammates share their team's board.
     let teammateIds = new Set();
+    let userIdToName = new Map();   // id → display name (for chips + avatars)
 
     const board = requireElement("board");
     const searchInput = document.getElementById("searchInput");
@@ -165,14 +165,9 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     // ===================== US07 + US08: TEAMMATES =====================
-    /**
-     * Loads every user whose team matches the signed-in employee's team,
-     * plus their own user ID. Cached in `teammateIds` and used by
-     * taskVisibleToCurrentEmployee so tasks assigned to any teammate are
-     * considered part of the shared team board.
-     */
     async function loadTeammates() {
         teammateIds = new Set();
+        userIdToName = new Map();
 
         const myTeam = sessionStorage.getItem("team") || "";
         const myId = sessionStorage.getItem("userId") || "";
@@ -185,9 +180,11 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const users = await res.json();
             users.forEach((u) => {
+                const id = String(u.id);
+                userIdToName.set(id, u.name || `User ${id}`);
                 const teamName = (u.team && u.team.name) ? u.team.name : "";
                 if (teamName === myTeam) {
-                    teammateIds.add(String(u.id));
+                    teammateIds.add(id);
                 }
             });
         } catch (err) {
@@ -195,13 +192,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         }
     }
 
-    /**
-     * Returns true if the current employee is allowed to see this task.
-     * A task belongs to my team's board when:
-     *   - it is assigned to my team by name, OR
-     *   - it is assigned to any user who is on my team (including me).
-     * If I have no team, nothing is visible.
-     */
     function taskVisibleToCurrentEmployee(task) {
         const myTeam = sessionStorage.getItem("team") || "";
         if (!myTeam) return false;
@@ -223,6 +213,27 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         }
 
         return false;
+    }
+
+    function assigneeLabel(task) {
+        if (task.assignedEmployeeIds) {
+            const ids = String(task.assignedEmployeeIds)
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+            const names = ids
+                .map((id) => userIdToName.get(id))
+                .filter(Boolean);
+            if (names.length > 0) return names.join(", ");
+        }
+        if (task.assignedTeams) {
+            const teams = String(task.assignedTeams)
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+            if (teams.length > 0) return teams.join(", ");
+        }
+        return "Unassigned";
     }
 
     // ===================== BACKEND SYNC =====================
@@ -269,6 +280,8 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             priority: t.priority ?? "",
             progress: typeof t.progress === "number" ? t.progress : 0,
             tags: Array.isArray(t.tags) ? t.tags : [],
+            assignedTeams: t.assignedTeams ?? null,
+            assignedEmployeeIds: t.assignedEmployeeIds ?? null,
         };
     }
 
@@ -290,6 +303,39 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
       </div>`;
     }
 
+    /**
+     * Small avatars (employees) or team chips (teams) for the card footer.
+     * Mirrors the admin board's rendering so both look the same.
+     */
+    function renderAssignees(task) {
+        // Team-assigned → show team chip(s)
+        if (task.assignedTeams) {
+            const teams = String(task.assignedTeams)
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+            if (teams.length > 0) {
+                return teams
+                    .map((name) => `<span class="team-chip">${escapeHtml(name)}</span>`)
+                    .join(" ");
+            }
+        }
+        // Employee-assigned → show small avatars
+        if (task.assignedEmployeeIds) {
+            const ids = String(task.assignedEmployeeIds)
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+            return ids
+                .map((id) => {
+                    const name = userIdToName.get(id) || `User ${id}`;
+                    return `<div class="avatar avatar-small avatar-purple" title="${escapeHtml(name)}">${escapeHtml(initials(name))}</div>`;
+                })
+                .join("");
+        }
+        return "";
+    }
+
     function renderCard(task) {
         const priorityBadge = renderPriorityBadge(task);
         const badges = [
@@ -301,8 +347,13 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             .map((t) => `<span class="tag">${escapeHtml(t.name)}</span>`)
             .join("");
 
-        const footerHtml = badges || tagBadges
-            ? `<div class="card-footer-row"><div class="card-badges">${badges}${tagBadges}</div></div>`
+        const assigneesHtml = renderAssignees(task);
+
+        const footerHtml = badges || tagBadges || assigneesHtml
+            ? `<div class="card-footer-row">
+                 <div class="card-badges">${badges}${tagBadges}</div>
+                 <div class="tag-avatars">${assigneesHtml}</div>
+               </div>`
             : "";
 
         const progressHtml = renderProgressBar(task);
@@ -658,13 +709,17 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (!overlay) return;
         if (modalColumn) modalColumn.value = task.column;
         if (titleInput) titleInput.value = task.title;
-        if (descriptionBox) descriptionBox.value = task.description || "No description";
+        // Blank description if empty — the placeholder will show "No description"
+        if (descriptionBox) descriptionBox.value = task.description || "";
 
         const column = COLUMNS.find((c) => c.id === task.column);
         if (summary) {
+            const priorityLabel = task.priority ? escapeHtml(task.priority) : "None";
             const chips = [
+                `<span class="summary-chip"><b>Assigned to</b> ${escapeHtml(assigneeLabel(task))}</span>`,
                 `<span class="summary-chip"><b>Due</b> ${task.dueDate ? formatDateBadge(task.dueDate) : "No due date"}</span>`,
                 `<span class="summary-chip"><b>Estimate</b> ${task.estimateHours > 0 ? `${task.estimateHours}h` : "Not set"}</span>`,
+                `<span class="summary-chip"><b>Priority</b> ${priorityLabel}</span>`,
                 `<span class="summary-chip"><b>Progress</b> ${Math.max(0, Math.min(100, Number(task.progress) || 0))}%</span>`,
                 `<span class="summary-chip"><b>Column</b> ${column ? column.name : ""}</span>`,
             ];

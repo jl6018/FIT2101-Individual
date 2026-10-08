@@ -1,9 +1,9 @@
 /**
  * User Board Page Stylesheet — Symph Web Application
  * Defines the visual layout and styling for the employee (read-only) board,
- * including the navbar (admin-style search + tag filter), project header,
- * sprint tabs, board columns, task cards, read-only task modal, and
- * logout modal.
+ * including the navbar, project header, sprint tabs, board columns, task
+ * cards (with assignee avatars), read-only task modal, Log Time modal (US24),
+ * My Logs modal, and logout modal.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -41,6 +41,8 @@ body {
     gap: 32px;
     padding: 14px 32px;
     background-color: #e0e1fa;
+    position: relative;
+    z-index: 20;
 }
 
 .logo {
@@ -57,7 +59,7 @@ body {
     width: auto;
 }
 
-/* Search bar — same as admin, with room on the right for the tag chip */
+/* Search bar — same shape as the admin page */
 .search-bar {
     flex: 1;
     max-width: 960px;
@@ -90,7 +92,7 @@ body {
     pointer-events: none;
 }
 
-/* ---- Tag filter button (inside the search bar) ---- */
+/* ---- Tag filter button inside the search bar ---- */
 .tag-filter {
     position: absolute;
     right: 6px;
@@ -134,7 +136,7 @@ body {
     display: none;
     position: absolute;
     top: calc(100% + 8px);
-    z-index: 10;
+    z-index: 1000;
     flex-direction: column;
     background-color: #f4f5fd;
     border-radius: 10px;
@@ -209,10 +211,11 @@ body {
 .avatar-small {
     width: 24px;
     height: 24px;
-    font-size: 0.7rem;
+    font-size: 0.62rem;
 }
 
 .avatar-dark { background-color: #1a1a1a; }
+.avatar-purple { background-color: #5b3db0; }
 
 /* ===================== PROJECT HEADER ===================== */
 .project-header {
@@ -324,10 +327,13 @@ body {
     font-weight: 600;
 }
 
+/* ---- Card footer: badges left, avatars right (matches admin card) ---- */
 .card-footer-row {
     display: flex;
+    flex-wrap: nowrap;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
     margin-top: 4px;
 }
 
@@ -335,6 +341,32 @@ body {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+    flex: 1;               /* take remaining space */
+    min-width: 0;
+}
+
+.tag-avatars {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    flex-shrink: 0;        /* never wrap onto its own line */
+}
+
+.tag-avatars .avatar + .avatar {
+    margin-left: -6px;
+}
+
+.tag-avatars .avatar {
+    border: 1.5px solid #5f6699;
+}
+
+.team-chip {
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 12px;
+    padding: 2px 10px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
 }
 
 .date-badge {
@@ -347,6 +379,7 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    white-space: nowrap;
 }
 
 .tag {
@@ -356,6 +389,7 @@ body {
     font-weight: 700;
     background-color: #e9ebf8;
     color: #1a1a1a;
+    white-space: nowrap;
 }
 
 /* ===================== PRIORITY ===================== */
@@ -627,26 +661,7 @@ body {
     background-color: #cfd2e6;
 }
 
-/* ============================================================
-   LOGOUT MODAL
-   ============================================================ */
-
-.logout-btn {
-    background: white;
-    border: none;
-    padding: 8px 14px;
-    border-radius: 20px;
-    font-weight: 600;
-    font-size: 0.85rem;
-    cursor: pointer;
-    margin-left: 8px;
-    font-family: inherit;
-}
-
-.logout-btn:hover {
-    background: #F3F4F6;
-}
-
+/* ===================== GENERIC MODAL TITLE / SUBTITLE / BUTTONS ===== */
 .modal-title {
     font-family: Georgia, "Times New Roman", serif;
     font-size: 22px;
@@ -701,316 +716,24 @@ body {
     background: #B91C1C;
 }
 
-/* ===================== US24: LOG-TIME MODAL (employee board) ===================== */
-
-.logtime-icon {
-    background: none;
+/* ===================== LOGOUT MODAL ===================== */
+.logout-btn {
+    background: white;
     border: none;
-    color: white;
-    cursor: pointer;
-    margin-left: 6px;
-    padding: 2px;
-    opacity: 0.9;
-    transition: opacity 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-}
-
-.logtime-icon:hover {
-    opacity: 1;
-}
-
-#logTimeOverlay .modal-narrow {
-    max-width: 480px;
-    text-align: left;
-    padding: 28px;
-}
-
-#logTimeOverlay .modal-title {
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 22px;
-    font-weight: 700;
-    margin: 0 0 4px;
-    color: #1a1a1a;
-}
-
-#logTimeOverlay .modal-subtitle {
-    font-size: 13px;
-    color: #6B7280;
-    margin: 0 0 20px;
-    line-height: 1.5;
-}
-
-#logTimeOverlay .modal-close {
-    position: absolute;
-    top: 16px;
-    right: 18px;
-    background: none;
-    border: none;
-    font-size: 16px;
-    color: #6B7280;
-    cursor: pointer;
-}
-
-#logTimeOverlay .form-field {
-    margin-bottom: 16px;
-}
-
-#logTimeOverlay label {
-    display: block;
-    font-size: 13px;
+    padding: 8px 14px;
+    border-radius: 20px;
     font-weight: 600;
-    color: #374151;
-    margin-bottom: 6px;
-}
-
-#logTimeOverlay input[type="date"],
-#logTimeOverlay input[type="time"],
-#logTimeOverlay input[type="number"],
-#logTimeOverlay input[type="text"] {
-    width: 100%;
-    padding: 10px 12px;
-    border-radius: 8px;
-    border: 1px solid #E5E7EB;
-    font-size: 14px;
-    background: #fff;
-    font-family: inherit;
-    box-sizing: border-box;
-}
-
-#logTimeOverlay .btn-primary {
-    padding: 12px 20px;
-    border: none;
-    border-radius: 10px;
-    background: #111;
-    color: #fff;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 0.85rem;
     cursor: pointer;
+    margin-left: 8px;
     font-family: inherit;
 }
 
-#logTimeOverlay .btn-primary.full-width {
-    width: 100%;
-}
-
-#logTimeOverlay .error-banner {
-    background: #FDE8E8;
-    color: #C0392B;
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-size: 13px;
-    line-height: 1.4;
-    margin-bottom: 16px;
-}
-
-#logTimeOverlay .error-banner[hidden] {
-    display: none;
-}
-
-/* ===================== US08: EMPTY STATE ===================== */
-
-.board-empty {
-    text-align: center;
-    padding: 40px 20px;
-    font-size: 14px;
-    color: #6B7280;
-    margin: 0 32px;
-}
-
-/* ===================== US24: LOG-TIME MODAL ===================== */
-
-.logtime-icon {
-    background: none;
-    border: none;
-    color: white;
-    cursor: pointer;
-    margin-left: 6px;
-    padding: 2px;
-    opacity: 0.9;
-    transition: opacity 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-}
-
-.logtime-icon:hover {
-    opacity: 1;
-}
-
-#logTimeOverlay .modal-narrow {
-    max-width: 480px;
-    text-align: left;
-    padding: 28px;
-}
-
-#logTimeOverlay .modal-title {
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 22px;
-    font-weight: 700;
-    margin: 0 0 4px;
-    color: #1a1a1a;
-}
-
-#logTimeOverlay .modal-subtitle {
-    font-size: 13px;
-    color: #6B7280;
-    margin: 0 0 20px;
-    line-height: 1.5;
-}
-
-#logTimeOverlay .modal-close {
-    position: absolute;
-    top: 16px;
-    right: 18px;
-    background: none;
-    border: none;
-    font-size: 16px;
-    color: #6B7280;
-    cursor: pointer;
-}
-
-#logTimeOverlay .form-field {
-    margin-bottom: 16px;
-}
-
-#logTimeOverlay label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    color: #374151;
-    margin-bottom: 6px;
-}
-
-#logTimeOverlay input[type="date"],
-#logTimeOverlay input[type="time"],
-#logTimeOverlay input[type="number"],
-#logTimeOverlay input[type="text"] {
-    width: 100%;
-    padding: 10px 12px;
-    border-radius: 8px;
-    border: 1px solid #E5E7EB;
-    font-size: 14px;
-    background: #fff;
-    font-family: inherit;
-    box-sizing: border-box;
-}
-
-#logTimeOverlay .btn-primary {
-    padding: 12px 20px;
-    border: none;
-    border-radius: 10px;
-    background: #111;
-    color: #fff;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: inherit;
-}
-
-#logTimeOverlay .btn-primary.full-width {
-    width: 100%;
-}
-
-#logTimeOverlay .error-banner {
-    background: #FDE8E8;
-    color: #C0392B;
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-size: 13px;
-    line-height: 1.4;
-    margin-bottom: 16px;
-}
-
-#logTimeOverlay .error-banner[hidden] {
-    display: none;
-}
-
-/* ===================== MY LOGS MODAL ===================== */
-
-#myLogsOverlay .modal {
-    max-width: 620px;
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 28px;
-    position: relative;
-}
-
-#myLogsOverlay .modal-title {
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 22px;
-    font-weight: 700;
-    margin: 0 0 4px;
-    color: #1a1a1a;
-}
-
-#myLogsOverlay .modal-subtitle {
-    font-size: 13px;
-    color: #6B7280;
-    margin: 0 0 20px;
-}
-
-#myLogsOverlay .modal-close {
-    position: absolute;
-    top: 16px;
-    right: 18px;
-    background: none;
-    border: none;
-    font-size: 16px;
-    color: #6B7280;
-    cursor: pointer;
-}
-
-.my-logs-table-wrap {
-    max-height: 50vh;
-    overflow-y: auto;
-    border-radius: 10px;
-    border: 1px solid #E5E7EB;
-    margin-bottom: 12px;
-}
-
-.my-logs-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #fff;
-}
-
-.my-logs-table th,
-.my-logs-table td {
-    text-align: left;
-    padding: 10px 14px;
-    font-size: 13px;
-    border-bottom: 1px solid #E5E7EB;
-    vertical-align: top;
-}
-
-.my-logs-table th {
+.logout-btn:hover {
     background: #F3F4F6;
-    font-weight: 600;
-    color: #4B5563;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-
-.my-logs-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-.my-logs-table .muted {
-    color: #6B7280;
-    font-style: italic;
-    text-align: center;
-}
-
-.my-logs-total {
-    font-size: 14px;
-    font-weight: 700;
-    color: #1a1a1a;
-    margin: 0;
 }
 
 /* ===================== US08: EMPTY STATE ===================== */
-
 .board-empty {
     text-align: center;
     padding: 40px 20px;
@@ -1020,7 +743,6 @@ body {
 }
 
 /* ===================== US24: LOG-TIME MODAL ===================== */
-
 .logtime-icon {
     background: none;
     border: none;
@@ -1127,7 +849,6 @@ body {
 }
 
 /* ===================== MY LOGS MODAL ===================== */
-
 #myLogsOverlay .modal {
     max-width: 620px;
     background: #ffffff;
@@ -1211,7 +932,6 @@ body {
 }
 
 /* ===================== MY LOGS — DELETE BUTTON ===================== */
-
 .log-delete-btn {
     background: none;
     border: 1px solid #DC2626;

@@ -4,12 +4,13 @@
 
 /**
  * User Board Page — Symph Web Application
- * Kanban board for employees. Includes search, tag filter, a "My Logs"
- * modal, sprint tabs, a read-only task modal, a Log Time modal (US24),
- * and a Logout modal.
+ * Kanban board for employees. Includes search, tag filter, sprint tabs,
+ * a read-only task modal that shows who the task is assigned to and its
+ * priority, a Log Time modal (US24), a "My Logs" modal with delete
+ * support, and a Logout modal.
  *
- * US08: employees only see tasks that belong to their team (or that
- * are assigned directly to them).
+ * US07 + US08: teammates share their team's board. A task is visible if
+ * it is assigned to my team by name, or to any user who is on my team.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -36,6 +37,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     const API_BASE = "http://localhost:8080/api/tasks";
     const SPRINTS_API = "http://localhost:8080/api/sprints";
     const TIMELOGS_API = "http://localhost:8080/api/timelogs";
+    const USERS_API = "http://localhost:8080/api/users";
 
     type ColumnId = "PRODUCT_BACKLOG" | "TO_DO" | "IN_PROGRESS" | "IN_REVIEW" | "COMPLETED";
 
@@ -49,6 +51,8 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         priority: string;
         progress: number;
         tags: { id: number; name: string }[];
+        assignedTeams: string | null;
+        assignedEmployeeIds: string | null;
     };
 
     type BackendTask = {
@@ -74,6 +78,13 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         hours: number;
         description?: string | null;
         task?: { id: number; name: string } | null;
+    };
+
+    type BackendUser = {
+        id: number;
+        name: string;
+        role: string;
+        team?: { name: string } | null;
     };
 
     const SPRINT_TAB_NAMES: Record<string, string> = {
@@ -112,7 +123,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     function initials(name: string): string {
-        return name
+        return String(name)
             .split(/\s+/)
             .filter(Boolean)
             .slice(0, 2)
@@ -136,6 +147,9 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     const savedSprintId = sessionStorage.getItem("currentSprintId");
     let currentSprintId = savedSprintId && savedSprintId !== "" ? savedSprintId : "1";
     let currentSprintNumericId: number | null = null;
+
+    let teammateIds: Set<string> = new Set();
+    let userIdToName: Map<string, string> = new Map();
 
     const board = requireElement<HTMLElement>("board");
     const searchInput = document.getElementById("searchInput") as HTMLInputElement | null;
@@ -198,12 +212,39 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         }
     }
 
-    // ===================== US08: VISIBILITY FILTER =====================
-    function taskVisibleToCurrentEmployee(task: BackendTask): boolean {
+    // ===================== US07 + US08: TEAMMATES =====================
+    async function loadTeammates(): Promise<void> {
+        teammateIds = new Set<string>();
+        userIdToName = new Map<string, string>();
+
         const myTeam = sessionStorage.getItem("team") || "";
         const myId = sessionStorage.getItem("userId") || "";
+        if (myId) teammateIds.add(myId);
 
-        if (myTeam && task.assignedTeams) {
+        if (!myTeam) return;
+
+        try {
+            const res = await fetch(USERS_API);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const users = (await res.json()) as BackendUser[];
+            users.forEach((u) => {
+                const id = String(u.id);
+                userIdToName.set(id, u.name || `User ${id}`);
+                const teamName = u.team?.name || "";
+                if (teamName === myTeam) {
+                    teammateIds.add(id);
+                }
+            });
+        } catch (err) {
+            console.error("Failed to load teammates:", err);
+        }
+    }
+
+    function taskVisibleToCurrentEmployee(task: BackendTask): boolean {
+        const myTeam = sessionStorage.getItem("team") || "";
+        if (!myTeam) return false;
+
+        if (task.assignedTeams) {
             const teams = String(task.assignedTeams)
                 .split(",")
                 .map((s) => s.trim())
@@ -211,15 +252,36 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             if (teams.includes(myTeam)) return true;
         }
 
-        if (myId && task.assignedEmployeeIds) {
+        if (task.assignedEmployeeIds) {
             const ids = String(task.assignedEmployeeIds)
                 .split(",")
                 .map((s) => s.trim())
                 .filter(Boolean);
-            if (ids.includes(myId)) return true;
+            if (ids.some((id) => teammateIds.has(id))) return true;
         }
 
         return false;
+    }
+
+    function assigneeLabel(task: Task): string {
+        if (task.assignedEmployeeIds) {
+            const ids = String(task.assignedEmployeeIds)
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+            const names = ids
+                .map((id) => userIdToName.get(id))
+                .filter((n): n is string => typeof n === "string");
+            if (names.length > 0) return names.join(", ");
+        }
+        if (task.assignedTeams) {
+            const teams = String(task.assignedTeams)
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+            if (teams.length > 0) return teams.join(", ");
+        }
+        return "Unassigned";
     }
 
     // ===================== BACKEND SYNC =====================
@@ -248,7 +310,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
                 });
             }
 
-            // US08 — only tasks for this employee's team (or directly assigned to them)
             return raw.filter(taskVisibleToCurrentEmployee).map(mapTask);
         } catch (err) {
             console.error("Failed to load tasks:", err);
@@ -267,6 +328,8 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             priority: t.priority ?? "",
             progress: typeof t.progress === "number" ? t.progress : 0,
             tags: Array.isArray(t.tags) ? t.tags : [],
+            assignedTeams: t.assignedTeams ?? null,
+            assignedEmployeeIds: t.assignedEmployeeIds ?? null,
         };
     }
 
@@ -288,6 +351,33 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
       </div>`;
     }
 
+    function renderAssignees(task: Task): string {
+        if (task.assignedTeams) {
+            const teams = String(task.assignedTeams)
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+            if (teams.length > 0) {
+                return teams
+                    .map((name) => `<span class="team-chip">${escapeHtml(name)}</span>`)
+                    .join(" ");
+            }
+        }
+        if (task.assignedEmployeeIds) {
+            const ids = String(task.assignedEmployeeIds)
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+            return ids
+                .map((id) => {
+                    const name = userIdToName.get(id) || `User ${id}`;
+                    return `<div class="avatar avatar-small avatar-purple" title="${escapeHtml(name)}">${escapeHtml(initials(name))}</div>`;
+                })
+                .join("");
+        }
+        return "";
+    }
+
     function renderCard(task: Task): string {
         const priorityBadge = renderPriorityBadge(task);
         const badges = [
@@ -299,8 +389,13 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             .map((t) => `<span class="tag">${escapeHtml(t.name)}</span>`)
             .join("");
 
-        const footerHtml = badges || tagBadges
-            ? `<div class="card-footer-row"><div class="card-badges">${badges}${tagBadges}</div></div>`
+        const assigneesHtml = renderAssignees(task);
+
+        const footerHtml = badges || tagBadges || assigneesHtml
+            ? `<div class="card-footer-row">
+                 <div class="card-badges">${badges}${tagBadges}</div>
+                 <div class="tag-avatars">${assigneesHtml}</div>
+               </div>`
             : "";
 
         const progressHtml = renderProgressBar(task);
@@ -536,14 +631,20 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (!myLogsOverlay || !myLogsBody) return;
 
         myLogsBody.innerHTML =
-            `<tr><td colspan="4" class="muted">Loading…</td></tr>`;
+            `<tr><td colspan="5" class="muted">Loading…</td></tr>`;
         if (myLogsTotal) myLogsTotal.textContent = "";
         myLogsOverlay.classList.add("visible");
+
+        await refreshMyLogs();
+    }
+
+    async function refreshMyLogs(): Promise<void> {
+        if (!myLogsBody) return;
 
         const userId = sessionStorage.getItem("userId");
         if (!userId) {
             myLogsBody.innerHTML =
-                `<tr><td colspan="4" class="muted">You must be signed in.</td></tr>`;
+                `<tr><td colspan="5" class="muted">You must be signed in.</td></tr>`;
             return;
         }
 
@@ -554,7 +655,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
             if (!Array.isArray(logs) || logs.length === 0) {
                 myLogsBody.innerHTML =
-                    `<tr><td colspan="4" class="muted">You haven't logged any time yet.</td></tr>`;
+                    `<tr><td colspan="5" class="muted">You haven't logged any time yet.</td></tr>`;
                 if (myLogsTotal) myLogsTotal.textContent = "Total: 0h across 0 log(s)";
                 return;
             }
@@ -574,6 +675,11 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
                         <td>${escapeHtml(task)}</td>
                         <td>${hours.toFixed(1)}h</td>
                         <td>${desc}</td>
+                        <td>
+                            <button type="button" class="log-delete-btn"
+                                    data-delete-log="${l.id}"
+                                    aria-label="Delete this log entry">✕</button>
+                        </td>
                     </tr>`;
             }).join("");
 
@@ -584,9 +690,46 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         } catch (err) {
             console.error("Failed to load my logs:", err);
             myLogsBody.innerHTML =
-                `<tr><td colspan="4" class="muted">Could not load your logs.</td></tr>`;
+                `<tr><td colspan="5" class="muted">Could not load your logs.</td></tr>`;
         }
     }
+
+    async function deleteMyLog(logId: string): Promise<void> {
+        const confirmed = window.confirm(
+            "Delete this time log? This cannot be undone."
+        );
+        if (!confirmed) return;
+
+        try {
+            const role = sessionStorage.getItem("role") || "";
+            const res = await fetch(`${TIMELOGS_API}/${logId}`, {
+                method: "DELETE",
+                headers: { "X-Role": role },
+            });
+
+            if (res.status === 403) {
+                alert("You are not allowed to delete this log.");
+                return;
+            }
+            if (res.status === 404) {
+                alert("That log no longer exists.");
+            } else if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || `HTTP ${res.status}`);
+            }
+            await refreshMyLogs();
+        } catch (err) {
+            console.error("Delete log failed:", err);
+            alert("Could not delete the log. Please try again.");
+        }
+    }
+
+    myLogsBody?.addEventListener("click", (event: MouseEvent) => {
+        const btn = (event.target as HTMLElement).closest<HTMLElement>("[data-delete-log]");
+        if (!btn) return;
+        const id = btn.dataset["deleteLog"];
+        if (id) void deleteMyLog(id);
+    });
 
     function closeMyLogs(): void {
         myLogsOverlay?.classList.remove("visible");
@@ -611,13 +754,16 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (!overlay) return;
         if (modalColumn) modalColumn.value = task.column;
         if (titleInput) titleInput.value = task.title;
-        if (descriptionBox) descriptionBox.value = task.description || "No description";
+        if (descriptionBox) descriptionBox.value = task.description || "";
 
         const column = COLUMNS.find((c) => c.id === task.column);
         if (summary) {
+            const priorityLabel = task.priority ? escapeHtml(task.priority) : "None";
             const chips: string[] = [
+                `<span class="summary-chip"><b>Assigned to</b> ${escapeHtml(assigneeLabel(task))}</span>`,
                 `<span class="summary-chip"><b>Due</b> ${task.dueDate ? formatDateBadge(task.dueDate) : "No due date"}</span>`,
                 `<span class="summary-chip"><b>Estimate</b> ${task.estimateHours > 0 ? `${task.estimateHours}h` : "Not set"}</span>`,
+                `<span class="summary-chip"><b>Priority</b> ${priorityLabel}</span>`,
                 `<span class="summary-chip"><b>Progress</b> ${Math.max(0, Math.min(100, Number(task.progress) || 0))}%</span>`,
                 `<span class="summary-chip"><b>Column</b> ${column ? column.name : ""}</span>`,
             ];
@@ -697,6 +843,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
                 sessionStorage.setItem("currentSprintId", sprintId);
 
                 void (async () => {
+                    await loadTeammates();
                     tasks = await fetchTasks();
                     currentTagName = TAG_FILTER_ALL;
                     renderTagFilter();
@@ -709,6 +856,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     // ===================== INIT =====================
     async function init(): Promise<void> {
         initSprintTabs();
+        await loadTeammates();
         tasks = await fetchTasks();
         renderTagFilter();
         renderBoard();

@@ -4,11 +4,10 @@
  * Handles all interactive behaviour for the admin Kanban board, including
  * authentication guards, task CRUD, drag-and-drop reordering, sprint tabs,
  * accumulated sprint hours (US25), team filtering, tag filtering/sorting
- * (US14), search, the task modal with progress editing (US16), card status
- * dropdown (US18), sprint start/end controls, tag management (US13),
- * admin-only task deletion (US11), the PRODUCT_OWNER role (US22), and the
- * Logged Hours panel for viewing time logs (US25–US29). Admins do NOT log
- * time — that happens on the employee board (US24).
+ * (US14), search, the task modal with progress editing (US16), card
+ * editing, sprint start/end controls, tag management (US13), admin-only
+ * task deletion (US11), the PRODUCT_OWNER role (US22), and the Logged
+ * Hours panel for viewing time logs.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -628,20 +627,14 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
         const progressHtml = renderProgressBar(task);
 
-        const columnOptions = COLUMNS.map((col) =>
-            `<option value="${col.id}"${col.id === task.column ? " selected" : ""}>${escapeHtml(col.name)}</option>`
-        ).join("");
-
         return `
       <div class="card${footerHtml || progressHtml ? " card-detailed" : ""}" draggable="true" data-task="${escapeHtml(task.id)}">
         <div class="card-title-row">
           <span class="card-title">${escapeHtml(task.title)}</span>
+          <button type="button" class="logtime-icon" data-logtime="${escapeHtml(task.id)}" title="Log time on this task" aria-label="Log time on ${escapeHtml(task.title)}">${CLOCK_ICON}</button>
           <button type="button" class="edit-icon" data-edit="${escapeHtml(task.id)}" title="Edit task details" aria-label="Edit ${escapeHtml(task.title)}">${PENCIL_ICON}</button>
         </div>
         ${progressHtml}
-        <select class="card-status-select" data-status-for="${escapeHtml(task.id)}" aria-label="Change status">
-          ${columnOptions}
-        </select>
         ${footerHtml}
       </div>`;
     }
@@ -671,6 +664,15 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     board.addEventListener("click", (event) => {
         const target = event.target;
 
+        const logBtn = target.closest("[data-logtime]");
+        if (logBtn) {
+            const taskId = logBtn.dataset["logtime"];
+            const task = tasks.find((t) => t.id === taskId);
+            if (!task) return;
+            openLogTimeModal(task);
+            return;
+        }
+
         const editBtn = target.closest("[data-edit]");
         if (editBtn) {
             const task = tasks.find((t) => t.id === editBtn.dataset["edit"]);
@@ -685,38 +687,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 draftTask.assignee = { kind: "team", teamId: currentTeamId };
             }
             openModal(draftTask);
-        }
-    });
-
-    // ===================== US18: STATUS DROPDOWN ON CARD =====================
-    board.addEventListener("change", async (event) => {
-        const select = event.target.closest("[data-status-for]");
-        if (!select) return;
-
-        const taskId = select.dataset["statusFor"];
-        const task = tasks.find((t) => t.id === taskId);
-        if (!task) return;
-
-        const newColumn = select.value;
-        if (newColumn === task.column) return;
-
-        const oldColumn = task.column;
-        task.column = newColumn;
-
-        if (newColumn === "COMPLETED" && (task.progress ?? 0) < 100) {
-            task.progress = 100;
-        } else if (
-            oldColumn === "COMPLETED" &&
-            (newColumn === "TO_DO" || newColumn === "IN_PROGRESS" || newColumn === "IN_REVIEW")
-        ) {
-            task.progress = 0;
-        }
-
-        const ok = await apiUpdate(task);
-        if (ok) {
-            const to = COLUMNS.find((c) => c.id === newColumn)?.name ?? newColumn;
-            showToast(`Moved to ${to}`);
-            await refreshFromBackend();
         }
     });
 
