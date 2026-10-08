@@ -1,7 +1,7 @@
 /**
  * Sprint Planning Page Stylesheet — Symph Web Application
- * Sidebar matches the admin board. Main content uses a white surface
- * so panels stand out on the lavender body.
+ * Sidebar matches the admin board. Main content fills the full width
+ * and uses the page's lavender background (no white card wrapper).
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -176,16 +176,16 @@ body {
 
 .signed-in {
     font-size: 0.9rem;
-    margin-bottom: 10px;
+    margin-bottom: 0;
     padding-left: 4px;
 }
 
-/* ===================== MAIN CONTENT ===================== */
+/* ===================== MAIN CONTENT (full width, no white bg) ========== */
 .main {
     flex-grow: 1;
+    width: 100%;
     padding: 32px 40px;
-    max-width: 900px;
-    background-color: #ffffff;
+    background-color: transparent;
     min-height: 100vh;
 }
 

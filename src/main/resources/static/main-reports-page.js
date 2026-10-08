@@ -22,6 +22,31 @@ if (sessionStorage.getItem("loggedIn") !== "true") {
     throw new Error("Not logged in");
 }
 
+// ===================== SIDEBAR COLLAPSE =====================
+const SIDEBAR_KEY = "symph.sidebarCollapsed";
+const appShell = document.getElementById("appShell");
+const sidebarToggle = document.getElementById("sidebarToggle");
+
+function readSetting(key) {
+    try { return window.localStorage.getItem(key) ?? ""; } catch { return ""; }
+}
+function writeSetting(key, value) {
+    try { window.localStorage.setItem(key, value); } catch { /* ignore */ }
+}
+function setSidebarCollapsed(collapsed) {
+    if (!appShell || !sidebarToggle) return;
+    appShell.classList.toggle("sidebar-collapsed", collapsed);
+    sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+    sidebarToggle.setAttribute("aria-label", collapsed ? "Expand menu" : "Collapse menu");
+    sidebarToggle.title = collapsed ? "Expand menu" : "Collapse menu";
+}
+sidebarToggle?.addEventListener("click", () => {
+    const collapsed = !appShell.classList.contains("sidebar-collapsed");
+    setSidebarCollapsed(collapsed);
+    writeSetting(SIDEBAR_KEY, collapsed ? "1" : "0");
+});
+setSidebarCollapsed(readSetting(SIDEBAR_KEY) === "1");
+
 // ===================== SHOW CURRENT USER =====================
 const nameEl = document.getElementById("signedInName");
 if (nameEl) {
@@ -76,22 +101,6 @@ const taskLineChart = requireElement("taskLineChart");
 const taskChartEmpty = requireElement("taskChartEmpty");
 const burndownChart = requireElement("burndownChart");
 const burndownEmpty = requireElement("burndownEmpty");
-
-// ===================== LOGOUT MODAL =====================
-const logoutBtn = requireElement("logoutBtn");
-const logoutOverlay = requireElement("logoutOverlay");
-const cancelLogoutBtn = requireElement("cancelLogoutBtn");
-const confirmLogoutBtn = requireElement("confirmLogoutBtn");
-
-logoutBtn.addEventListener("click", () => logoutOverlay.classList.add("visible"));
-cancelLogoutBtn.addEventListener("click", () => logoutOverlay.classList.remove("visible"));
-confirmLogoutBtn.addEventListener("click", () => {
-    sessionStorage.clear();
-    window.location.href = "index-login-page.html";
-});
-logoutOverlay.addEventListener("click", (e) => {
-    if (e.target === logoutOverlay) logoutOverlay.classList.remove("visible");
-});
 
 // ===================== STATE =====================
 let selectedWeeks = 1;
