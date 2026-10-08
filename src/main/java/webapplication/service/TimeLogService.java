@@ -115,6 +115,15 @@ public class TimeLogService {
                 .sum();
     }
 
+    /**
+     * Builds the per-member contribution summary shown on the Reports page.
+     * Only EMPLOYEE users are included — Admins and Product Owners do not log
+     * time themselves (US24), so they must not appear in this table.
+     *
+     * @param from Start of the date range (inclusive)
+     * @param to   End of the date range (inclusive)
+     * @return     One row per employee, sorted by total hours descending
+     */
     public List<TimeLogSummary> getSummaryByRange(LocalDate from, LocalDate to) {
         List<TimeLog> logs = timeLogRepository.findByDateBetween(from, to);
 
@@ -122,7 +131,13 @@ public class TimeLogService {
                 .filter(l -> l.getUser() != null)
                 .collect(Collectors.groupingBy(l -> l.getUser().getId()));
 
-        List<User> allUsers = userRepository.findAll();
+        // Only include EMPLOYEE users in the contribution table.
+        // Admins and Product Owners do not log time themselves (US24),
+        // so they should not appear in the team contribution report.
+        List<User> allUsers = userRepository.findAll().stream()
+                .filter(u -> "EMPLOYEE".equals(u.getRole()))
+                .collect(Collectors.toList());
+
         List<TimeLogSummary> rows = new ArrayList<>();
 
         for (User u : allUsers) {
