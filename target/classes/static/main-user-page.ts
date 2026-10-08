@@ -159,58 +159,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     const searchInput = document.getElementById("searchInput") as HTMLInputElement | null;
     const emptyState = document.getElementById("boardEmptyState") as HTMLParagraphElement | null;
 
-    // ===================== TOAST + CUSTOM CONFIRM =====================
-    const toastEl = document.getElementById("toast");
-    let toastTimeoutId: number | undefined;
-
-    function showToast(message: string): void {
-        if (!toastEl) return;
-        toastEl.textContent = message;
-        toastEl.classList.add("visible");
-        if (toastTimeoutId !== undefined) window.clearTimeout(toastTimeoutId);
-        toastTimeoutId = window.setTimeout(() => toastEl.classList.remove("visible"), 3000);
-    }
-
-    const confirmOverlay = document.getElementById("confirmOverlay") as HTMLDivElement | null;
-    const confirmTitleEl = document.getElementById("confirmTitle") as HTMLHeadingElement | null;
-    const confirmMessageEl = document.getElementById("confirmMessage") as HTMLParagraphElement | null;
-    const confirmOkBtn = document.getElementById("confirmOkBtn") as HTMLButtonElement | null;
-    const confirmCancelBtn = document.getElementById("confirmCancelBtn") as HTMLButtonElement | null;
-    let confirmResolver: ((value: boolean) => void) | null = null;
-
-    function showConfirmModal(opts: {
-        title: string;
-        message: string;
-        confirmText?: string;
-        danger?: boolean;
-    }): Promise<boolean> {
-        return new Promise((resolve) => {
-            confirmResolver = resolve;
-            if (confirmTitleEl) confirmTitleEl.textContent = opts.title;
-            if (confirmMessageEl) confirmMessageEl.textContent = opts.message;
-            if (confirmOkBtn) {
-                confirmOkBtn.textContent = opts.confirmText ?? "OK";
-                confirmOkBtn.classList.toggle("btn-danger", opts.danger === true);
-                confirmOkBtn.classList.toggle("btn-primary", opts.danger !== true);
-            }
-            confirmOverlay?.classList.add("visible");
-        });
-    }
-
-    function closeConfirmModal(result: boolean): void {
-        confirmOverlay?.classList.remove("visible");
-        if (confirmResolver) {
-            confirmResolver(result);
-            confirmResolver = null;
-        }
-    }
-
-    confirmOkBtn?.addEventListener("click", () => closeConfirmModal(true));
-    confirmCancelBtn?.addEventListener("click", () => closeConfirmModal(false));
-    confirmOverlay?.addEventListener("click", (e: MouseEvent) => {
-        if (e.target === confirmOverlay) closeConfirmModal(false);
-    });
-
     // ===================== SHOW CURRENT USER =====================
     const avatarEl = document.getElementById("userAvatar");
     const profileMenuName = document.getElementById("profileMenuName");
@@ -229,6 +177,8 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     // ===================== ROLE BADGE (project header) =====================
+    // Auto-detect the employee's team from sessionStorage. Falls back to
+    // "Employee" if the user has no team assigned.
     const roleBadgeEl = document.getElementById("roleBadge");
     if (roleBadgeEl) {
         roleBadgeEl.textContent = storedTeam || "Employee";
@@ -294,6 +244,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         setTagFilterOpen(willOpen);
     });
 
+    // Click anywhere else closes all menus
     document.addEventListener("click", (event: MouseEvent) => {
         const target = event.target as Node;
 
@@ -314,6 +265,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         }
     });
 
+    // Esc closes all menus
     document.addEventListener("keydown", (event: KeyboardEvent) => {
         if (event.key === "Escape") closeAllMenus();
     });
@@ -354,12 +306,11 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     async function resolveCurrentSprintId(): Promise<number | null> {
         const name = SPRINT_TAB_NAMES[currentSprintId];
         if (!name) return null;
-
         try {
             const res = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
             if (!res.ok) return null;
             const text = await res.text();
-            if (!text) return null;
+            if (!text) return null;                 // empty body = no sprint yet
             const sprint = JSON.parse(text) as Sprint;
             return sprint?.id ?? null;
         } catch (err) {
@@ -747,7 +698,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             }
 
             closeLogTimeModal();
-            showToast(`Logged ${payload.hours}h on this task`);
+            alert(`Logged ${payload.hours}h on this task`);
         } catch (err) {
             console.error("Log time failed:", err);
             logTimeErrorText.textContent =
@@ -835,12 +786,9 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     async function deleteMyLog(logId: string): Promise<void> {
-        const confirmed = await showConfirmModal({
-            title: "Delete this time log?",
-            message: "This cannot be undone.",
-            confirmText: "Delete",
-            danger: true,
-        });
+        const confirmed = window.confirm(
+            "Delete this time log? This cannot be undone."
+        );
         if (!confirmed) return;
 
         try {
@@ -851,11 +799,11 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             });
 
             if (res.status === 403) {
-                showToast("You are not allowed to delete this log.");
+                alert("You are not allowed to delete this log.");
                 return;
             }
             if (res.status === 404) {
-                showToast("That log no longer exists.");
+                alert("That log no longer exists.");
             } else if (!res.ok) {
                 const text = await res.text();
                 throw new Error(text || `HTTP ${res.status}`);
@@ -863,7 +811,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             await refreshMyLogs();
         } catch (err) {
             console.error("Delete log failed:", err);
-            showToast("Could not delete the log. Please try again.");
+            alert("Could not delete the log. Please try again.");
         }
     }
 
@@ -928,10 +876,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         });
         document.addEventListener("keydown", (event) => {
             if (event.key === "Escape") {
-                if (confirmOverlay?.classList.contains("visible")) {
-                    closeConfirmModal(false);
-                    return;
-                }
                 if (logoutOverlay?.classList.contains("visible")) {
                     logoutOverlay.classList.remove("visible");
                     return;

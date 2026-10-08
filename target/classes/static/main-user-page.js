@@ -5,12 +5,7 @@
  * (opened from the ⋯ menu in the project header), an account menu on the
  * avatar with Log out, a team badge in the project header that is
  * auto-detected from sessionStorage, and a logout confirmation modal.
- *
- * Only one of the three menus (tag filter / account / ⋯) can be open at
- * a time — clicking one closes the others.
- *
- * US07 + US08: teammates share their team's board. A task is visible if
- * it is assigned to my team by name, or to any user who is on my team.
+ * Only one of the three menus (tag filter / account / ⋯) is open at a time.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -109,53 +104,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     const searchInput = document.getElementById("searchInput");
     const emptyState = document.getElementById("boardEmptyState");
 
-    // ===================== TOAST + CUSTOM CONFIRM =====================
-    const toastEl = document.getElementById("toast");
-    let toastTimeoutId;
-
-    function showToast(message) {
-        if (!toastEl) return;
-        toastEl.textContent = message;
-        toastEl.classList.add("visible");
-        if (toastTimeoutId !== undefined) window.clearTimeout(toastTimeoutId);
-        toastTimeoutId = window.setTimeout(() => toastEl.classList.remove("visible"), 3000);
-    }
-
-    const confirmOverlay = document.getElementById("confirmOverlay");
-    const confirmTitleEl = document.getElementById("confirmTitle");
-    const confirmMessageEl = document.getElementById("confirmMessage");
-    const confirmOkBtn = document.getElementById("confirmOkBtn");
-    const confirmCancelBtn = document.getElementById("confirmCancelBtn");
-    let confirmResolver = null;
-
-    function showConfirmModal({ title, message, confirmText = "OK", danger = false }) {
-        return new Promise((resolve) => {
-            confirmResolver = resolve;
-            if (confirmTitleEl) confirmTitleEl.textContent = title;
-            if (confirmMessageEl) confirmMessageEl.textContent = message;
-            if (confirmOkBtn) {
-                confirmOkBtn.textContent = confirmText;
-                confirmOkBtn.classList.toggle("btn-danger", danger);
-                confirmOkBtn.classList.toggle("btn-primary", !danger);
-            }
-            confirmOverlay?.classList.add("visible");
-        });
-    }
-
-    function closeConfirmModal(result) {
-        confirmOverlay?.classList.remove("visible");
-        if (confirmResolver) {
-            confirmResolver(result);
-            confirmResolver = null;
-        }
-    }
-
-    confirmOkBtn?.addEventListener("click", () => closeConfirmModal(true));
-    confirmCancelBtn?.addEventListener("click", () => closeConfirmModal(false));
-    confirmOverlay?.addEventListener("click", (e) => {
-        if (e.target === confirmOverlay) closeConfirmModal(false);
-    });
-
     // ===================== SHOW CURRENT USER =====================
     const avatarEl = document.getElementById("userAvatar");
     const profileMenuName = document.getElementById("profileMenuName");
@@ -173,13 +121,13 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (storedName) avatarEl.title = storedName;
     }
 
-    // ===================== ROLE BADGE =====================
+    // ===================== ROLE BADGE (project header) =====================
     const roleBadgeEl = document.getElementById("roleBadge");
     if (roleBadgeEl) {
         roleBadgeEl.textContent = storedTeam || "Employee";
     }
 
-    // ===================== MENUS =====================
+    // ===================== MENUS (only one open at a time) =====================
     const profileMenuBtn = document.getElementById("profileMenuBtn");
     const profileMenu = document.getElementById("profileMenu");
 
@@ -290,6 +238,12 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     });
 
     // ===================== SPRINT RESOLUTION =====================
+    /**
+     * Loads the latest sprint with the given name.
+     * The backend returns 200 with an EMPTY body when no sprint with that
+     * name exists yet — so we read the response as text first and treat an
+     * empty string as "no sprint".
+     */
     async function resolveCurrentSprintId() {
         const name = SPRINT_TAB_NAMES[currentSprintId];
         if (!name) return null;
@@ -298,7 +252,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             const res = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
             if (!res.ok) return null;
             const text = await res.text();
-            if (!text) return null;
+            if (!text) return null;                 // empty body = no sprint yet
             const sprint = JSON.parse(text);
             return sprint?.id ?? null;
         } catch (err) {
@@ -685,7 +639,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             }
 
             closeLogTimeModal();
-            showToast(`Logged ${payload.hours}h on this task`);
+            alert(`Logged ${payload.hours}h on this task`);
         } catch (err) {
             console.error("Log time failed:", err);
             logTimeErrorText.textContent =
@@ -771,12 +725,9 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     async function deleteMyLog(logId) {
-        const confirmed = await showConfirmModal({
-            title: "Delete this time log?",
-            message: "This cannot be undone.",
-            confirmText: "Delete",
-            danger: true,
-        });
+        const confirmed = window.confirm(
+            "Delete this time log? This cannot be undone."
+        );
         if (!confirmed) return;
 
         try {
@@ -787,11 +738,11 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             });
 
             if (res.status === 403) {
-                showToast("You are not allowed to delete this log.");
+                alert("You are not allowed to delete this log.");
                 return;
             }
             if (res.status === 404) {
-                showToast("That log no longer exists.");
+                alert("That log no longer exists.");
             } else if (!res.ok) {
                 const text = await res.text();
                 throw new Error(text || `HTTP ${res.status}`);
@@ -799,7 +750,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             await refreshMyLogs();
         } catch (err) {
             console.error("Delete log failed:", err);
-            showToast("Could not delete the log. Please try again.");
+            alert("Could not delete the log. Please try again.");
         }
     }
 
@@ -864,10 +815,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         });
         document.addEventListener("keydown", (event) => {
             if (event.key === "Escape") {
-                if (confirmOverlay?.classList.contains("visible")) {
-                    closeConfirmModal(false);
-                    return;
-                }
                 if (logoutOverlay?.classList.contains("visible")) {
                     logoutOverlay.classList.remove("visible");
                     return;
