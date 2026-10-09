@@ -1,6 +1,7 @@
 /**
  * Admin Board Page — Symph Web Application
  * Compiled output of main-admin-page.ts — do not hand-edit.
+ * Handles all interactive behaviour for the admin Kanban board.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -27,13 +28,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 }
 
 (() => {
-    // ===================== HELPERS =====================
-    function avatarColor(name) {
-        let hash = 0;
-        for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-        return `hsl(${Math.abs(hash) % 360}, 65%, 55%)`;
-    }
-
     // ===================== SHOW CURRENT USER =====================
     const avatarEl = document.getElementById("userAvatar");
     const profileMenuName = document.getElementById("profileMenuName");
@@ -53,14 +47,16 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
     if (avatarEl) {
         const label = storedName
-            .split(/\s+/).filter(Boolean).slice(0, 2)
-            .map((part) => part.charAt(0).toUpperCase()).join("");
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part.charAt(0).toUpperCase())
+            .join("");
         avatarEl.textContent = label || (storedName ? storedName.charAt(0).toUpperCase() : "?");
         if (storedName) avatarEl.title = storedName;
-        avatarEl.style.backgroundColor = avatarColor(storedName || "?");
-        avatarEl.style.color = "#ffffff";
     }
 
+    // ===================== ROLE BADGE (project header) =====================
     if (roleBadgeEl) {
         roleBadgeEl.textContent =
             storedRole === "PRODUCT_OWNER" ? "Product Owner" :
@@ -68,7 +64,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             "Admin";
     }
 
-    // ===================== MENUS =====================
+    // ===================== MENUS (only one open at a time) =====================
     const profileMenuBtn = document.getElementById("profileMenuBtn");
     const profileMenu = document.getElementById("profileMenu");
     const headerMenuBtn = document.getElementById("headerMenuBtn");
@@ -119,7 +115,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         setHeaderMenuOpen(willOpen);
     });
 
-    // ===================== LOGOUT =====================
+    // ===================== LOGOUT (opens confirmation modal) =====================
     const logoutBtn = document.getElementById("logoutBtn");
     const logoutOverlay = document.getElementById("logoutOverlay");
     const cancelLogoutBtn = document.getElementById("cancelLogoutBtn");
@@ -138,6 +134,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         if (e.target === logoutOverlay) logoutOverlay.classList.remove("visible");
     });
 
+    // Close on outside click
     document.addEventListener("click", (event) => {
         const t = event.target;
         if (profileMenu?.classList.contains("visible")
@@ -282,7 +279,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     // ===================== STATE =====================
     let tasks = [];
     let currentSprintId = readSprintSetting();
-    let currentSprintBackendId = null;
     let currentTeamId = "all";
     let currentTagName = TAG_FILTER_ALL;
     let sortByTag = false;
@@ -308,23 +304,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             if (names.length > 1) return { kind: "teams", teamIds: names };
         }
         return null;
-    }
-
-    // ===================== SPRINT RESOLUTION =====================
-    async function resolveSprintBackendId(tabId) {
-        const name = SPRINT_TAB_NAMES[tabId];
-        if (!name) return null;
-        try {
-            const res = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
-            if (!res.ok) return null;
-            const text = await res.text();
-            if (!text) return null;
-            const sprint = JSON.parse(text);
-            return sprint?.id != null ? String(sprint.id) : null;
-        } catch (err) {
-            console.error("Failed to resolve sprint backend id:", err);
-            return null;
-        }
     }
 
     // ===================== CUSTOM MODALS =====================
@@ -376,6 +355,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         if (e.target === document.getElementById("alertOverlay")) hideOverlay("alertOverlay");
     });
 
+    // Share lives inside the project-header ⋯ menu
     const shareBtn = document.getElementById("shareBtn");
     const inviteOverlay = document.getElementById("inviteOverlay");
     const closeInviteBtn = document.getElementById("closeInviteBtn");
@@ -423,7 +403,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             const data = await res.json();
             return data.map((t) => ({
                 id: String(t.id),
-                sprintId: t.sprint?.id != null ? String(t.sprint.id) : "",
+                sprintId: "1",
                 column: t.status ?? "PRODUCT_BACKLOG",
                 title: t.name,
                 description: t.description ?? "",
@@ -465,7 +445,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                     priority: task.priority || null,
                     position: task.position,
                     progress: task.progress ?? 0,
-                    sprint: currentSprintBackendId ? { id: Number(currentSprintBackendId) } : null,
+                    sprint: { id: Number(currentSprintId) },
                 }),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -496,7 +476,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 priority: task.priority || null,
                 position: task.position,
                 progress: task.progress ?? 0,
-                sprint: currentSprintBackendId ? { id: Number(currentSprintBackendId) } : null,
+                sprint: { id: Number(currentSprintId) },
             };
             const res = await fetch(`${API_BASE}/${numericId}`, {
                 method: "PUT",
@@ -539,8 +519,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     function visibleTasks() {
         const term = searchTerm.toLowerCase();
         return tasks.filter((task) => {
-            if (!currentSprintBackendId) return false;
-            if (task.sprintId !== currentSprintBackendId) return false;
+            if (task.sprintId !== currentSprintId) return false;
             if (currentTeamId !== "all" && !teamsOfTask(task).includes(currentTeamId)) return false;
             if (currentTagName !== TAG_FILTER_ALL) {
                 const hasTag = (task.tags ?? []).some(
@@ -564,7 +543,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         }
         return assignedEmployees(task.assignee)
             .map((employee) =>
-                `<div class="avatar avatar-small" style="background:${avatarColor(employee.name)};" title="${escapeHtml(employee.name)} · ${escapeHtml(employee.team)}">${escapeHtml(initials(employee.name))}</div>`
+                `<div class="avatar avatar-small avatar-purple" title="${escapeHtml(employee.name)} · ${escapeHtml(employee.team)}">${escapeHtml(initials(employee.name))}</div>`
             ).join("");
     }
 
@@ -608,16 +587,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     }
 
     function renderBoard() {
-        if (!currentSprintBackendId) {
-            board.innerHTML = `
-                <div class="board-empty-sprint">
-                    <p><strong>No sprint exists on this tab yet.</strong></p>
-                    <p>Go to <a href="index-sprint-planning-page.html">Sprint Planning</a>, create
-                    <em>${escapeHtml(SPRINT_TAB_NAMES[currentSprintId] || "a sprint")}</em>, then come back to this page.</p>
-                </div>`;
-            return;
-        }
-
         const shown = visibleTasks();
         board.innerHTML = COLUMNS.map((column) => {
             const cards = shown
@@ -651,13 +620,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
         const addBtn = target.closest("[data-add]");
         if (addBtn) {
-            if (!currentSprintBackendId) {
-                showAlertModal(
-                    "No sprint on this tab",
-                    "Create a sprint on this tab first in Sprint Planning, then you can add cards."
-                );
-                return;
-            }
             const draftTask = blankTask(currentSprintId, addBtn.dataset["add"]);
             if (currentTeamId !== "all") draftTask.assignee = { kind: "team", teamId: currentTeamId };
             openModal(draftTask);
@@ -667,34 +629,29 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     // ===================== LOGGED HOURS PANEL =====================
     const loggedHoursBody = document.getElementById("loggedHoursBody");
     const loggedHoursTotal = document.getElementById("loggedHoursTotal");
+    const loggedHoursUserFilter = document.getElementById("loggedHoursUserFilter");
     const loggedHoursRangeFilter = document.getElementById("loggedHoursRangeFilter");
     const loggedHoursRefreshBtn = document.getElementById("loggedHoursRefreshBtn");
-    const loggedHoursScope = document.getElementById("loggedHoursScope");
 
     async function loadLoggedHours() {
         if (!loggedHoursBody) return;
         loggedHoursBody.innerHTML = `<tr><td colspan="5" class="muted">Loading…</td></tr>`;
         if (loggedHoursTotal) loggedHoursTotal.textContent = "";
 
-        // Team filter follows the top-of-page filter, so admins only pick a team once.
-        const teamFilter = currentTeamId;
-
-        if (loggedHoursScope) {
-            loggedHoursScope.textContent = teamFilter === "all" ? "— all teams" : `— ${teamFilter}`;
-        }
+        const mode = loggedHoursUserFilter?.value || "all";
+        const userId = sessionStorage.getItem("userId");
 
         try {
-            const res = await fetch(TIMELOGS_API);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            let logs = await res.json();
-
-            if (teamFilter !== "all") {
-                const memberIds = new Set(
-                    EMPLOYEES.filter((e) => e.team === teamFilter).map((e) => e.id)
-                );
-                logs = logs.filter((l) => l.user && memberIds.has(String(l.user.id)));
+            let logs;
+            if (mode === "me" && userId) {
+                const res = await fetch(`${TIMELOGS_API}/user/${userId}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                logs = await res.json();
+            } else {
+                const res = await fetch(TIMELOGS_API);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                logs = await res.json();
             }
-
             const rangeVal = loggedHoursRangeFilter?.value || "all";
             if (rangeVal !== "all") {
                 const days = Number(rangeVal) || 7;
@@ -703,7 +660,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 const cutoffIso = cutoff.toISOString().split("T")[0];
                 logs = logs.filter((l) => (l.date ?? "") >= cutoffIso);
             }
-
             logs.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
 
             if (logs.length === 0) {
@@ -741,6 +697,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     }
 
     loggedHoursRefreshBtn?.addEventListener("click", () => { void loadLoggedHours(); });
+    loggedHoursUserFilter?.addEventListener("change", () => { void loadLoggedHours(); });
     loggedHoursRangeFilter?.addEventListener("change", () => { void loadLoggedHours(); });
 
     // ===================== DRAG AND DROP =====================
@@ -827,11 +784,10 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 if (sprintId) {
                     currentSprintId = sprintId;
                     writeSprintSetting(sprintId);
-                    void (async () => {
-                        currentSprintBackendId = await resolveSprintBackendId(sprintId);
-                        await refreshFromBackend();
-                        await refreshSprintButton();
-                    })();
+                    renderBoard();
+                    renderTeamFilter();
+                    renderTagFilter();
+                    void refreshSprintButton();
                 }
             });
         });
@@ -851,7 +807,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     const teamFilterLabel = requireElement("teamFilterLabel");
 
     function renderTeamFilter() {
-        const inSprint = tasks.filter((t) => !currentSprintBackendId || t.sprintId === currentSprintBackendId);
+        const inSprint = tasks.filter((t) => t.sprintId === currentSprintId);
         const options = [
             { id: "all", name: "All teams", count: inSprint.length },
             ...TEAMS.map((team) => ({
@@ -887,23 +843,21 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         setTeamFilterOpen(false);
         renderTeamFilter();
         renderBoard();
-        void loadLoggedHours();
     });
 
-    // ===================== TAG FILTER =====================
+    // ===================== TAG FILTER (US14) =====================
     const tagFilterLabel = requireElement("tagFilterLabel");
 
     function availableTagNames() {
         const names = new Set();
-        tasks
-            .filter((t) => !currentSprintBackendId || t.sprintId === currentSprintBackendId)
+        tasks.filter((t) => t.sprintId === currentSprintId)
             .forEach((t) => (t.tags ?? []).forEach((tag) => names.add(tag.name)));
         return Array.from(names).sort((a, b) => a.localeCompare(b));
     }
 
     function renderTagFilter() {
         if (!tagFilterMenu) return;
-        const inSprint = tasks.filter((t) => !currentSprintBackendId || t.sprintId === currentSprintBackendId);
+        const inSprint = tasks.filter((t) => t.sprintId === currentSprintId);
         const names = availableTagNames();
         const countFor = (name) =>
             inSprint.filter((t) =>
@@ -983,7 +937,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
     const modalMoreBtn = document.getElementById("modalMoreBtn");
     const modalMoreMenu = document.getElementById("modalMoreMenu");
-    const modalCommentsBtn = document.getElementById("modalCommentsBtn");
+    const modalRefreshBtn = document.getElementById("modalRefreshBtn");
 
     let draft = null;
     let assignKind = "team";
@@ -999,9 +953,36 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         setModalMoreOpen(!modalMoreMenu.classList.contains("visible"));
     });
 
-    modalCommentsBtn?.addEventListener("click", () => {
+    modalRefreshBtn?.addEventListener("click", async () => {
+        if (!draft || !draft.id) { setModalMoreOpen(false); return; }
         setModalMoreOpen(false);
-        void openCommentsModal();
+        modalRefreshBtn.disabled = true;
+        try {
+            const res = await fetch(`${API_BASE}/${draft.id}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const fresh = await res.json();
+            const mapped = {
+                id: String(fresh.id),
+                sprintId: currentSprintId,
+                column: fresh.status ?? "PRODUCT_BACKLOG",
+                title: fresh.name,
+                description: fresh.description ?? "",
+                assignee: parseAssignee(fresh),
+                dueDate: fresh.dueDate ?? "",
+                estimateHours: fresh.estimateHours ?? 0,
+                priority: fresh.priority ?? "",
+                position: fresh.position ?? 0,
+                tags: Array.isArray(fresh.tags) ? fresh.tags : [],
+                progress: typeof fresh.progress === "number" ? fresh.progress : 0,
+            };
+            openModal(mapped);
+            showToast("Task refreshed");
+        } catch (err) {
+            console.error("Refresh failed:", err);
+            showAlertModal("Refresh failed", "Could not load the latest task data.");
+        } finally {
+            modalRefreshBtn.disabled = false;
+        }
     });
 
     function openModal(task) {
@@ -1063,8 +1044,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         const currentTeam = assignee?.kind === "team" ? assignee.teamId : null;
         assigneeSelect.innerHTML =
             `<option value="">Choose a team…</option>` +
-            TEAMS.map((t) => `<option value="${t.name}">
-            <option value="${t.name}">${escapeHtml(t.name)}</option>`).join("");
+            TEAMS.map((t) => `<option value="${t.name}">${escapeHtml(t.name)}</option>`).join("");
         assigneeSelect.value = currentTeam ?? "";
         const visibleEmployees = currentTeam ? EMPLOYEES.filter((e) => e.team === currentTeam) : [];
         const ticked = assignee?.kind === "employees" ? assignee.employeeIds : [];
@@ -1294,183 +1274,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         else closeModal();
     });
 
-    // ===================== COMMENTS MODAL =====================
-    const commentsOverlay = document.getElementById("commentsOverlay");
-    const closeCommentsBtn = document.getElementById("closeCommentsBtn");
-    const commentsTitle = document.getElementById("commentsTitle");
-    const commentsSubtitle = document.getElementById("commentsSubtitle");
-    const commentsList = document.getElementById("commentsList");
-    const newCommentText = document.getElementById("newCommentText");
-    const commentsCharCount = document.getElementById("commentsCharCount");
-    const sendCommentBtn = document.getElementById("sendCommentBtn");
-
-    let commentsTaskId = null;
-
-    function formatCommentTime(iso) {
-        if (!iso) return "";
-        const d = new Date(iso);
-        const now = new Date();
-        const sameDay =
-            d.getFullYear() === now.getFullYear() &&
-            d.getMonth() === now.getMonth() &&
-            d.getDate() === now.getDate();
-        const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-        if (sameDay) return `Today ${time}`;
-        const date = d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-        return `${date} · ${time}`;
-    }
-
-    function renderCommentList(comments) {
-        if (!comments || comments.length === 0) {
-            commentsList.innerHTML = `<p class="comments-empty">No comments yet. Start the conversation.</p>`;
-            return;
-        }
-        commentsList.innerHTML = comments.map((c) => {
-            const authorInitials = escapeHtml(
-                String(c.authorName || "?")
-                    .split(/\s+/).filter(Boolean).slice(0, 2)
-                    .map((p) => p.charAt(0).toUpperCase()).join("")
-            );
-            const roleLabel =
-                c.authorRole === "ADMIN" ? "Admin" :
-                c.authorRole === "PRODUCT_OWNER" ? "Product Owner" :
-                c.authorRole === "EMPLOYEE" ? "Employee" : "";
-            const isAdmin = c.authorRole === "ADMIN" || c.authorRole === "PRODUCT_OWNER";
-            return `
-                <div class="comment-row${isAdmin ? " comment-row-admin" : ""}" data-comment-id="${c.id}">
-                    <div class="comment-avatar" style="background:${avatarColor(c.authorName || "?")};">${authorInitials}</div>
-                    <div class="comment-body-wrap">
-                        <div class="comment-meta">
-                            <span class="comment-author">${escapeHtml(c.authorName)}</span>
-                            <span class="comment-role">${roleLabel}</span>
-                            <button type="button" class="comment-delete-btn"
-                                    data-delete-comment="${c.id}"
-                                    title="Delete comment"
-                                    aria-label="Delete comment">✕</button>
-                            <span class="comment-time">${formatCommentTime(c.createdAt)}</span>
-                        </div>
-                        <div class="comment-text">${escapeHtml(c.body)}</div>
-                    </div>
-                </div>`;
-        }).join("");
-        commentsList.scrollTop = commentsList.scrollHeight;
-    }
-
-    async function loadComments(taskId) {
-        commentsList.innerHTML = `<p class="comments-empty">Loading…</p>`;
-        try {
-            const res = await fetch(`${API_BASE}/${taskId}/comments`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const comments = await res.json();
-            renderCommentList(comments);
-        } catch (err) {
-            console.error("Failed to load comments:", err);
-            commentsList.innerHTML = `<p class="comments-empty">Could not load comments.</p>`;
-        }
-    }
-
-    async function openCommentsModal() {
-        if (!draft || !draft.id) {
-            showToast("Save the task first, then add comments.");
-            return;
-        }
-        commentsTaskId = draft.id;
-        commentsTitle.textContent = "Comments";
-        commentsSubtitle.textContent = `On "${draft.title}"`;
-        newCommentText.value = "";
-        updateCommentsCharCount();
-        commentsOverlay.classList.add("visible");
-        await loadComments(draft.id);
-        newCommentText.focus();
-    }
-
-    function closeCommentsModal() {
-        commentsOverlay.classList.remove("visible");
-        commentsTaskId = null;
-    }
-
-    function updateCommentsCharCount() {
-        if (commentsCharCount && newCommentText) {
-            commentsCharCount.textContent = `${newCommentText.value.length} / 2000`;
-        }
-    }
-
-    closeCommentsBtn?.addEventListener("click", closeCommentsModal);
-    commentsOverlay?.addEventListener("click", (e) => {
-        if (e.target === commentsOverlay) closeCommentsModal();
-    });
-    newCommentText?.addEventListener("input", updateCommentsCharCount);
-
-    async function sendComment() {
-        if (!commentsTaskId) return;
-        const body = newCommentText.value.trim();
-        if (!body) { showToast("Please type a comment first."); return; }
-        const authorId = Number(sessionStorage.getItem("userId"));
-        if (!authorId || Number.isNaN(authorId)) { showToast("You must be signed in."); return; }
-        sendCommentBtn.disabled = true;
-        sendCommentBtn.textContent = "Sending…";
-        try {
-            const res = await fetch(`${API_BASE}/${commentsTaskId}/comments`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ authorId, body }),
-            });
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || `HTTP ${res.status}`);
-            }
-            newCommentText.value = "";
-            updateCommentsCharCount();
-            await loadComments(commentsTaskId);
-        } catch (err) {
-            console.error("Send comment failed:", err);
-            showToast("Could not send the comment. Please try again.");
-        } finally {
-            sendCommentBtn.disabled = false;
-            sendCommentBtn.textContent = "Send";
-        }
-    }
-    sendCommentBtn?.addEventListener("click", () => { void sendComment(); });
-    newCommentText?.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-            e.preventDefault();
-            void sendComment();
-        }
-    });
-
-    commentsList?.addEventListener("click", async (e) => {
-        const btn = e.target.closest("[data-delete-comment]");
-        if (!btn) return;
-        const commentId = btn.dataset["deleteComment"];
-        if (!commentId || !commentsTaskId) return;
-
-        const confirmed = await showConfirmModal({
-            title: "Delete this comment?",
-            message: "This cannot be undone.",
-            confirmText: "Delete",
-            danger: true,
-        });
-        if (!confirmed) return;
-
-        try {
-            const role = sessionStorage.getItem("role") || "";
-            const res = await fetch(`${API_BASE}/${commentsTaskId}/comments/${commentId}`, {
-                method: "DELETE",
-                headers: { "X-Role": role },
-            });
-            if (res.status === 403) { showToast("You are not allowed to delete this comment."); return; }
-            if (res.status === 404) { showToast("That comment no longer exists."); }
-            else if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || `HTTP ${res.status}`);
-            }
-            await loadComments(commentsTaskId);
-        } catch (err) {
-            console.error("Delete comment failed:", err);
-            showToast("Could not delete the comment. Please try again.");
-        }
-    });
-
     // ===================== TOAST =====================
     const toast = requireElement("toast");
     let toastTimeoutId;
@@ -1527,10 +1330,17 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     });
     setSidebarCollapsed(readSetting(SIDEBAR_KEY) === "1");
 
-    // ===================== START / END SPRINT =====================
+    // ===================== START / END SPRINT (US23) =====================
     const startSprintBtn = document.getElementById("startSprintBtn");
     let currentSprintStatus = null;
+    let currentSprintNumericId = null;
 
+    /**
+     * Loads the latest sprint with the given name.
+     * The backend returns 200 with an EMPTY body when no sprint with that
+     * name exists yet — so we read the response as text first and treat an
+     * empty string as "no sprint".
+     */
     async function fetchSprintStatus(tabId) {
         const name = SPRINT_TAB_NAMES[tabId];
         if (!name) return null;
@@ -1538,7 +1348,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             const res = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
             if (!res.ok) return null;
             const text = await res.text();
-            if (!text) return null;
+            if (!text) return null;                 // empty body = no sprint yet
             return JSON.parse(text);
         } catch (err) {
             console.error("Failed to load sprint:", err);
@@ -1569,12 +1379,12 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     async function refreshSprintButton() {
         const sprint = await fetchSprintStatus(currentSprintId);
         currentSprintStatus = sprint?.status ?? null;
-        if (sprint?.id != null) currentSprintBackendId = String(sprint.id);
+        currentSprintNumericId = sprint?.id ?? null;
         renderSprintButton(currentSprintStatus);
     }
     startSprintBtn?.addEventListener("click", async () => {
         if (!startSprintBtn || startSprintBtn.disabled) return;
-        const numericId = currentSprintBackendId != null ? Number(currentSprintBackendId) : null;
+        const numericId = currentSprintNumericId;
         if (numericId === null || !Number.isFinite(numericId) || numericId <= 0) { showNoSprintModal(); return; }
         const starting = currentSprintStatus !== "ACTIVE";
         const confirmMsg = starting
@@ -1608,9 +1418,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         await loadEmployeesFromBackend();
         highlightSavedSprintTab();
         initSprintTabs();
-
-        currentSprintBackendId = await resolveSprintBackendId(currentSprintId);
-
         renderTeamFilter();
         renderTagFilter();
         await refreshSprintButton();

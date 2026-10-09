@@ -1,5 +1,9 @@
 <!--
     Admin Board Page — Symph Web Application
+    Provides the main Kanban board for administrators, plus the Logged
+    Hours panel and Reports. Admins do not log time themselves — that is
+    done by team members on the employee board (US24).
+
     @author Lim Jia Li
     @version 17.0.16
 -->
@@ -22,6 +26,7 @@
 <body>
 <div class="app-shell" id="appShell">
 
+    <!-- ===================== SIDEBAR ===================== -->
     <aside class="sidebar">
         <div class="sidebar-top">
             <a class="logo" href="index-admin-page.html"><img src="images/symph-logo.png" alt="Symph" /></a>
@@ -52,6 +57,7 @@
 
     <div class="app-main">
 
+        <!-- ===================== NAVBAR ===================== -->
         <nav class="navbar">
             <div class="search-bar">
                 <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -107,6 +113,7 @@
             </div>
         </nav>
 
+        <!-- ===================== PROJECT HEADER ===================== -->
         <header class="project-header">
             <div class="project-header-left">
                 <h1 class="project-name">
@@ -132,6 +139,7 @@
             </div>
         </header>
 
+        <!-- ===================== SPRINT TABS + START SPRINT ===================== -->
         <div class="board-controls">
             <div class="sprint-tabs">
                 <button class="sprint-tab active" data-sprint="1" type="button">Sprint 1</button>
@@ -146,16 +154,22 @@
 
         <main class="board" id="board"></main>
 
+        <!-- ===================== LOGGED HOURS PANEL ===================== -->
         <section class="logged-hours-panel">
             <div class="logged-hours-header">
-                <h2>Logged Hours <span class="logged-hours-scope" id="loggedHoursScope">— all teams</span></h2>
+                <h2>Logged Hours</h2>
                 <div class="logged-hours-controls">
+                    <select id="loggedHoursUserFilter" aria-label="Filter by user">
+                        <option value="me">My logs</option>
+                        <option value="all" selected>All users</option>
+                    </select>
                     <select id="loggedHoursRangeFilter" aria-label="Filter by range">
                         <option value="7">Last 7 days</option>
                         <option value="14">Last 14 days</option>
                         <option value="30">Last 30 days</option>
                         <option value="all" selected>All time</option>
                     </select>
+                    <button id="loggedHoursRefreshBtn" class="logged-hours-refresh" type="button">Refresh</button>
                 </div>
             </div>
 
@@ -196,11 +210,12 @@
                     <button type="button" class="modal-more-btn" id="modalMoreBtn"
                             aria-haspopup="true" aria-expanded="false" aria-label="More task options">⋯</button>
                     <div class="modal-more-menu" id="modalMoreMenu" role="menu">
-                        <button type="button" class="modal-more-item" id="modalCommentsBtn" role="menuitem">
+                        <button type="button" class="modal-more-item" id="modalRefreshBtn" role="menuitem">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                <path d="M21 12a9 9 0 1 1-3-6.7L21 8"/>
+                                <path d="M21 3v5h-5"/>
                             </svg>
-                            Comments
+                            Refresh
                         </button>
                     </div>
                 </div>
@@ -341,27 +356,6 @@
     </div>
 </div>
 
-<!-- ===================== MODAL: Comments ===================== -->
-<div class="modal-overlay" id="commentsOverlay">
-    <div class="modal comments-modal" role="dialog" aria-modal="true" aria-labelledby="commentsTitle">
-        <button class="modal-close" id="closeCommentsBtn" aria-label="Close" type="button">✕</button>
-        <h2 class="modal-title" id="commentsTitle">Comments</h2>
-        <p class="modal-subtitle" id="commentsSubtitle">—</p>
-
-        <div class="comments-list" id="commentsList">
-            <p class="comments-empty">No comments yet.</p>
-        </div>
-
-        <div class="comments-composer">
-            <textarea id="newCommentText" maxlength="2000" rows="3" placeholder="Write a comment…"></textarea>
-            <div class="comments-composer-actions">
-                <span class="comments-char-count" id="commentsCharCount">0 / 2000</span>
-                <button type="button" class="btn-primary" id="sendCommentBtn">Send</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- ===================== MODAL: Logout ===================== -->
 <div class="modal-overlay" id="logoutOverlay">
     <div class="modal modal-narrow" role="dialog" aria-modal="true">
@@ -378,7 +372,9 @@
 <div class="modal-overlay" id="noSprintOverlay">
     <div class="modal modal-narrow" role="dialog" aria-modal="true">
         <h2 class="modal-title">No sprint found</h2>
-        <p class="modal-subtitle">There's no sprint on this tab yet. Create one in Sprint Planning first.</p>
+        <p class="modal-subtitle">
+            There's no sprint on this tab yet. Create one in Sprint Planning first.
+        </p>
         <div class="modal-actions">
             <button id="closeNoSprintBtn" class="btn-primary full-width" type="button">OK</button>
         </div>
@@ -420,6 +416,7 @@
                 <label for="ownerEmail">Email address</label>
                 <input type="email" id="ownerEmail" name="ownerEmail" placeholder="owner@company.com" required>
             </div>
+
             <button type="submit" class="btn-primary full-width">Send invite</button>
         </form>
     </div>
