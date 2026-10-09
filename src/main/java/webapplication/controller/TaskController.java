@@ -11,7 +11,6 @@ import java.util.Map;
 
 /**
  * Exposes REST endpoints for managing tasks.
- * Handles creation, retrieval, updates, assignment, board views, and deletion of tasks.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -24,11 +23,6 @@ public class TaskController {
 
     private final TaskService taskService;
 
-    /**
-     * Parameterized constructor with the required TaskService dependency.
-     *
-     * @param taskService The service handling task business logic
-     */
     public TaskController(TaskService taskService) {
         this.taskService = taskService;
     }
@@ -86,14 +80,6 @@ public class TaskController {
         return taskService.getTasksBySprint(sprintId);
     }
 
-    /**
-     * US11: Deletes a task and its dependent time logs.
-     * Only an ADMIN caller may do this.
-     *
-     * @param id    The ID of the task to delete
-     * @param role  The caller's role, from the X-Role header
-     * @return      204 No Content on success, 403 if not admin, 409 on failure
-     */
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteTask(
             @PathVariable Long id,

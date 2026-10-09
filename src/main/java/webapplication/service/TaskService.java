@@ -6,6 +6,7 @@ import webapplication.model.TaskStatus;
 import webapplication.model.TimeLog;
 import webapplication.model.User;
 import webapplication.repository.SprintRepository;
+import webapplication.repository.TaskCommentRepository;
 import webapplication.repository.TaskRepository;
 import webapplication.repository.TimeLogRepository;
 import webapplication.repository.UserRepository;
@@ -31,29 +32,25 @@ public class TaskService {
     private final UserRepository userRepository;
     private final SprintRepository sprintRepository;
     private final TimeLogRepository timeLogRepository;
+    private final TaskCommentRepository taskCommentRepository;
 
     /**
      * Parameterized constructor with the required repository dependencies.
-     *
-     * @param taskRepository    The repository handling task database operations
-     * @param userRepository    The repository handling user database operations
-     * @param sprintRepository  The repository handling sprint database operations
-     * @param timeLogRepository The repository handling time log database operations
      */
     public TaskService(TaskRepository taskRepository,
                        UserRepository userRepository,
                        SprintRepository sprintRepository,
-                       TimeLogRepository timeLogRepository) {
+                       TimeLogRepository timeLogRepository,
+                       TaskCommentRepository taskCommentRepository) {
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
         this.sprintRepository = sprintRepository;
         this.timeLogRepository = timeLogRepository;
+        this.taskCommentRepository = taskCommentRepository;
     }
 
     /**
      * Retrieves all tasks ordered by board position.
-     *
-     * @return A list of all tasks
      */
     public List<Task> getAllTasks() {
         return taskRepository.findAllByOrderByPositionAscIdAsc();
@@ -62,8 +59,6 @@ public class TaskService {
     /**
      * Retrieves a single task by its unique ID.
      *
-     * @param id                The ID of the task to retrieve
-     * @return                  The Task object
      * @throws RuntimeException if no task with the given ID exists
      */
     public Task getTaskById(Long id) {
@@ -73,11 +68,6 @@ public class TaskService {
 
     /**
      * Creates a new task with default status and position handling.
-     * If no status is provided, defaults to PRODUCT_BACKLOG.
-     * If no position is provided, places the task at the bottom of its column.
-     *
-     * @param task The Task object to save
-     * @return     The saved Task object with its assigned ID and position
      */
     public Task createTask(Task task) {
         if (task.getStatus() == null) {
@@ -113,11 +103,6 @@ public class TaskService {
 
     /**
      * Updates an existing task's details. Only non-null fields are overwritten.
-     *
-     * @param id                The ID of the task to update
-     * @param taskDetails       The Task object containing the updated details
-     * @return                  The updated Task object
-     * @throws RuntimeException if the task does not exist
      */
     public Task updateTask(Long id, Task taskDetails) {
         Task task = getTaskById(id);
@@ -147,12 +132,6 @@ public class TaskService {
 
     /**
      * Updates the progress percentage of a task.
-     *
-     * @param id                    The ID of the task to update
-     * @param progress              The progress value between 0 and 100
-     * @return                      The updated Task object
-     * @throws IllegalArgumentException if progress is outside the 0-100 range
-     * @throws RuntimeException         if the task does not exist
      */
     public Task updateProgress(Long id, int progress) {
         if (progress < 0 || progress > 100) {
@@ -165,9 +144,6 @@ public class TaskService {
 
     /**
      * Retrieves all tasks with a specific status ordered by board position.
-     *
-     * @param status The TaskStatus to filter by
-     * @return       A list of tasks matching the status
      */
     public List<Task> getTasksByStatus(TaskStatus status) {
         return taskRepository.findByStatusOrderByPositionAscIdAsc(status);
@@ -175,36 +151,27 @@ public class TaskService {
 
     /**
      * Retrieves all tasks belonging to a specific sprint ordered by board position.
-     *
-     * @param sprintId The ID of the sprint
-     * @return         A list of tasks in the sprint
      */
     public List<Task> getTasksBySprint(Long sprintId) {
         return taskRepository.findBySprintIdOrderByPositionAscIdAsc(sprintId);
     }
 
     /**
-     * Deletes a task and any time logs that reference it.
-     * Time logs are removed first so the DB does not raise a
+     * Deletes a task along with its dependent time logs and comments.
+     * Time logs and comments are removed first so the DB does not raise a
      * foreign key constraint violation on task_id.
-     *
-     * @param id The ID of the task to delete
      */
     public void deleteTask(Long id) {
         List<TimeLog> logs = timeLogRepository.findByTaskId(id);
         if (!logs.isEmpty()) {
             timeLogRepository.deleteAll(logs);
         }
+        taskCommentRepository.deleteByTaskId(id);
         taskRepository.deleteById(id);
     }
 
     /**
      * Assigns a task to a specific user.
-     *
-     * @param taskId            The ID of the task to assign
-     * @param userId            The ID of the user to assign the task to
-     * @return                  The updated Task object
-     * @throws RuntimeException if the task or user does not exist
      */
     public Task assignTask(Long taskId, Long userId) {
         Task task = getTaskById(taskId);
@@ -216,11 +183,6 @@ public class TaskService {
 
     /**
      * Updates the status of a task.
-     *
-     * @param taskId            The ID of the task to update
-     * @param status            The new TaskStatus
-     * @return                  The updated Task object
-     * @throws RuntimeException if the task does not exist
      */
     public Task updateStatus(Long taskId, TaskStatus status) {
         Task task = getTaskById(taskId);
@@ -230,9 +192,6 @@ public class TaskService {
 
     /**
      * Retrieves the board view grouping tasks by their status.
-     * Each status column is ordered by board position.
-     *
-     * @return A map of TaskStatus to lists of tasks
      */
     public Map<TaskStatus, List<Task>> getBoardView() {
         Map<TaskStatus, List<Task>> board = new LinkedHashMap<>();
@@ -244,10 +203,6 @@ public class TaskService {
 
     /**
      * Retrieves all tasks belonging to a specific team.
-     * Matches tasks by direct team assignment or by assigned employee membership.
-     *
-     * @param teamName The name of the team
-     * @return         A list of tasks assigned to the given team
      */
     public List<Task> getTasksByTeam(String teamName) {
         List<Long> teamMemberIds = userRepository.findAll().stream()
