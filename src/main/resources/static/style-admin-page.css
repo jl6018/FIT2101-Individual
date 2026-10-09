@@ -1444,6 +1444,15 @@ button, select, input, textarea {
     margin: 0;
 }
 
+.logged-hours-scope {
+    font-size: 0.8rem;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
+    color: #4b5563;
+    margin-left: 6px;
+}
+
 .logged-hours-controls {
     display: flex;
     align-items: center;
@@ -1461,20 +1470,6 @@ button, select, input, textarea {
     cursor: pointer;
     font-family: inherit;
 }
-
-.logged-hours-refresh {
-    padding: 8px 18px;
-    border: none;
-    border-radius: 20px;
-    background: #111111;
-    color: #ffffff;
-    font-size: 0.85rem;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: inherit;
-}
-
-.logged-hours-refresh:hover { background: #2a2a2a; }
 
 .logged-hours-body {
     background: #ffffff;

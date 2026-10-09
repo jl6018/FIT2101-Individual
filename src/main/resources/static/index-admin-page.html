@@ -148,21 +148,14 @@
 
         <section class="logged-hours-panel">
             <div class="logged-hours-header">
-                <h2>Logged Hours</h2>
+                <h2>Logged Hours <span class="logged-hours-scope" id="loggedHoursScope">— all teams</span></h2>
                 <div class="logged-hours-controls">
-                    <select id="loggedHoursTeamFilter" aria-label="Filter by team">
-                        <option value="all" selected>All teams</option>
-                        <option value="Team Alpha">Team Alpha</option>
-                        <option value="Team Beta">Team Beta</option>
-                        <option value="Team Gamma">Team Gamma</option>
-                    </select>
                     <select id="loggedHoursRangeFilter" aria-label="Filter by range">
                         <option value="7">Last 7 days</option>
                         <option value="14">Last 14 days</option>
                         <option value="30">Last 30 days</option>
                         <option value="all" selected>All time</option>
                     </select>
-                    <button id="loggedHoursRefreshBtn" class="logged-hours-refresh" type="button">Refresh</button>
                 </div>
             </div>
 

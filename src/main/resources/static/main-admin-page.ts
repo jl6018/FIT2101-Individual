@@ -751,16 +751,21 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     // ===================== LOGGED HOURS PANEL =====================
     const loggedHoursBody = document.getElementById("loggedHoursBody") as HTMLTableSectionElement | null;
     const loggedHoursTotal = document.getElementById("loggedHoursTotal") as HTMLParagraphElement | null;
-    const loggedHoursTeamFilter = document.getElementById("loggedHoursTeamFilter") as HTMLSelectElement | null;
     const loggedHoursRangeFilter = document.getElementById("loggedHoursRangeFilter") as HTMLSelectElement | null;
     const loggedHoursRefreshBtn = document.getElementById("loggedHoursRefreshBtn") as HTMLButtonElement | null;
+    const loggedHoursScope = document.getElementById("loggedHoursScope") as HTMLSpanElement | null;
 
     async function loadLoggedHours(): Promise<void> {
         if (!loggedHoursBody) return;
         loggedHoursBody.innerHTML = `<tr><td colspan="5" class="muted">Loading…</td></tr>`;
         if (loggedHoursTotal) loggedHoursTotal.textContent = "";
 
-        const teamFilter = loggedHoursTeamFilter?.value || "all";
+        // Team filter follows the top-of-page filter, so admins only pick a team once.
+        const teamFilter = currentTeamId;
+
+        if (loggedHoursScope) {
+            loggedHoursScope.textContent = teamFilter === "all" ? "— all teams" : `— ${teamFilter}`;
+        }
 
         try {
             const res = await fetch(TIMELOGS_API);
@@ -816,7 +821,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     }
 
     loggedHoursRefreshBtn?.addEventListener("click", () => { void loadLoggedHours(); });
-    loggedHoursTeamFilter?.addEventListener("change", () => { void loadLoggedHours(); });
     loggedHoursRangeFilter?.addEventListener("change", () => { void loadLoggedHours(); });
 
     // ===================== DRAG AND DROP =====================
@@ -965,6 +969,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         setTeamFilterOpen(false);
         renderTeamFilter();
         renderBoard();
+        void loadLoggedHours();
     });
 
     // ===================== TAG FILTER =====================

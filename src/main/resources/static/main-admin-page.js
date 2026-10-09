@@ -608,8 +608,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     }
 
     function renderBoard() {
-        // If the tab's sprint doesn't exist in the DB, show a helpful message
-        // and disable card creation.
         if (!currentSprintBackendId) {
             board.innerHTML = `
                 <div class="board-empty-sprint">
@@ -669,16 +667,21 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     // ===================== LOGGED HOURS PANEL =====================
     const loggedHoursBody = document.getElementById("loggedHoursBody");
     const loggedHoursTotal = document.getElementById("loggedHoursTotal");
-    const loggedHoursTeamFilter = document.getElementById("loggedHoursTeamFilter");
     const loggedHoursRangeFilter = document.getElementById("loggedHoursRangeFilter");
     const loggedHoursRefreshBtn = document.getElementById("loggedHoursRefreshBtn");
+    const loggedHoursScope = document.getElementById("loggedHoursScope");
 
     async function loadLoggedHours() {
         if (!loggedHoursBody) return;
         loggedHoursBody.innerHTML = `<tr><td colspan="5" class="muted">Loading…</td></tr>`;
         if (loggedHoursTotal) loggedHoursTotal.textContent = "";
 
-        const teamFilter = loggedHoursTeamFilter?.value || "all";
+        // Team filter follows the top-of-page filter, so admins only pick a team once.
+        const teamFilter = currentTeamId;
+
+        if (loggedHoursScope) {
+            loggedHoursScope.textContent = teamFilter === "all" ? "— all teams" : `— ${teamFilter}`;
+        }
 
         try {
             const res = await fetch(TIMELOGS_API);
@@ -738,7 +741,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     }
 
     loggedHoursRefreshBtn?.addEventListener("click", () => { void loadLoggedHours(); });
-    loggedHoursTeamFilter?.addEventListener("change", () => { void loadLoggedHours(); });
     loggedHoursRangeFilter?.addEventListener("change", () => { void loadLoggedHours(); });
 
     // ===================== DRAG AND DROP =====================
@@ -885,6 +887,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         setTeamFilterOpen(false);
         renderTeamFilter();
         renderBoard();
+        void loadLoggedHours();
     });
 
     // ===================== TAG FILTER =====================
@@ -1060,7 +1063,8 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         const currentTeam = assignee?.kind === "team" ? assignee.teamId : null;
         assigneeSelect.innerHTML =
             `<option value="">Choose a team…</option>` +
-            TEAMS.map((t) => `<option value="${t.name}">${escapeHtml(t.name)}</option>`).join("");
+            TEAMS.map((t) => `<option value="${t.name}">
+            <option value="${t.name}">${escapeHtml(t.name)}</option>`).join("");
         assigneeSelect.value = currentTeam ?? "";
         const visibleEmployees = currentTeam ? EMPLOYEES.filter((e) => e.team === currentTeam) : [];
         const ticked = assignee?.kind === "employees" ? assignee.employeeIds : [];
