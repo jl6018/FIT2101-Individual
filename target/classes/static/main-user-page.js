@@ -77,7 +77,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     let searchTerm = "";
     let currentTagName = TAG_FILTER_ALL;
 
-    // ✅ Always starts on Sprint 1 on a fresh page load
     let currentSprintId = "1";
     let currentSprintNumericId = null;
     let currentSprintIsActive = false;
@@ -314,22 +313,15 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     // ===================== BACKEND SYNC =====================
-    /**
-     * Employees can only see tasks from the ACTIVE sprint.
-     * If the current sprint is PLANNED or COMPLETED — or does not exist
-     * on this tab — no tasks are shown.
-     */
     async function fetchTasks() {
         try {
             currentSprintNumericId = await resolveCurrentSprintId();
 
-            // ✅ No sprint exists on this tab → show nothing
             if (currentSprintNumericId == null) {
                 currentSprintIsActive = false;
                 return [];
             }
 
-            // Check the sprint's status
             try {
                 const statusRes = await fetch(`${SPRINTS_API}/${currentSprintNumericId}`);
                 if (statusRes.ok) {
@@ -342,7 +334,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
                 currentSprintIsActive = false;
             }
 
-            // ✅ PLANNED or COMPLETED sprint → nothing to show
             if (!currentSprintIsActive) {
                 return [];
             }
@@ -463,9 +454,13 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             const isEmpty = tasks.length === 0;
             emptyState.style.display = isEmpty ? "block" : "none";
             if (isEmpty) {
-                emptyState.textContent = currentSprintNumericId
-                    ? "This sprint hasn't started yet. Please wait for your admin to start it."
-                    : "You have no tasks assigned yet. Please contact your admin.";
+                if (!currentSprintNumericId) {
+                    emptyState.textContent = "No sprint exists on this tab yet.";
+                } else if (!currentSprintIsActive) {
+                    emptyState.textContent = "This sprint hasn't started yet. Please wait for your admin to start it.";
+                } else {
+                    emptyState.textContent = "You're not part of this sprint, or you have no tasks assigned to you yet.";
+                }
             }
         }
     }
@@ -985,7 +980,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
                 const sprintId = tab.dataset["sprint"];
                 if (!sprintId) return;
                 currentSprintId = sprintId;
-                // ✅ No sessionStorage write — always start fresh on reload
                 void (async () => {
                     await loadTeammates();
                     tasks = await fetchTasks();
@@ -999,7 +993,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
     // ===================== INIT =====================
     async function init() {
-        currentSprintId = "1";     // ✅ always start on Sprint 1
+        currentSprintId = "1";
         initSprintTabs();
         await loadTeammates();
         tasks = await fetchTasks();

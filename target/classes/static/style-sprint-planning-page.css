@@ -586,3 +586,43 @@ select:focus {
     background: #F3F4F6;
     border-color: #6B7280;
 }
+
+/* ===================== SPRINT ROW ACTIONS ===================== */
+.sprint-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.edit-sprint-btn,
+.delete-sprint-btn {
+    padding: 7px 16px;
+    border: none;
+    border-radius: 20px;
+    background: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s ease, color 0.15s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.edit-sprint-btn {
+    color: #2563EB;
+}
+
+.edit-sprint-btn:hover {
+    background: #2563EB;
+    color: #ffffff;
+}
+
+.delete-sprint-btn {
+    color: #DC2626;
+}
+
+.delete-sprint-btn:hover {
+    background: #DC2626;
+    color: #ffffff;
+}
