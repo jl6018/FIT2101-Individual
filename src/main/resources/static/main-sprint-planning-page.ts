@@ -4,8 +4,9 @@
 
 /**
  * Sprint Planning Page — Symph Web Application
- * Handles sprint creation, member loading, end-date calculation, the delete
- * sprint modal, and building tasks from the planning form (US22).
+ * Handles sprint creation, member loading, end-date calculation, and the
+ * delete sprint modal. Only employees WITHOUT a team are offered as
+ * "Members involved". Task creation happens on the Sprint Board.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -56,19 +57,6 @@ sidebarToggle?.addEventListener("click", () => {
 });
 setSidebarCollapsed(readSetting(SIDEBAR_KEY) === "1");
 
-// ===================== SHOW CURRENT USER =====================
-const nameEl = document.getElementById('signedInName');
-if (nameEl) {
-    const name = sessionStorage.getItem('name');
-    const userRole = sessionStorage.getItem('role');
-    if (name) {
-        const suffix =
-            userRole === 'ADMIN' ? ' (Admin)' :
-            userRole === 'PRODUCT_OWNER' ? ' (Product Owner)' : '';
-        nameEl.textContent = `${name}${suffix}`;
-    }
-}
-
 function requireElement<T extends HTMLElement>(id: string): T {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
@@ -84,12 +72,6 @@ function escapeHtml(text: string): string {
         .replace(/'/g, '&#39;');
 }
 
-interface TaskRow {
-    name: string;
-    description: string;
-    dueDate: string;
-}
-
 interface Sprint {
     id: number;
     name: string;
@@ -99,9 +81,16 @@ interface Sprint {
     memberCount?: number;
 }
 
+interface BackendUser {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    team?: { name: string } | null;
+}
+
 // ===================== CONFIG =====================
 const SPRINTS_API = "http://localhost:8080/api/sprints";
-const TASKS_API = "http://localhost:8080/api/tasks";
 const USERS_API = "http://localhost:8080/api/users";
 
 // ===================== ELEMENTS =====================
@@ -116,8 +105,6 @@ const sprintEndDateInput = requireElement<HTMLInputElement>('sprintEndDate');
 const membersList = requireElement<HTMLDivElement>('membersList');
 const pastSprintsBody = requireElement<HTMLTableSectionElement>('pastSprintsBody');
 const toast = requireElement<HTMLDivElement>('toast');
-const taskListEl = requireElement<HTMLDivElement>('taskList');
-const addTaskRowBtn = requireElement<HTMLButtonElement>('addTaskRowBtn');
 
 const deleteSprintOverlay = requireElement<HTMLDivElement>('deleteSprintOverlay');
 const deleteSprintName = requireElement<HTMLElement>('deleteSprintName');
@@ -135,9 +122,6 @@ startSprintPlanningBtn.addEventListener('click', async () => {
 
     sprintStartDateInput.value = new Date().toISOString().split('T')[0];
     recalculateEndDate();
-
-    taskListEl.innerHTML = '';
-    addTaskRow();
 
     openModal(sprintPlanningOverlay);
 });
@@ -188,60 +172,26 @@ function recalculateEndDate(): void {
 sprintStartDateInput.addEventListener('change', recalculateEndDate);
 sprintDurationSelect.addEventListener('change', recalculateEndDate);
 
-// ===================== TASK LIST BUILDER (US22) =====================
-function addTaskRow(): void {
-    const row = document.createElement('div');
-    row.className = 'task-row';
-
-    row.innerHTML = `
-        <div class="task-row-top">
-            <input type="text" class="task-row-name" placeholder="Task name" maxlength="200" />
-            <input type="date" class="task-row-date" />
-            <button type="button" class="task-row-remove" aria-label="Remove task">✕</button>
-        </div>
-        <textarea class="task-row-desc" placeholder="Description (optional)" maxlength="2000"></textarea>
-    `;
-
-    row.querySelector('.task-row-remove')?.addEventListener('click', () => row.remove());
-
-    taskListEl.appendChild(row);
-}
-
-addTaskRowBtn.addEventListener('click', addTaskRow);
-
-function readTaskRows(): TaskRow[] {
-    const rows = taskListEl.querySelectorAll<HTMLDivElement>('.task-row');
-    const tasks: TaskRow[] = [];
-    rows.forEach((row) => {
-        const name = (row.querySelector('.task-row-name') as HTMLInputElement).value.trim();
-        const description = (row.querySelector('.task-row-desc') as HTMLTextAreaElement).value.trim();
-        const dueDate = (row.querySelector('.task-row-date') as HTMLInputElement).value;
-        if (name) {
-            tasks.push({ name, description, dueDate });
-        }
-    });
-    return tasks;
-}
-
 // ===================== LOAD MEMBERS =====================
+// Only employees who HAVE a team are offered as "Members involved",
+// and each row shows which team they belong to.
 async function loadMembers(): Promise<void> {
     try {
         const res = await fetch(USERS_API);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const users: { id: number; name: string; role: string; team?: { name: string } | null }[] = await res.json();
+        const users = (await res.json()) as BackendUser[];
 
-        const employees = users.filter((u) => u.role === 'EMPLOYEE');
+        const teamMembers = users.filter(
+            (u) => u.role === 'EMPLOYEE' && u.team
+        );
 
-        membersList.innerHTML = employees.length === 0
-            ? `<p class="muted">No employees registered yet.</p>`
-            : employees.map((u) => {
-                const team = (u.team && u.team.name) ? u.team.name : 'No team';
-                return `
+        membersList.innerHTML = teamMembers.length === 0
+            ? `<p class="muted">No team-assigned employees available.</p>`
+            : teamMembers.map((u) => `
                 <label class="member-row">
                     <input type="checkbox" name="member" value="${u.id}" checked>
-                    <span>${escapeHtml(u.name)} — ${escapeHtml(team)}</span>
-                </label>`;
-            }).join('');
+                    <span>${escapeHtml(u.name)} — ${escapeHtml(u.team!.name)}</span>
+                </label>`).join('');
     } catch (err) {
         console.error('Failed to load members:', err);
         membersList.innerHTML = `<p class="muted">Could not load members.</p>`;
@@ -272,7 +222,7 @@ async function loadSprints(): Promise<void> {
     try {
         const res = await fetch(SPRINTS_API);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const sprints: Sprint[] = await res.json();
+        const sprints = (await res.json()) as Sprint[];
 
         pastSprintsBody.innerHTML = '';
 
@@ -351,7 +301,7 @@ confirmDeleteBtn.addEventListener('click', async () => {
     }
 });
 
-// ===================== CREATE SPRINT + TASKS =====================
+// ===================== CREATE SPRINT =====================
 sprintPlanningForm.addEventListener('submit', async (e: SubmitEvent) => {
     e.preventDefault();
 
@@ -403,40 +353,12 @@ sprintPlanningForm.addEventListener('submit', async (e: SubmitEvent) => {
             throw new Error(msg || 'Failed to create sprint');
         }
 
-        const createdSprint: Sprint = await res.json();
-
-        const taskRows = readTaskRows();
-        const taskResults = await Promise.all(taskRows.map((t) =>
-            fetch(TASKS_API, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: t.name,
-                    description: t.description,
-                    status: 'PRODUCT_BACKLOG',
-                    dueDate: t.dueDate || null,
-                    position: 0,
-                    progress: 0,
-                    sprint: { id: createdSprint.id },
-                }),
-            })
-        ));
-
-        const failed = taskResults.filter((r) => !r.ok).length;
-
         closeModal(sprintPlanningOverlay);
-        if (failed > 0) {
-            showToast(`Sprint created — ${failed} task(s) failed to save`, 'error');
-        } else if (taskRows.length > 0) {
-            showToast(`Sprint created with ${taskRows.length} task(s)`, 'success');
-        } else {
-            showToast('Sprint created', 'success');
-        }
+        showToast('Sprint created — add tasks on the Sprint Board.', 'success');
 
         sprintPlanningForm.reset();
         populateSprintNameOptions();
         populateDurationOptions();
-        taskListEl.innerHTML = '';
         recalculateEndDate();
         await loadSprints();
     } catch (err) {
