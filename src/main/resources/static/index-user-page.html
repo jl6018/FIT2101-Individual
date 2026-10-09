@@ -1,12 +1,5 @@
 <!--
     User Board Page — Symph Web Application
-    Kanban board for employees. Includes search, tag filter, sprint tabs,
-    a read-only task modal, a Log Time modal (US24), a "My Logs" modal
-    (opened from the ⋯ menu in the project header), an account menu on the
-    avatar with Log out, a team badge in the project header that is
-    auto-detected from sessionStorage, and a logout confirmation modal.
-    Only one of the three menus (tag filter / account / ⋯) is open at a time.
-
     @author Lim Jia Li
     @version 17.0.16
 -->
@@ -16,9 +9,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Symph — User Board</title>
-
     <link rel="stylesheet" href="style-user-page.css"/>
-
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -27,13 +18,11 @@
 
 <nav class="navbar">
     <div class="logo"><img src="images/symph-logo.png" alt="Symph" /></div>
-
     <div class="search-bar">
         <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/>
         </svg>
         <input type="text" id="searchInput" placeholder="Search" aria-label="Search tasks" />
-
         <div class="tag-filter">
             <button id="tagFilterBtn" class="team-filter-btn" type="button" aria-haspopup="true"
                     aria-expanded="false" title="Filter by tag">
@@ -46,7 +35,6 @@
             <div class="popover team-filter-menu" id="tagFilterMenu" role="menu"></div>
         </div>
     </div>
-
     <div class="navbar-icons">
         <div class="account-menu-wrap">
             <button id="profileMenuBtn" class="account-menu-btn" type="button"
@@ -116,7 +104,19 @@
                 <option value="COMPLETED">Completed</option>
             </select>
             <div class="modal-header-icons">
-                <span class="modal-dots">⋯</span>
+                <div class="modal-more-wrap">
+                    <button type="button" class="modal-more-btn" id="modalMoreBtn"
+                            aria-haspopup="true" aria-expanded="false"
+                            aria-label="More task options">⋯</button>
+                    <div class="modal-more-menu" id="modalMoreMenu" role="menu">
+                        <button type="button" class="modal-more-item" id="modalCommentsBtn" role="menuitem">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                            </svg>
+                            Comments
+                        </button>
+                    </div>
+                </div>
                 <button class="modal-close" id="modalCloseBtn" type="button" aria-label="Close">✕</button>
             </div>
         </div>
@@ -126,14 +126,11 @@
                 <span class="modal-title-dot"></span>
                 <input class="modal-title-input" id="modalTitle" type="text" readonly />
             </div>
-
             <div class="modal-summary" id="modalSummary"></div>
-
             <section class="modal-section">
                 <h3>Description</h3>
                 <textarea class="modal-description" id="modalDescription" readonly placeholder="No description"></textarea>
             </section>
-
             <div class="modal-footer">
                 <button class="modal-cancel-btn" id="modalCancelBtn" type="button">Close</button>
             </div>
@@ -141,17 +138,34 @@
     </div>
 </div>
 
-<!-- ===================== MODAL: Log Time (US24) ===================== -->
+<!-- ===================== MODAL: Comments ===================== -->
+<div class="modal-overlay" id="commentsOverlay">
+    <div class="modal comments-modal" role="dialog" aria-modal="true" aria-labelledby="commentsTitle">
+        <button class="modal-close" id="closeCommentsBtn" aria-label="Close" type="button">✕</button>
+        <h2 class="modal-title" id="commentsTitle">Comments</h2>
+        <p class="modal-subtitle" id="commentsSubtitle">—</p>
+        <div class="comments-list" id="commentsList">
+            <p class="comments-empty">No comments yet.</p>
+        </div>
+        <div class="comments-composer">
+            <textarea id="newCommentText" maxlength="2000" rows="3" placeholder="Write a comment…"></textarea>
+            <div class="comments-composer-actions">
+                <span class="comments-char-count" id="commentsCharCount">0 / 2000</span>
+                <button type="button" class="btn-primary" id="sendCommentBtn">Send</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== MODAL: Log Time ===================== -->
 <div class="modal-overlay" id="logTimeOverlay">
     <div class="modal modal-narrow" role="dialog" aria-modal="true" aria-labelledby="logTimeTitle">
         <button class="modal-close" id="closeLogTimeBtn" aria-label="Close" type="button">✕</button>
         <h2 class="modal-title" id="logTimeTitle">Log Time</h2>
         <p class="modal-subtitle" id="logTimeTaskContext">Record your start time, time spent, and date.</p>
-
         <div class="error-banner" id="logTimeError" role="alert" hidden>
             <span id="logTimeErrorText"></span>
         </div>
-
         <form id="logTimeForm">
             <div class="form-field">
                 <label for="logDate">Date</label>
@@ -180,8 +194,7 @@
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="myLogsTitle">
         <button class="modal-close" id="closeMyLogsBtn" aria-label="Close" type="button">✕</button>
         <h2 class="modal-title" id="myLogsTitle">My Logged Time</h2>
-        <p class="modal-subtitle" id="myLogsSubtitle">Every time entry you've recorded. Click ✕ to delete a mistake.</p>
-
+        <p class="modal-subtitle" id="myLogsSubtitle">Every time entry you've recorded.</p>
         <div class="my-logs-table-wrap">
             <table class="my-logs-table">
                 <thead>
@@ -198,12 +211,11 @@
                 </tbody>
             </table>
         </div>
-
         <p class="my-logs-total" id="myLogsTotal"></p>
     </div>
 </div>
 
-<!-- ===================== MODAL: Logout Confirmation ===================== -->
+<!-- ===================== MODAL: Logout ===================== -->
 <div class="modal-overlay" id="logoutOverlay">
     <div class="modal modal-narrow" role="dialog" aria-modal="true">
         <h2 class="modal-title">Log out?</h2>
@@ -227,9 +239,8 @@
     </div>
 </div>
 
-<!-- ===================== TOAST ===================== -->
 <div class="toast" id="toast" role="status"></div>
 
-<script type="module" src="main-user-page.js?v=3" defer></script>
+<script type="module" src="main-user-page.js" defer></script>
 </body>
 </html>

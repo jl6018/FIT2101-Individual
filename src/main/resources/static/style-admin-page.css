@@ -1,6 +1,5 @@
 /**
  * Admin Board Page Stylesheet — Symph Web Application
- * Defines the visual layout and styling for the admin Kanban board.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -156,11 +155,7 @@ button, select, input, textarea {
 
 .nav-item:hover { background-color: #a6b3f5; }
 .nav-item.active { background-color: #d5daf6; font-weight: 700; }
-
-.nav-item:focus {
-    outline: none;
-}
-
+.nav-item:focus { outline: none; }
 .nav-item:focus-visible {
     outline: 2px solid #ffffff;
     outline-offset: 2px;
@@ -199,12 +194,8 @@ button, select, input, textarea {
     min-width: 0;
 }
 
-/* Navbar logo is hidden — the only Symph logo lives in the sidebar */
-.navbar-logo {
-    display: none;
-}
+.navbar-logo { display: none; }
 
-/* ---- Search bar ---- */
 .search-bar {
     flex: 1;
     min-width: 0;
@@ -225,9 +216,7 @@ button, select, input, textarea {
     box-sizing: border-box;
 }
 
-.search-bar input::placeholder {
-    color: #1a1a1a;
-}
+.search-bar input::placeholder { color: #1a1a1a; }
 
 .search-icon {
     position: absolute;
@@ -237,7 +226,6 @@ button, select, input, textarea {
     pointer-events: none;
 }
 
-/* ---- Tag filter + team filter: each is a positioning context ---- */
 .tag-filter {
     position: absolute;
     right: 110px;
@@ -266,17 +254,11 @@ button, select, input, textarea {
     cursor: pointer;
 }
 
-.team-filter-btn svg {
-    width: 1.5em;
-    height: 1.5em;
-}
+.team-filter-btn svg { width: 1.5em; height: 1.5em; }
 
 .team-filter-btn:hover,
-.team-filter-btn.filtered {
-    background-color: #e3e6fa;
-}
+.team-filter-btn.filtered { background-color: #e3e6fa; }
 
-/* ---- Popovers: anchor to the right edge of the button ---- */
 .popover.team-filter-menu {
     position: absolute;
     top: calc(100% + 8px);
@@ -293,9 +275,7 @@ button, select, input, textarea {
     z-index: 1000;
 }
 
-.popover.team-filter-menu.visible {
-    display: flex;
-}
+.popover.team-filter-menu.visible { display: flex; }
 
 .filter-option {
     display: flex;
@@ -330,7 +310,6 @@ button, select, input, textarea {
     flex-shrink: 0;
 }
 
-/* ===== Avatars ===== */
 .avatar {
     width: 36px;
     height: 36px;
@@ -344,19 +323,11 @@ button, select, input, textarea {
     flex-shrink: 0;
 }
 
-.avatar-small {
-    width: 24px;
-    height: 24px;
-    font-size: 0.62rem;
-}
-
+.avatar-small { width: 24px; height: 24px; font-size: 0.62rem; }
 .avatar-dark { background-color: #000; }
 .avatar-purple { background-color: #5b3db0; }
 
-/* ===================== NAVBAR ACCOUNT MENU ===================== */
-.account-menu-wrap {
-    position: relative;
-}
+.account-menu-wrap { position: relative; }
 
 .account-menu-btn {
     background: none;
@@ -426,7 +397,6 @@ button, select, input, textarea {
 }
 
 .account-menu-item:hover { background: #eef0fb; }
-
 .account-menu-item svg {
     width: 1.1em;
     height: 1.1em;
@@ -446,23 +416,10 @@ button, select, input, textarea {
     z-index: 30;
 }
 
-.project-header-left {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
+.project-header-left { display: flex; align-items: center; gap: 14px; }
 
-.project-name {
-    font-size: 1.6rem;
-    font-weight: 400;
-    position: relative;
-}
-
-.project-name-input,
-.project-name-sizer {
-    font: inherit;
-    letter-spacing: inherit;
-}
+.project-name { font-size: 1.6rem; font-weight: 400; position: relative; }
+.project-name-input, .project-name-sizer { font: inherit; letter-spacing: inherit; }
 
 .project-name-input {
     min-width: 60px;
@@ -478,7 +435,6 @@ button, select, input, textarea {
 }
 
 .project-name-input:hover { border-color: rgba(255, 255, 255, 0.6); }
-
 .project-name-input:focus {
     outline: none;
     background-color: white;
@@ -486,11 +442,7 @@ button, select, input, textarea {
     border-color: white;
 }
 
-.project-name-sizer {
-    position: absolute;
-    visibility: hidden;
-    white-space: pre;
-}
+.project-name-sizer { position: absolute; visibility: hidden; white-space: pre; }
 
 .badge {
     background-color: #000;
@@ -502,13 +454,8 @@ button, select, input, textarea {
     white-space: nowrap;
 }
 
-.project-header-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
+.project-header-right { display: flex; align-items: center; gap: 16px; }
 
-/* ===================== PROJECT HEADER ⋯ MENU ===================== */
 .more-menu-wrap { position: relative; }
 
 .more-menu-btn {
@@ -565,7 +512,6 @@ button, select, input, textarea {
 }
 
 .more-menu-item:hover { background: #eef0fb; }
-
 .more-menu-item svg {
     width: 1.1em;
     height: 1.1em;
@@ -605,15 +551,8 @@ button, select, input, textarea {
     color: white;
 }
 
-.board-controls-right {
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-}
+.board-controls-right { display: inline-flex; align-items: center; gap: 12px; }
 
-/* ===== Board ===== */
-/* minmax(0, 1fr) lets each column shrink below its natural width,
-   so 5 columns always fit — no horizontal scrollbar ever appears. */
 .board {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -652,13 +591,9 @@ button, select, input, textarea {
 }
 
 .card-list { min-height: 8px; }
-
 .card[draggable="true"] { cursor: grab; }
 .card.dragging { opacity: 0.4; }
-.column.drop-target {
-    outline: 2px dashed #6672c8;
-    outline-offset: -4px;
-}
+.column.drop-target { outline: 2px dashed #6672c8; outline-offset: -4px; }
 .card.drop-before { box-shadow: 0 -4px 0 #6672c8; }
 
 .card-detailed {
@@ -668,17 +603,8 @@ button, select, input, textarea {
     padding-bottom: 12px;
 }
 
-.card-title-row {
-    display: flex;
-    align-items: center;
-}
-
-.card-title {
-    flex: 1;
-    font-size: 1.05rem;
-    overflow-wrap: break-word;
-    min-width: 0;
-}
+.card-title-row { display: flex; align-items: center; }
+.card-title { flex: 1; font-size: 1.05rem; overflow-wrap: break-word; min-width: 0; }
 
 .edit-icon {
     background: none;
@@ -723,10 +649,7 @@ button, select, input, textarea {
     font-weight: 700;
 }
 
-.tag-avatars {
-    display: flex;
-    margin-left: auto;
-}
+.tag-avatars { display: flex; margin-left: auto; }
 
 .team-chip {
     border: 1px solid rgba(255, 255, 255, 0.7);
@@ -798,11 +721,7 @@ button, select, input, textarea {
     color: #000;
 }
 
-.modal-body {
-    overflow-y: auto;
-    padding: 28px 28px 4px 8px;
-}
-
+.modal-body { overflow-y: auto; padding: 28px 28px 4px 8px; }
 .modal-title-row {
     display: flex;
     align-items: center;
@@ -831,11 +750,7 @@ button, select, input, textarea {
 }
 
 .modal-title-input::placeholder { color: #000; }
-
-.modal-title-input:focus {
-    outline: none;
-    background-color: rgba(255, 255, 255, 0.5);
-}
+.modal-title-input:focus { outline: none; background-color: rgba(255, 255, 255, 0.5); }
 
 .modal-error {
     color: #a52a24;
@@ -845,19 +760,14 @@ button, select, input, textarea {
     margin-bottom: 6px;
 }
 
-.modal-toolbar,
-.toolbar-group {
+.modal-toolbar, .toolbar-group {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
 }
 
-.modal-toolbar {
-    justify-content: space-between;
-    margin-bottom: 12px;
-}
-
+.modal-toolbar { justify-content: space-between; margin-bottom: 12px; }
 .pill-wrap { position: relative; }
 
 .pill {
@@ -885,10 +795,7 @@ button, select, input, textarea {
     background-repeat: no-repeat;
 }
 
-.modal-header .pill-select {
-    font-size: 0.9rem;
-    padding: 8px 34px 8px 18px;
-}
+.modal-header .pill-select { font-size: 0.9rem; padding: 8px 34px 8px 18px; }
 
 .popover {
     display: none;
@@ -906,21 +813,11 @@ button, select, input, textarea {
 }
 
 .popover.visible { display: flex; }
-
 .popover-wide { width: 290px; }
+.popover-label { font-size: 0.8rem; font-weight: 700; }
+.popover-row { display: flex; gap: 8px; }
 
-.popover-label {
-    font-size: 0.8rem;
-    font-weight: 700;
-}
-
-.popover-row {
-    display: flex;
-    gap: 8px;
-}
-
-.popover input,
-.popover select {
+.popover input, .popover select {
     flex: 1;
     min-width: 0;
     padding: 8px 10px;
@@ -965,10 +862,7 @@ button, select, input, textarea {
     cursor: pointer;
 }
 
-.segment.active {
-    background-color: #6672c8;
-    color: white;
-}
+.segment.active { background-color: #6672c8; color: white; }
 
 .modal-summary {
     display: flex;
@@ -996,11 +890,7 @@ button, select, input, textarea {
 }
 
 .modal-section { margin-bottom: 24px; }
-
-.modal-section h3 {
-    font-size: 1.6rem;
-    margin-bottom: 12px;
-}
+.modal-section h3 { font-size: 1.6rem; margin-bottom: 12px; }
 
 .modal-description {
     display: block;
@@ -1016,12 +906,7 @@ button, select, input, textarea {
     box-shadow: 0 3px 4px rgba(0, 0, 0, 0.25);
 }
 
-.modal-description::placeholder {
-    color: #333;
-    font-weight: 700;
-    font-size: 0.75rem;
-}
-
+.modal-description::placeholder { color: #333; font-weight: 700; font-size: 0.75rem; }
 .modal-description:focus { outline: 2px solid #6672c8; }
 
 .modal-footer {
@@ -1043,13 +928,9 @@ button, select, input, textarea {
     cursor: pointer;
 }
 
-.modal-delete-btn.armed {
-    background-color: #a11c1c;
-    color: white;
-}
+.modal-delete-btn.armed { background-color: #a11c1c; color: white; }
 
-.modal-save-btn,
-.modal-cancel-btn {
+.modal-save-btn, .modal-cancel-btn {
     border: none;
     border-radius: 20px;
     padding: 10px 28px;
@@ -1061,7 +942,6 @@ button, select, input, textarea {
 .modal-save-btn { background-color: #000; color: white; }
 .modal-cancel-btn { background-color: #dddfee; color: #000; }
 
-/* ===================== TASK MODAL ⋯ MENU ===================== */
 .modal-more-wrap { position: relative; }
 
 .modal-more-btn {
@@ -1112,7 +992,6 @@ button, select, input, textarea {
 }
 
 .modal-more-item:hover { background: #eef0fb; }
-
 .modal-more-item svg {
     width: 1.1em;
     height: 1.1em;
@@ -1158,10 +1037,8 @@ button, select, input, textarea {
     .sidebar-collapsed .app-main { margin-left: 0; }
     .sidebar-collapsed .nav { display: none; }
     .nav { margin-bottom: 16px; }
-    .navbar,
-    .project-header { padding-left: 16px; padding-right: 16px; }
-    .board-controls,
-    .board { padding-left: 16px; padding-right: 16px; }
+    .navbar, .project-header { padding-left: 16px; padding-right: 16px; }
+    .board-controls, .board { padding-left: 16px; padding-right: 16px; }
     .board { gap: 16px; }
     .modal { padding-left: 16px; }
 }
@@ -1173,12 +1050,7 @@ button, select, input, textarea {
 /* ===== Multiple assignees + estimate ===== */
 .tag-avatars .avatar + .avatar { margin-left: -6px; }
 .tag-avatars .avatar { border: 1.5px solid #5c6897; }
-
-.card-badges {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
+.card-badges { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .employee-list {
     display: flex;
@@ -1210,16 +1082,8 @@ button, select, input, textarea {
     padding: 0;
 }
 
-.employee-team {
-    margin-left: auto;
-    font-size: 0.7rem;
-    color: #555;
-}
-
-.employee-empty {
-    padding: 10px;
-    font-size: 0.8rem;
-}
+.employee-team { margin-left: auto; font-size: 0.7rem; color: #555; }
+.employee-empty { padding: 10px; font-size: 0.8rem; }
 
 /* ===== Start Sprint button ===== */
 .start-sprint-btn {
@@ -1237,25 +1101,13 @@ button, select, input, textarea {
 
 .start-sprint-btn:hover { background: #16A34A; }
 .start-sprint-btn:disabled { cursor: not-allowed; opacity: 0.85; }
-
-.start-sprint-btn.is-active {
-    background: #DC2626;
-    color: white;
-}
+.start-sprint-btn.is-active { background: #DC2626; color: white; }
 .start-sprint-btn.is-active:hover { background: #B91C1C; }
-
-.start-sprint-btn.is-completed {
-    background: #9CA3AF;
-    color: white;
-}
-
-.start-sprint-btn.is-planned {
-    background: #22C55E;
-    color: white;
-}
+.start-sprint-btn.is-completed { background: #9CA3AF; color: white; }
+.start-sprint-btn.is-planned { background: #22C55E; color: white; }
 .start-sprint-btn.is-planned:hover { background: #16A34A; }
 
-/* ===== Narrow modal (Confirm / Alert / No-Sprint / Logout) ===== */
+/* ===== Narrow modal ===== */
 .modal-narrow {
     max-width: 420px;
     background-color: #ffffff;
@@ -1329,7 +1181,6 @@ button, select, input, textarea {
     margin-bottom: 16px;
 }
 
-/* ===== Generic modal + buttons ===== */
 .modal-title {
     font-family: Georgia, "Times New Roman", serif;
     font-size: 22px;
@@ -1345,11 +1196,7 @@ button, select, input, textarea {
     line-height: 1.5;
 }
 
-.modal-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 8px;
-}
+.modal-actions { display: flex; gap: 10px; margin-top: 8px; }
 
 .btn-primary {
     padding: 12px 20px;
@@ -1411,7 +1258,7 @@ button, select, input, textarea {
 .priority-high   { background-color: #e07b1c; }
 .priority-urgent { background-color: #d33; }
 
-/* ===================== INVITE PRODUCT OWNER MODAL ===================== */
+/* ===================== INVITE MODAL ===================== */
 .invite-modal {
     background-color: #ffffff;
     border-radius: 16px;
@@ -1453,7 +1300,6 @@ button, select, input, textarea {
 }
 
 .invite-modal .form-field { margin-bottom: 16px; }
-
 .invite-modal label {
     display: block;
     font-size: 13px;
@@ -1495,12 +1341,7 @@ button, select, input, textarea {
 .invite-modal .btn-primary.full-width { width: 100%; }
 
 /* ===================== US13: TAG CHIPS ===================== */
-.tag-chip-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 8px;
-}
+.tag-chip-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 
 .tag-chip {
     display: inline-flex;
@@ -1529,7 +1370,6 @@ button, select, input, textarea {
     .tag-filter { right: 110px; }
     .search-bar input { padding-right: 220px; }
 }
-
 @media (max-width: 720px) {
     .tag-filter { right: 105px; }
     .search-bar input { padding-right: 210px; }
@@ -1685,4 +1525,250 @@ button, select, input, textarea {
         margin-left: 16px;
         margin-right: 16px;
     }
+}
+
+/* ===================== EMPLOYEE NOTE ===================== */
+.note-badge {
+    background: #F59E0B;
+    color: white;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.employee-note-block {
+    flex-basis: 100%;
+    background: rgba(245, 158, 11, 0.15);
+    border-left: 3px solid #F59E0B;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 6px;
+}
+
+.employee-note-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #92400E;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+}
+
+.employee-note-body {
+    font-size: 0.9rem;
+    color: #1a1a1a;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* ===================== COMMENTS MODAL ===================== */
+.comments-modal {
+    background: #ffffff;
+    max-width: 640px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    max-height: 85vh;
+}
+
+.comments-modal .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 18px;
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #6B7280;
+    cursor: pointer;
+}
+
+.comments-modal .modal-title {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 4px;
+    color: #1a1a1a;
+}
+
+.comments-modal .modal-subtitle {
+    font-size: 13px;
+    color: #6B7280;
+    margin: 0 0 16px;
+    line-height: 1.5;
+}
+
+.comments-list {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 48vh;
+    padding: 8px 4px 8px 0;
+    margin-bottom: 16px;
+    border-top: 1px solid #E5E7EB;
+    border-bottom: 1px solid #E5E7EB;
+}
+
+.comments-empty {
+    padding: 20px 0;
+    text-align: center;
+    color: #9CA3AF;
+    font-size: 13px;
+    font-style: italic;
+}
+
+.comment-row {
+    display: flex;
+    gap: 12px;
+    padding: 12px 4px;
+    align-items: flex-start;
+}
+
+.comment-row + .comment-row {
+    border-top: 1px solid #F3F4F6;
+}
+
+.comment-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #5b3db0;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.comment-row-admin .comment-avatar {
+    background: #111111;
+}
+
+.comment-body-wrap {
+    flex: 1;
+    min-width: 0;
+}
+
+.comment-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+}
+
+.comment-author {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.comment-role {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6672c8;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.comment-time {
+    font-size: 11px;
+    color: #9CA3AF;
+    margin-left: auto;
+}
+
+.comment-text {
+    font-size: 13.5px;
+    color: #1a1a1a;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.comments-composer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.comments-composer textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    box-sizing: border-box;
+    resize: vertical;
+    min-height: 70px;
+}
+
+.comments-composer textarea:focus {
+    outline: 2px solid #6366F1;
+    outline-offset: 1px;
+}
+
+.comments-composer-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.comments-char-count {
+    font-size: 12px;
+    color: #9CA3AF;
+}
+
+.comments-composer .btn-primary {
+    padding: 10px 22px;
+    border: none;
+    border-radius: 10px;
+    background: #111111;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.comments-composer .btn-primary:hover { background: #2a2a2a; }
+.comments-composer .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ===================== COMMENT DELETE ===================== */
+.comment-row {
+    position: relative;
+}
+
+.comment-delete-btn {
+    background: none;
+    border: 1px solid transparent;
+    color: #9CA3AF;
+    cursor: pointer;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 13px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.comment-row:hover .comment-delete-btn {
+    color: #DC2626;
+    border-color: #DC2626;
+}
+
+.comment-delete-btn:hover {
+    background: #DC2626;
+    color: #fff;
+    border-color: #DC2626;
 }
