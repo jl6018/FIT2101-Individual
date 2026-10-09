@@ -16,16 +16,22 @@ public interface TaskCommentRepository extends JpaRepository<TaskComment, Long> 
 
     /**
      * Returns all comments on a task, oldest first (chronological order).
-     *
-     * @param taskId The task ID
-     * @return       Comments on that task, oldest first
      */
     List<TaskComment> findByTaskIdOrderByCreatedAtAsc(Long taskId);
 
     /**
-     * Deletes every comment on a task. Used when the task itself is deleted.
-     *
-     * @param taskId The task ID
+     * Returns the most recent N comments across ALL tasks,
+     * newest first. Used by the admin notification bell.
+     */
+    List<TaskComment> findTop20ByOrderByCreatedAtDesc();
+
+    /**
+     * Deletes every comment on a task.
      */
     void deleteByTaskId(Long taskId);
+
+    /**
+     * Counts comments on a task. Used for the "comment count" badge.
+     */
+    long countByTaskId(Long taskId);
 }

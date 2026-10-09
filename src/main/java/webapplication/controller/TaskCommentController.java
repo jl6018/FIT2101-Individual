@@ -16,7 +16,7 @@ import java.util.Map;
  */
 
 @RestController
-@RequestMapping("/api/tasks/{taskId}/comments")
+@RequestMapping("/api/tasks")
 @CrossOrigin
 public class TaskCommentController {
 
@@ -27,12 +27,19 @@ public class TaskCommentController {
     }
 
     /**
-     * Returns all comments on the given task, oldest first.
+     * Returns the N most recent comments across all tasks.
+     * Used by the admin notification bell.
      *
-     * @param taskId The task ID
-     * @return       200 with the list, or 404 if the task does not exist
+     * @param limit  How many to return (default 20)
+     * @return       200 with the list
      */
-    @GetMapping
+    @GetMapping("/comments/recent")
+    public List<TaskCommentResponse> getRecentComments(
+            @RequestParam(name = "limit", required = false, defaultValue = "20") int limit) {
+        return commentService.getRecentComments(limit);
+    }
+
+    @GetMapping("/{taskId}/comments")
     public ResponseEntity<?> getComments(@PathVariable Long taskId) {
         try {
             List<TaskCommentResponse> list = commentService.getCommentsByTask(taskId);
@@ -42,14 +49,7 @@ public class TaskCommentController {
         }
     }
 
-    /**
-     * Posts a new comment on the given task.
-     *
-     * @param taskId  The task ID
-     * @param body    { "authorId": 4, "body": "..." }
-     * @return        200 with the saved comment, 400 on missing body, 404 if task/user not found
-     */
-    @PostMapping
+    @PostMapping("/{taskId}/comments")
     public ResponseEntity<?> addComment(@PathVariable Long taskId,
                                         @RequestBody Map<String, Object> body) {
         try {
@@ -75,16 +75,7 @@ public class TaskCommentController {
         }
     }
 
-    /**
-     * Deletes a single comment on a task.
-     * A lightweight role guard is applied using the X-Role header.
-     *
-     * @param taskId      The task ID (kept for URL structure)
-     * @param commentId   The comment ID
-     * @param role        The caller's role, from the X-Role header
-     * @return            204 No Content on success, 403 if not allowed, 404 if not found
-     */
-    @DeleteMapping("/{commentId}")
+    @DeleteMapping("/{taskId}/comments/{commentId}")
     public ResponseEntity<?> deleteComment(
             @PathVariable Long taskId,
             @PathVariable Long commentId,

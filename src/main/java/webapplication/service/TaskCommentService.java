@@ -34,13 +34,6 @@ public class TaskCommentService {
         this.userRepository = userRepository;
     }
 
-    /**
-     * Returns all comments on a task, oldest first.
-     *
-     * @param taskId The task ID
-     * @return       Comments as response DTOs
-     * @throws RuntimeException if the task does not exist
-     */
     public List<TaskCommentResponse> getCommentsByTask(Long taskId) {
         if (!taskRepository.existsById(taskId)) {
             throw new RuntimeException("Task not found");
@@ -52,15 +45,21 @@ public class TaskCommentService {
     }
 
     /**
-     * Creates a new comment on a task.
+     * Returns the N most recent comments across all tasks,
+     * newest first. Used by the admin notification bell.
      *
-     * @param taskId    The task ID
-     * @param authorId  The ID of the user posting
-     * @param body      The comment text (max 2000 characters)
-     * @return          The saved comment as a response DTO
-     * @throws IllegalArgumentException if body is null or blank
-     * @throws RuntimeException         if task or user does not exist
+     * @param limit  How many to return (defaults to 20 if ≤ 0)
+     * @return       A list of TaskCommentResponse DTOs
      */
+    public List<TaskCommentResponse> getRecentComments(int limit) {
+        List<TaskComment> comments = commentRepository.findTop20ByOrderByCreatedAtDesc();
+        int effectiveLimit = (limit > 0) ? Math.min(limit, 50) : 20;
+        return comments.stream()
+                .limit(effectiveLimit)
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
     public TaskCommentResponse addComment(Long taskId, Long authorId, String body) {
         if (body == null || body.isBlank()) {
             throw new IllegalArgumentException("Comment body is required");
@@ -80,12 +79,6 @@ public class TaskCommentService {
         return toDto(saved);
     }
 
-    /**
-     * Deletes a single comment by its ID.
-     *
-     * @param commentId The comment ID
-     * @throws RuntimeException if the comment does not exist
-     */
     public void deleteComment(Long commentId) {
         if (!commentRepository.existsById(commentId)) {
             throw new RuntimeException("Comment not found");
@@ -94,13 +87,18 @@ public class TaskCommentService {
     }
 
     private TaskCommentResponse toDto(TaskComment c) {
+        Long taskId = (c.getTask() != null) ? c.getTask().getId() : null;
+        String taskName = (c.getTask() != null) ? c.getTask().getName() : "";
+
         return new TaskCommentResponse(
                 c.getId(),
                 c.getBody(),
                 c.getCreatedAt(),
                 c.getAuthor() != null ? c.getAuthor().getId() : null,
                 c.getAuthor() != null ? c.getAuthor().getName() : "Unknown",
-                c.getAuthor() != null ? c.getAuthor().getRole() : ""
+                c.getAuthor() != null ? c.getAuthor().getRole() : "",
+                taskId,
+                taskName
         );
     }
 }
