@@ -4,16 +4,6 @@
 
 /**
  * Admin Board Page — Symph Web Application
- * Handles all interactive behaviour for the admin Kanban board, including
- * authentication guards, task CRUD, drag-and-drop reordering, sprint tabs,
- * accumulated sprint hours (US25), team filtering, tag filtering/sorting
- * (US14), search, the task modal with progress editing (US16), card
- * editing, sprint start/end controls, tag management (US13), admin-only
- * task deletion (US11), the PRODUCT_OWNER role (US22), the Logged Hours
- * panel, a profile menu on the avatar with Log out (opening a confirm
- * modal), a ⋯ menu in the project header holding Share, and a ⋯ menu
- * inside the task modal with a Refresh action that re-fetches the
- * currently open task.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -38,6 +28,13 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 }
 
 (() => {
+    // ===================== HELPERS =====================
+    function avatarColor(name: string): string {
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        return `hsl(${Math.abs(hash) % 360}, 65%, 55%)`;
+    }
+
     // ===================== SHOW CURRENT USER =====================
     const avatarEl = document.getElementById("userAvatar");
     const profileMenuName = document.getElementById("profileMenuName");
@@ -57,16 +54,14 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
     if (avatarEl) {
         const label = storedName
-            .split(/\s+/)
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((part) => part.charAt(0).toUpperCase())
-            .join("");
+            .split(/\s+/).filter(Boolean).slice(0, 2)
+            .map((part) => part.charAt(0).toUpperCase()).join("");
         avatarEl.textContent = label || (storedName ? storedName.charAt(0).toUpperCase() : "?");
         if (storedName) avatarEl.title = storedName;
+        avatarEl.style.backgroundColor = avatarColor(storedName || "?");
+        avatarEl.style.color = "#ffffff";
     }
 
-    // ===================== ROLE BADGE (project header) =====================
     if (roleBadgeEl) {
         roleBadgeEl.textContent =
             storedRole === "PRODUCT_OWNER" ? "Product Owner" :
@@ -74,7 +69,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             "Admin";
     }
 
-    // ===================== MENUS (only one open at a time) =====================
+    // ===================== MENUS =====================
     const profileMenuBtn = document.getElementById("profileMenuBtn") as HTMLButtonElement | null;
     const profileMenu = document.getElementById("profileMenu") as HTMLDivElement | null;
     const headerMenuBtn = document.getElementById("headerMenuBtn") as HTMLButtonElement | null;
@@ -125,7 +120,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         setHeaderMenuOpen(willOpen);
     });
 
-    // ===================== LOGOUT (opens confirmation modal) =====================
+    // ===================== LOGOUT =====================
     const logoutBtn = document.getElementById("logoutBtn");
     const logoutOverlay = document.getElementById("logoutOverlay");
     const cancelLogoutBtn = document.getElementById("cancelLogoutBtn");
@@ -144,7 +139,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         if (e.target === logoutOverlay) logoutOverlay.classList.remove("visible");
     });
 
-    // Close any open menu on outside click
     document.addEventListener("click", (event: MouseEvent) => {
         const t = event.target as Node;
         if (profileMenu?.classList.contains("visible")
@@ -206,6 +200,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         position?: number | null;
         tags?: { id: number; name: string }[] | null;
         progress?: number | null;
+        sprint?: { id: number } | null;
     };
     type BackendUser = {
         id: number;
@@ -229,6 +224,14 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         description?: string | null;
         task?: { id: number; name: string } | null;
         user?: { id: number; name: string; role: string } | null;
+    };
+    type CommentDto = {
+        id: number;
+        body: string;
+        createdAt: string;
+        authorId: number;
+        authorName: string;
+        authorRole: string;
     };
 
     // ===================== CONFIG =====================
@@ -260,7 +263,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             const res = await fetch(USERS_API);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const users: BackendUser[] = await res.json();
-
             EMPLOYEES = users
                 .filter((u) => u.role === "EMPLOYEE")
                 .map((u) => ({
@@ -284,18 +286,9 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
     function blankTask(sprintId: string, column: ColumnId): Task {
         return {
-            id: "",
-            sprintId,
-            column,
-            title: "",
-            description: "",
-            assignee: null,
-            dueDate: "",
-            estimateHours: 0,
-            priority: "",
-            position: 0,
-            tags: [],
-            progress: 0,
+            id: "", sprintId, column, title: "", description: "",
+            assignee: null, dueDate: "", estimateHours: 0, priority: "",
+            position: 0, tags: [], progress: 0,
         };
     }
 
@@ -305,93 +298,65 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         if (!el) throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
         return el as T;
     }
-
     function escapeHtml(text: string): string {
         return text
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#39;");
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     }
-
     function initials(name: string): string {
-        return name
-            .split(/\s+/)
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((part) => part.charAt(0).toUpperCase())
-            .join("");
+        return name.split(/\s+/).filter(Boolean).slice(0, 2)
+            .map((part) => part.charAt(0).toUpperCase()).join("");
     }
-
     function teamName(teamId: string): string {
         return TEAMS.find((team) => team.id === teamId)?.name ?? "";
     }
-
     function findEmployee(employeeId: string): Employee | undefined {
         return EMPLOYEES.find((employee) => employee.id === employeeId);
     }
-
     function assignedEmployees(assignee: Assignee | null): Employee[] {
         if (assignee?.kind !== "employees") return [];
         return assignee.employeeIds
             .map(findEmployee)
             .filter((employee): employee is Employee => employee !== undefined);
     }
-
     function teamsOfTask(task: Task): string[] {
         if (!task.assignee) return [];
         if (task.assignee.kind === "team") return [task.assignee.teamId];
         if (task.assignee.kind === "teams") return task.assignee.teamIds;
-        return assignedEmployees(task.assignee)
-            .map((employee) => employee.team)
-            .filter(Boolean);
+        return assignedEmployees(task.assignee).map((e) => e.team).filter(Boolean);
     }
-
     function assigneeLabel(assignee: Assignee | null): string {
         if (!assignee) return "Unassigned";
         if (assignee.kind === "team") return teamName(assignee.teamId) || "Team";
         if (assignee.kind === "teams") return assignee.teamIds.join(", ");
-        const names = assignedEmployees(assignee).map((employee) => employee.name);
+        const names = assignedEmployees(assignee).map((e) => e.name);
         return names.length > 0 ? names.join(", ") : "Unassigned";
     }
-
-    function formatEstimate(hours: number): string {
-        return `${hours}h`;
-    }
-
+    function formatEstimate(hours: number): string { return `${hours}h`; }
     function formatDateBadge(isoDate: string): string {
         const date = new Date(`${isoDate}T00:00:00`);
         return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
     }
-
     function formatDateShort(iso: string | null | undefined): string {
         if (!iso) return "—";
         const d = new Date(`${iso}T00:00:00`);
         return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
     }
-
     function readSetting(key: string): string {
         try { return window.localStorage.getItem(key) ?? ""; } catch { return ""; }
     }
-
     function writeSetting(key: string, value: string): void {
         try { window.localStorage.setItem(key, value); } catch { /* ignore */ }
     }
 
     const SPRINT_KEY = "symph.currentSprint";
-
-    function readSprintSetting(): string {
-        return readSetting(SPRINT_KEY) || "1";
-    }
-
-    function writeSprintSetting(sprintId: string): void {
-        writeSetting(SPRINT_KEY, sprintId);
-    }
+    function readSprintSetting(): string { return readSetting(SPRINT_KEY) || "1"; }
+    function writeSprintSetting(sprintId: string): void { writeSetting(SPRINT_KEY, sprintId); }
 
     // ===================== STATE =====================
     let tasks: Task[] = [];
     let currentSprintId = readSprintSetting();
+    let currentSprintBackendId: string | null = null;
     let currentTeamId = "all";
     let currentTagName: string = TAG_FILTER_ALL;
     let sortByTag = false;
@@ -403,18 +368,11 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         assignedTeams: string | null;
         assignedEmployeeIds: string | null;
     } {
-        if (!assignee) {
-            return { assignedTeams: null, assignedEmployeeIds: null };
-        }
-        if (assignee.kind === "team") {
-            return { assignedTeams: assignee.teamId, assignedEmployeeIds: null };
-        }
-        if (assignee.kind === "teams") {
-            return { assignedTeams: assignee.teamIds.join(","), assignedEmployeeIds: null };
-        }
+        if (!assignee) return { assignedTeams: null, assignedEmployeeIds: null };
+        if (assignee.kind === "team") return { assignedTeams: assignee.teamId, assignedEmployeeIds: null };
+        if (assignee.kind === "teams") return { assignedTeams: assignee.teamIds.join(","), assignedEmployeeIds: null };
         return { assignedTeams: null, assignedEmployeeIds: assignee.employeeIds.join(",") };
     }
-
     function parseAssignee(t: BackendTask): Assignee | null {
         if (t.assignedEmployeeIds) {
             const ids = String(t.assignedEmployeeIds).split(",").map((s) => s.trim()).filter(Boolean);
@@ -428,40 +386,48 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         return null;
     }
 
+    // ===================== SPRINT RESOLUTION =====================
+    async function resolveSprintBackendId(tabId: string): Promise<string | null> {
+        const name = SPRINT_TAB_NAMES[tabId];
+        if (!name) return null;
+        try {
+            const res = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
+            if (!res.ok) return null;
+            const text = await res.text();
+            if (!text) return null;
+            const sprint = JSON.parse(text) as Sprint;
+            return sprint?.id != null ? String(sprint.id) : null;
+        } catch (err) {
+            console.error("Failed to resolve sprint backend id:", err);
+            return null;
+        }
+    }
+
     // ===================== CUSTOM MODALS =====================
     function showOverlay(id: string): void {
         const el = document.getElementById(id);
         if (el) el.classList.add("visible");
     }
-
     function hideOverlay(id: string): void {
         const el = document.getElementById(id);
         if (el) el.classList.remove("visible");
     }
 
-    function showNoSprintModal(): void {
-        showOverlay("noSprintOverlay");
-    }
+    function showNoSprintModal(): void { showOverlay("noSprintOverlay"); }
     document.getElementById("closeNoSprintBtn")?.addEventListener("click", () => hideOverlay("noSprintOverlay"));
     document.getElementById("noSprintOverlay")?.addEventListener("click", (e) => {
         if (e.target === document.getElementById("noSprintOverlay")) hideOverlay("noSprintOverlay");
     });
 
     let confirmResolver: ((value: boolean) => void) | null = null;
-
     function showConfirmModal(opts: {
-        title: string;
-        message: string;
-        confirmText?: string;
-        danger?: boolean;
+        title: string; message: string; confirmText?: string; danger?: boolean;
     }): Promise<boolean> {
         return new Promise((resolve) => {
             confirmResolver = resolve;
-
             const titleEl = document.getElementById("confirmTitle");
             const msgEl = document.getElementById("confirmMessage");
             const okBtn = document.getElementById("confirmOkBtn") as HTMLButtonElement | null;
-
             if (titleEl) titleEl.textContent = opts.title;
             if (msgEl) msgEl.textContent = opts.message;
             if (okBtn) {
@@ -469,19 +435,13 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 okBtn.classList.toggle("btn-danger", opts.danger === true);
                 okBtn.classList.toggle("btn-primary", opts.danger !== true);
             }
-
             showOverlay("confirmOverlay");
         });
     }
-
     function closeConfirmModal(result: boolean): void {
         hideOverlay("confirmOverlay");
-        if (confirmResolver) {
-            confirmResolver(result);
-            confirmResolver = null;
-        }
+        if (confirmResolver) { confirmResolver(result); confirmResolver = null; }
     }
-
     document.getElementById("confirmOkBtn")?.addEventListener("click", () => closeConfirmModal(true));
     document.getElementById("confirmCancelBtn")?.addEventListener("click", () => closeConfirmModal(false));
     document.getElementById("confirmOverlay")?.addEventListener("click", (e) => {
@@ -495,13 +455,11 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         if (msgEl) msgEl.textContent = message;
         showOverlay("alertOverlay");
     }
-
     document.getElementById("closeAlertBtn")?.addEventListener("click", () => hideOverlay("alertOverlay"));
     document.getElementById("alertOverlay")?.addEventListener("click", (e) => {
         if (e.target === document.getElementById("alertOverlay")) hideOverlay("alertOverlay");
     });
 
-    // Share now lives inside the project-header ⋯ menu
     const shareBtn = document.getElementById("shareBtn");
     const inviteOverlay = document.getElementById("inviteOverlay");
     const closeInviteBtn = document.getElementById("closeInviteBtn");
@@ -519,26 +477,19 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
     inviteForm?.addEventListener("submit", async (e: SubmitEvent) => {
         e.preventDefault();
-
         const email = ownerEmailInput?.value.trim();
-        if (!email) {
-            showToast("Please enter an email address.");
-            return;
-        }
-
+        if (!email) { showToast("Please enter an email address."); return; }
         try {
             const res = await fetch("/api/invites", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email }),
             });
-
             if (!res.ok) {
                 const text = await res.text();
                 console.error("Invite failed — backend said:", text);
                 throw new Error(text || "Failed to send invite.");
             }
-
             inviteOverlay?.classList.remove("visible");
             showToast(`Invite sent to ${email}`);
             inviteForm.reset();
@@ -554,10 +505,9 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             const res = await fetch(API_BASE);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data: BackendTask[] = await res.json();
-
             return data.map((t) => ({
                 id: String(t.id),
-                sprintId: "1",
+                sprintId: t.sprint?.id != null ? String(t.sprint.id) : "",
                 column: (t.status ?? "PRODUCT_BACKLOG") as ColumnId,
                 title: t.name,
                 description: t.description ?? "",
@@ -599,7 +549,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                     priority: task.priority || null,
                     position: task.position,
                     progress: task.progress ?? 0,
-                    sprint: { id: Number(currentSprintId) },
+                    sprint: currentSprintBackendId ? { id: Number(currentSprintBackendId) } : null,
                 }),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -615,11 +565,9 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         try {
             const numericId = Number(task.id);
             if (!Number.isFinite(numericId) || numericId <= 0) {
-                console.warn("Skipping update — task has no valid backend ID:", task);
                 showAlertModal("Save failed", "This task has no ID yet. Try refreshing the page.");
                 return false;
             }
-
             const payload = assigneeToBackendPayload(task.assignee);
             const body = {
                 name: task.title,
@@ -632,9 +580,8 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 priority: task.priority || null,
                 position: task.position,
                 progress: task.progress ?? 0,
-                sprint: { id: Number(currentSprintId) },
+                sprint: currentSprintBackendId ? { id: Number(currentSprintBackendId) } : null,
             };
-
             const res = await fetch(`${API_BASE}/${numericId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
@@ -653,17 +600,12 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         try {
             const numericId = Number(id);
             if (!Number.isFinite(numericId) || numericId <= 0) return false;
-
             const role = sessionStorage.getItem("role") || "";
             const res = await fetch(`${API_BASE}/${numericId}`, {
                 method: "DELETE",
                 headers: { "X-Role": role },
             });
-
-            if (res.status === 403) {
-                showAlertModal("Not allowed", "Only admins can delete tasks.");
-                return false;
-            }
+            if (res.status === 403) { showAlertModal("Not allowed", "Only admins can delete tasks."); return false; }
             if (!res.ok) {
                 const text = await res.text();
                 showAlertModal("Delete failed", text || `HTTP ${res.status}`);
@@ -681,17 +623,15 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     function visibleTasks(): Task[] {
         const term = searchTerm.toLowerCase();
         return tasks.filter((task) => {
-            if (task.sprintId !== currentSprintId) return false;
-            if (currentTeamId !== "all" && !teamsOfTask(task).includes(currentTeamId))
-                return false;
-
+            if (!currentSprintBackendId) return false;
+            if (task.sprintId !== currentSprintBackendId) return false;
+            if (currentTeamId !== "all" && !teamsOfTask(task).includes(currentTeamId)) return false;
             if (currentTagName !== TAG_FILTER_ALL) {
                 const hasTag = (task.tags ?? []).some(
                     (t) => t.name.toLowerCase() === currentTagName.toLowerCase()
                 );
                 if (!hasTag) return false;
             }
-
             if (term && !task.title.toLowerCase().includes(term)) return false;
             return true;
         });
@@ -704,15 +644,12 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         }
         if (task.assignee.kind === "teams") {
             return task.assignee.teamIds
-                .map((t) => `<span class="team-chip">${escapeHtml(t)}</span>`)
-                .join(" ");
+                .map((t) => `<span class="team-chip">${escapeHtml(t)}</span>`).join(" ");
         }
         return assignedEmployees(task.assignee)
-            .map(
-                (employee) =>
-                    `<div class="avatar avatar-small avatar-purple" title="${escapeHtml(employee.name)} · ${escapeHtml(employee.team)}">${escapeHtml(initials(employee.name))}</div>`
-            )
-            .join("");
+            .map((employee) =>
+                `<div class="avatar avatar-small" style="background:${avatarColor(employee.name)};" title="${escapeHtml(employee.name)} · ${escapeHtml(employee.team)}">${escapeHtml(initials(employee.name))}</div>`
+            ).join("");
     }
 
     const PENCIL_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-1L19 8l-3-3L5 16l-1 4z"/></svg>`;
@@ -730,26 +667,17 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
     function renderCard(task: Task): string {
         const priorityBadge = task.priority
-            ? `<span class="priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>`
-            : "";
+            ? `<span class="priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>` : "";
         const badges = [
             priorityBadge,
-            task.dueDate
-                ? `<span class="date-badge" title="Due date">${CLOCK_ICON} ${formatDateBadge(task.dueDate)}</span>`
-                : "",
-            task.estimateHours > 0
-                ? `<span class="date-badge" title="Estimate">Est. ${formatEstimate(task.estimateHours)}</span>`
-                : "",
+            task.dueDate ? `<span class="date-badge" title="Due date">${CLOCK_ICON} ${formatDateBadge(task.dueDate)}</span>` : "",
+            task.estimateHours > 0 ? `<span class="date-badge" title="Estimate">Est. ${formatEstimate(task.estimateHours)}</span>` : "",
         ].join("");
-        const tagBadges = (task.tags ?? [])
-            .map((t) => `<span class="tag">${escapeHtml(t.name)}</span>`)
-            .join("");
+        const tagBadges = (task.tags ?? []).map((t) => `<span class="tag">${escapeHtml(t.name)}</span>`).join("");
         const assigneeHtml = renderAssignee(task);
-        const footerHtml =
-            badges || assigneeHtml || tagBadges
-                ? `<div class="card-footer-row"><div class="card-badges">${badges}${tagBadges}</div><div class="tag-avatars">${assigneeHtml}</div></div>`
-                : "";
-
+        const footerHtml = badges || assigneeHtml || tagBadges
+            ? `<div class="card-footer-row"><div class="card-badges">${badges}${tagBadges}</div><div class="tag-avatars">${assigneeHtml}</div></div>`
+            : "";
         const progressHtml = renderProgressBar(task);
 
         return `
@@ -764,6 +692,16 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     }
 
     function renderBoard(): void {
+        if (!currentSprintBackendId) {
+            board.innerHTML = `
+                <div class="board-empty-sprint">
+                    <p><strong>No sprint exists on this tab yet.</strong></p>
+                    <p>Go to <a href="index-sprint-planning-page.html">Sprint Planning</a>, create
+                    <em>${escapeHtml(SPRINT_TAB_NAMES[currentSprintId] || "a sprint")}</em>, then come back to this page.</p>
+                </div>`;
+            return;
+        }
+
         const shown = visibleTasks();
         board.innerHTML = COLUMNS.map((column) => {
             const cards = shown
@@ -797,13 +735,15 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
         const addBtn = target.closest<HTMLElement>("[data-add]");
         if (addBtn) {
-            const draftTask = blankTask(
-                currentSprintId,
-                addBtn.dataset["add"] as ColumnId
-            );
-            if (currentTeamId !== "all") {
-                draftTask.assignee = { kind: "team", teamId: currentTeamId };
+            if (!currentSprintBackendId) {
+                showAlertModal(
+                    "No sprint on this tab",
+                    "Create a sprint on this tab first in Sprint Planning, then you can add cards."
+                );
+                return;
             }
+            const draftTask = blankTask(currentSprintId, addBtn.dataset["add"] as ColumnId);
+            if (currentTeamId !== "all") draftTask.assignee = { kind: "team", teamId: currentTeamId };
             openModal(draftTask);
         }
     });
@@ -811,31 +751,42 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     // ===================== LOGGED HOURS PANEL =====================
     const loggedHoursBody = document.getElementById("loggedHoursBody") as HTMLTableSectionElement | null;
     const loggedHoursTotal = document.getElementById("loggedHoursTotal") as HTMLParagraphElement | null;
-    const loggedHoursUserFilter = document.getElementById("loggedHoursUserFilter") as HTMLSelectElement | null;
     const loggedHoursRangeFilter = document.getElementById("loggedHoursRangeFilter") as HTMLSelectElement | null;
-    const loggedHoursRefreshBtn = document.getElementById("loggedHoursRefreshBtn") as HTMLButtonElement | null;
+    const loggedHoursScope = document.getElementById("loggedHoursScope") as HTMLSpanElement | null;
 
     async function loadLoggedHours(): Promise<void> {
         if (!loggedHoursBody) return;
-
-        loggedHoursBody.innerHTML =
-            `<tr><td colspan="5" class="muted">Loading…</td></tr>`;
+        loggedHoursBody.innerHTML = `<tr><td colspan="5" class="muted">Loading…</td></tr>`;
         if (loggedHoursTotal) loggedHoursTotal.textContent = "";
 
-        const mode = loggedHoursUserFilter?.value || "all";
-        const userId = sessionStorage.getItem("userId");
+        // Team filter follows the top-of-page filter, so admins only pick a team once.
+        const teamFilter = currentTeamId;
+
+        if (loggedHoursScope) {
+            loggedHoursScope.textContent = teamFilter === "all" ? "— all teams" : `— ${teamFilter}`;
+        }
 
         try {
-            let logs: TimeLogRow[];
+            const res = await fetch(TIMELOGS_API);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            let logs = (await res.json()) as TimeLogRow[];
 
-            if (mode === "me" && userId) {
-                const res = await fetch(`${TIMELOGS_API}/user/${userId}`);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                logs = (await res.json()) as TimeLogRow[];
-            } else {
-                const res = await fetch(TIMELOGS_API);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                logs = (await res.json()) as TimeLogRow[];
+            // Team filter
+            if (teamFilter !== "all") {
+                const memberIds = new Set(
+                    EMPLOYEES.filter((e) => e.team === teamFilter).map((e) => e.id)
+                );
+                logs = logs.filter((l) => l.user && memberIds.has(String(l.user.id)));
+            }
+
+            // ✅ Sprint filter — only show logs for tasks in the currently viewed sprint
+            if (currentSprintBackendId) {
+                const sprintTaskIds = new Set(
+                    tasks
+                        .filter((t) => t.sprintId === currentSprintBackendId)
+                        .map((t) => String(t.id))
+                );
+                logs = logs.filter((l) => l.task && sprintTaskIds.has(String(l.task.id)));
             }
 
             const rangeVal = loggedHoursRangeFilter?.value || "all";
@@ -848,14 +799,11 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             }
 
             logs.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
-
             if (logs.length === 0) {
-                loggedHoursBody.innerHTML =
-                    `<tr><td colspan="5" class="muted">No logs found.</td></tr>`;
+                loggedHoursBody.innerHTML = `<tr><td colspan="5" class="muted">No logs found.</td></tr>`;
                 if (loggedHoursTotal) loggedHoursTotal.textContent = "Total: 0h";
                 return;
             }
-
             let total = 0;
             loggedHoursBody.innerHTML = logs.map((l) => {
                 const hours = Number(l.hours || 0);
@@ -873,43 +821,31 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                         <td>${desc}</td>
                     </tr>`;
             }).join("");
-
             if (loggedHoursTotal) {
-                loggedHoursTotal.textContent =
-                    `Total: ${total.toFixed(1)}h across ${logs.length} log(s)`;
+                loggedHoursTotal.textContent = `Total: ${total.toFixed(1)}h across ${logs.length} log(s)`;
             }
         } catch (err) {
             console.error("Failed to load logged hours:", err);
-            loggedHoursBody.innerHTML =
-                `<tr><td colspan="5" class="muted">Could not load logs.</td></tr>`;
+            loggedHoursBody.innerHTML = `<tr><td colspan="5" class="muted">Could not load logs.</td></tr>`;
         }
     }
 
-    loggedHoursRefreshBtn?.addEventListener("click", () => { void loadLoggedHours(); });
-    loggedHoursUserFilter?.addEventListener("change", () => { void loadLoggedHours(); });
     loggedHoursRangeFilter?.addEventListener("change", () => { void loadLoggedHours(); });
 
     // ===================== DRAG AND DROP =====================
     let draggedTaskId: string | null = null;
-
     function clearDropMarkers(): void {
         board.querySelectorAll(".drop-target, .drop-before").forEach((el) => {
             el.classList.remove("drop-target", "drop-before");
         });
     }
-
     function cardAfterPointer(column: HTMLElement, pointerY: number): HTMLElement | null {
-        const cards = Array.from(
-            column.querySelectorAll<HTMLElement>(".card:not(.dragging)")
-        );
-        return (
-            cards.find((card) => {
-                const box = card.getBoundingClientRect();
-                return pointerY < box.top + box.height / 2;
-            }) ?? null
-        );
+        const cards = Array.from(column.querySelectorAll<HTMLElement>(".card:not(.dragging)"));
+        return cards.find((card) => {
+            const box = card.getBoundingClientRect();
+            return pointerY < box.top + box.height / 2;
+        }) ?? null;
     }
-
     board.addEventListener("dragstart", (event: DragEvent) => {
         const card = (event.target as HTMLElement).closest<HTMLElement>("[data-task]");
         if (!card || !event.dataTransfer) return;
@@ -918,7 +854,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         event.dataTransfer.setData("text/plain", draggedTaskId ?? "");
         card.classList.add("dragging");
     });
-
     board.addEventListener("dragover", (event: DragEvent) => {
         const column = (event.target as HTMLElement).closest<HTMLElement>(".column");
         if (!column || !draggedTaskId) return;
@@ -927,35 +862,20 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         column.classList.add("drop-target");
         cardAfterPointer(column, event.clientY)?.classList.add("drop-before");
     });
-
     board.addEventListener("drop", async (event: DragEvent) => {
         const column = (event.target as HTMLElement).closest<HTMLElement>(".column");
         if (!column || !draggedTaskId) return;
         event.preventDefault();
-
         const moved = tasks.find((t) => t.id === draggedTaskId);
-        if (!moved) {
-            draggedTaskId = null;
-            clearDropMarkers();
-            return;
-        }
-
+        if (!moved) { draggedTaskId = null; clearDropMarkers(); return; }
         if (!moved.id || moved.id === "" || Number.isNaN(Number(moved.id))) {
-            console.warn("Cannot move — task has no backend ID:", moved);
             showAlertModal("Cannot move", "This task has no ID yet. Refresh the page and try again.");
-            draggedTaskId = null;
-            clearDropMarkers();
-            return;
+            draggedTaskId = null; clearDropMarkers(); return;
         }
-
         const targetColumn = column.dataset["column"] as ColumnId;
-        const beforeId =
-            cardAfterPointer(column, event.clientY)?.dataset["task"] ?? null;
-
-        const siblings = tasks
-            .filter((t) => t.column === targetColumn && t.id !== moved.id)
+        const beforeId = cardAfterPointer(column, event.clientY)?.dataset["task"] ?? null;
+        const siblings = tasks.filter((t) => t.column === targetColumn && t.id !== moved.id)
             .sort((a, b) => a.position - b.position);
-
         let newPosition: number;
         if (!beforeId) {
             const last = siblings[siblings.length - 1];
@@ -964,42 +884,24 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             const idx = siblings.findIndex((t) => t.id === beforeId);
             const prev = siblings[idx - 1];
             const next = siblings[idx];
-            newPosition = prev
-                ? (prev.position + next.position) / 2
-                : next.position - 1;
+            newPosition = prev ? (prev.position + next.position) / 2 : next.position - 1;
         }
-
         const from = COLUMNS.find((c) => c.id === moved.column)?.name ?? "";
         const wasCompleted = from === "Completed";
-
         moved.column = targetColumn;
         moved.position = newPosition;
-
-        if (targetColumn === "COMPLETED" && (moved.progress ?? 0) < 100) {
-            moved.progress = 100;
-        } else if (
-            wasCompleted &&
-            (targetColumn === "TO_DO" ||
-             targetColumn === "IN_PROGRESS" ||
-             targetColumn === "IN_REVIEW")
-        ) {
-            moved.progress = 0;
-        }
-
+        if (targetColumn === "COMPLETED" && (moved.progress ?? 0) < 100) moved.progress = 100;
+        else if (wasCompleted && (targetColumn === "TO_DO" || targetColumn === "IN_PROGRESS" || targetColumn === "IN_REVIEW")) moved.progress = 0;
         const ok = await apiUpdate(moved);
         if (ok) {
             const to = COLUMNS.find((c) => c.id === moved.column)?.name ?? "";
             if (from !== to) showToast(`Moved to ${to}`);
             await refreshFromBackend();
         }
-
-        draggedTaskId = null;
-        clearDropMarkers();
+        draggedTaskId = null; clearDropMarkers();
     });
-
     board.addEventListener("dragend", () => {
-        draggedTaskId = null;
-        clearDropMarkers();
+        draggedTaskId = null; clearDropMarkers();
         board.querySelector(".dragging")?.classList.remove("dragging");
     });
 
@@ -1014,22 +916,22 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 if (sprintId) {
                     currentSprintId = sprintId;
                     writeSprintSetting(sprintId);
-                    renderBoard();
-                    renderTeamFilter();
-                    renderTagFilter();
-                    void refreshSprintButton();
+                    void (async () => {
+                        currentSprintBackendId = await resolveSprintBackendId(sprintId);
+                        await refreshFromBackend();
+                        await refreshSprintButton();
+                        void loadLoggedHours();   // ✅ refresh Logged Hours for the new sprint
+                    })();
                 }
             });
         });
     }
-
     function highlightSavedSprintTab(): void {
         const tabs = document.querySelectorAll<HTMLButtonElement>(".sprint-tab");
         tabs.forEach((tab) => {
             tab.classList.toggle("active", tab.dataset["sprint"] === currentSprintId);
         });
     }
-
     requireElement<HTMLInputElement>("searchInput").addEventListener("input", (event: Event) => {
         searchTerm = (event.target as HTMLInputElement).value.trim();
         renderBoard();
@@ -1039,7 +941,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     const teamFilterLabel = requireElement<HTMLSpanElement>("teamFilterLabel");
 
     function renderTeamFilter(): void {
-        const inSprint = tasks.filter((t) => t.sprintId === currentSprintId);
+        const inSprint = tasks.filter((t) => !currentSprintBackendId || t.sprintId === currentSprintBackendId);
         const options = [
             { id: "all", name: "All teams", count: inSprint.length },
             ...TEAMS.map((team) => ({
@@ -1048,28 +950,20 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 count: inSprint.filter((t) => teamsOfTask(t).includes(team.id)).length,
             })),
         ];
-
         if (teamFilterMenu) {
             teamFilterMenu.innerHTML =
                 `<span class="popover-label">View board for</span>` +
-                options
-                    .map((option) => {
-                        const active = option.id === currentTeamId;
-                        return `
+                options.map((option) => {
+                    const active = option.id === currentTeamId;
+                    return `
             <button type="button" class="filter-option${active ? " active" : ""}" data-team="${option.id}" role="menuitemradio" aria-checked="${active}">
               <span>${escapeHtml(option.name)}</span><span class="filter-count">${option.count}</span>
             </button>`;
-                    })
-                    .join("");
+                }).join("");
         }
-
-        teamFilterLabel.textContent =
-            currentTeamId === "all"
-                ? "All teams"
-                : teamName(currentTeamId) || "All teams";
+        teamFilterLabel.textContent = currentTeamId === "all" ? "All teams" : (teamName(currentTeamId) || "All teams");
         teamFilterBtn?.classList.toggle("filtered", currentTeamId !== "all");
     }
-
     teamFilterBtn?.addEventListener("click", (event: MouseEvent) => {
         event.stopPropagation();
         renderTeamFilter();
@@ -1077,7 +971,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         closeAllMenus();
         setTeamFilterOpen(willOpen);
     });
-
     teamFilterMenu?.addEventListener("click", (event: MouseEvent) => {
         event.stopPropagation();
         const option = (event.target as HTMLElement).closest<HTMLElement>("[data-team]");
@@ -1086,30 +979,28 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         setTeamFilterOpen(false);
         renderTeamFilter();
         renderBoard();
+        void loadLoggedHours();   // ✅ refresh Logged Hours when team changes
     });
 
-    // ===================== TAG FILTER (US14) =====================
+    // ===================== TAG FILTER =====================
     const tagFilterLabel = requireElement<HTMLSpanElement>("tagFilterLabel");
 
     function availableTagNames(): string[] {
         const names = new Set<string>();
         tasks
-            .filter((t) => t.sprintId === currentSprintId)
+            .filter((t) => !currentSprintBackendId || t.sprintId === currentSprintBackendId)
             .forEach((t) => (t.tags ?? []).forEach((tag) => names.add(tag.name)));
         return Array.from(names).sort((a, b) => a.localeCompare(b));
     }
 
     function renderTagFilter(): void {
         if (!tagFilterMenu) return;
-
-        const inSprint = tasks.filter((t) => t.sprintId === currentSprintId);
+        const inSprint = tasks.filter((t) => !currentSprintBackendId || t.sprintId === currentSprintBackendId);
         const names = availableTagNames();
-
         const countFor = (name: string) =>
             inSprint.filter((t) =>
                 (t.tags ?? []).some((tag) => tag.name.toLowerCase() === name.toLowerCase())
             ).length;
-
         const sortActive = sortByTag ? " active" : "";
         const header = `
             <button type="button" class="filter-option${sortActive}" data-tag-sort="1" role="menuitemradio" aria-checked="${sortByTag}">
@@ -1118,36 +1009,21 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             <button type="button" class="filter-option${currentTagName === TAG_FILTER_ALL ? " active" : ""}" data-tag="${TAG_FILTER_ALL}" role="menuitemradio" aria-checked="${currentTagName === TAG_FILTER_ALL}">
                 <span>All tags</span><span class="filter-count">${inSprint.length}</span>
             </button>`;
-
         const rows = names.length === 0
             ? `<p class="employee-empty">No tags in this sprint yet.</p>`
-            : names
-                  .map((name) => {
-                      const active = currentTagName.toLowerCase() === name.toLowerCase();
-                      return `
+            : names.map((name) => {
+                const active = currentTagName.toLowerCase() === name.toLowerCase();
+                return `
             <button type="button" class="filter-option${active ? " active" : ""}" data-tag="${escapeHtml(name)}" role="menuitemradio" aria-checked="${active}">
               <span>${escapeHtml(name)}</span><span class="filter-count">${countFor(name)}</span>
             </button>`;
-                  })
-                  .join("");
-
-        tagFilterMenu.innerHTML =
-            `<span class="popover-label">Filter by tag</span>` + header + rows;
-
-        if (sortByTag && currentTagName === TAG_FILTER_ALL) {
-            tagFilterLabel.textContent = "Sorted by tag";
-        } else if (currentTagName === TAG_FILTER_ALL) {
-            tagFilterLabel.textContent = "All tags";
-        } else {
-            tagFilterLabel.textContent = currentTagName;
-        }
-
-        tagFilterBtn?.classList.toggle(
-            "filtered",
-            sortByTag || currentTagName !== TAG_FILTER_ALL
-        );
+            }).join("");
+        tagFilterMenu.innerHTML = `<span class="popover-label">Filter by tag</span>` + header + rows;
+        if (sortByTag && currentTagName === TAG_FILTER_ALL) tagFilterLabel.textContent = "Sorted by tag";
+        else if (currentTagName === TAG_FILTER_ALL) tagFilterLabel.textContent = "All tags";
+        else tagFilterLabel.textContent = currentTagName;
+        tagFilterBtn?.classList.toggle("filtered", sortByTag || currentTagName !== TAG_FILTER_ALL);
     }
-
     tagFilterBtn?.addEventListener("click", (event: MouseEvent) => {
         event.stopPropagation();
         renderTagFilter();
@@ -1155,11 +1031,9 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         closeAllMenus();
         setTagFilterOpen(willOpen);
     });
-
     tagFilterMenu?.addEventListener("click", (event: MouseEvent) => {
         event.stopPropagation();
         const target = event.target as HTMLElement;
-
         const sortBtn = target.closest<HTMLElement>("[data-tag-sort]");
         if (sortBtn) {
             sortByTag = !sortByTag;
@@ -1168,11 +1042,9 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             renderBoard();
             return;
         }
-
         const tagBtn = target.closest<HTMLElement>("[data-tag]");
         if (!tagBtn) return;
-        const name = tagBtn.dataset["tag"] ?? TAG_FILTER_ALL;
-        currentTagName = name;
+        currentTagName = tagBtn.dataset["tag"] ?? TAG_FILTER_ALL;
         setTagFilterOpen(false);
         renderTagFilter();
         renderBoard();
@@ -1192,21 +1064,18 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     const employeeList = requireElement<HTMLDivElement>("employeeList");
     const estimateInput = requireElement<HTMLInputElement>("estimateInput");
     const prioritySelect = requireElement<HTMLSelectElement>("prioritySelect");
-
     const tagInput = requireElement<HTMLInputElement>("tagInput");
     const addTagBtn = requireElement<HTMLButtonElement>("addTagBtn");
     const tagChips = requireElement<HTMLDivElement>("tagChips");
     const tagEmpty = requireElement<HTMLParagraphElement>("tagEmpty");
-
     const progressInput = requireElement<HTMLInputElement>("progressInput");
     const progressValue = requireElement<HTMLSpanElement>("progressValue");
     const progressSlider = requireElement<HTMLInputElement>("progressSlider");
     const progressClearBtn = requireElement<HTMLButtonElement>("progressClearBtn");
 
-    // ⋯ menu inside the modal
     const modalMoreBtn = document.getElementById("modalMoreBtn") as HTMLButtonElement | null;
     const modalMoreMenu = document.getElementById("modalMoreMenu") as HTMLDivElement | null;
-    const modalRefreshBtn = document.getElementById("modalRefreshBtn") as HTMLButtonElement | null;
+    const modalCommentsBtn = document.getElementById("modalCommentsBtn") as HTMLButtonElement | null;
 
     let draft: Task | null = null;
     let assignKind: "team" | "employees" = "team";
@@ -1216,55 +1085,18 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         modalMoreMenu.classList.toggle("visible", open);
         modalMoreBtn.setAttribute("aria-expanded", String(open));
     }
-
     modalMoreBtn?.addEventListener("click", (event: MouseEvent) => {
         event.stopPropagation();
-        setModalMoreOpen(!modalMoreMenu.classList.contains("visible"));
+        setModalMoreOpen(!modalMoreMenu!.classList.contains("visible"));
     });
-
-    modalRefreshBtn?.addEventListener("click", async () => {
-        if (!draft || !draft.id) {
-            setModalMoreOpen(false);
-            return;
-        }
-
+    modalCommentsBtn?.addEventListener("click", () => {
         setModalMoreOpen(false);
-        modalRefreshBtn.disabled = true;
-
-        try {
-            const res = await fetch(`${API_BASE}/${draft.id}`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const fresh = (await res.json()) as BackendTask;
-
-            const mapped: Task = {
-                id: String(fresh.id),
-                sprintId: currentSprintId,
-                column: (fresh.status ?? "PRODUCT_BACKLOG") as ColumnId,
-                title: fresh.name,
-                description: fresh.description ?? "",
-                assignee: parseAssignee(fresh),
-                dueDate: fresh.dueDate ?? "",
-                estimateHours: fresh.estimateHours ?? 0,
-                priority: (fresh.priority ?? "") as Priority,
-                position: fresh.position ?? 0,
-                tags: Array.isArray(fresh.tags) ? fresh.tags : [],
-                progress: typeof fresh.progress === "number" ? fresh.progress : 0,
-            };
-
-            openModal(mapped);
-            showToast("Task refreshed");
-        } catch (err) {
-            console.error("Refresh failed:", err);
-            showAlertModal("Refresh failed", "Could not load the latest task data.");
-        } finally {
-            modalRefreshBtn.disabled = false;
-        }
+        void openCommentsModal();
     });
 
     function openModal(task: Task): void {
         draft = JSON.parse(JSON.stringify(task));
         assignKind = draft.assignee?.kind === "employees" ? "employees" : "team";
-
         columnSelect.value = draft.column;
         titleInput.value = draft.title;
         descriptionBox.value = draft.description;
@@ -1272,17 +1104,14 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         estimateInput.value = draft.estimateHours > 0 ? String(draft.estimateHours) : "";
         prioritySelect.value = draft.priority;
         tagInput.value = "";
-
         const pct = Number(draft.progress) || 0;
         progressInput.value = String(pct);
         progressSlider.value = String(pct);
         progressValue.textContent = `${pct}%`;
-
         errorText.textContent = "";
         saveBtn.textContent = draft.id ? "Save" : "Create task";
         deleteBtn.hidden = draft.id === "" || sessionStorage.getItem("role") !== "ADMIN";
         setDeleteArmed(false);
-
         renderDraft();
         renderTags();
         closePopovers();
@@ -1295,10 +1124,8 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         overlay.classList.remove("visible");
         closePopovers();
         setModalMoreOpen(false);
-
         const wasSavedTask = draft !== null && draft.id !== "";
         draft = null;
-
         if (wasSavedTask) void refreshFromBackend();
     }
 
@@ -1317,28 +1144,19 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
     function renderAssignControls(): void {
         if (!draft) return;
-
         document.querySelectorAll<HTMLElement>("[data-assign-kind]").forEach((segment) => {
             segment.classList.toggle("active", segment.dataset["assignKind"] === assignKind);
         });
-
         assigneeSelect.hidden = assignKind !== "team";
         employeeList.hidden = assignKind !== "employees";
-
         const assignee = draft.assignee;
         const currentTeam = assignee?.kind === "team" ? assignee.teamId : null;
-
         assigneeSelect.innerHTML =
             `<option value="">Choose a team…</option>` +
             TEAMS.map((t) => `<option value="${t.name}">${escapeHtml(t.name)}</option>`).join("");
         assigneeSelect.value = currentTeam ?? "";
-
-        const visibleEmployees = currentTeam
-            ? EMPLOYEES.filter((e) => e.team === currentTeam)
-            : [];
-
+        const visibleEmployees = currentTeam ? EMPLOYEES.filter((e) => e.team === currentTeam) : [];
         const ticked = assignee?.kind === "employees" ? assignee.employeeIds : [];
-
         employeeList.innerHTML = visibleEmployees.length === 0
             ? `<p class="employee-empty">${currentTeam ? "No employees in this team yet." : "Choose a team first."}</p>`
             : visibleEmployees.map((employee) => `
@@ -1349,37 +1167,22 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             </label>`).join("");
     }
 
-    // ===================== TAGS (US13) =====================
     function renderTags(): void {
         if (!draft) return;
         const tags = draft.tags ?? [];
-
         tagEmpty.hidden = tags.length > 0;
-        tagChips.innerHTML = tags
-            .map((t) => `
+        tagChips.innerHTML = tags.map((t) => `
       <span class="tag-chip" data-tag-id="${t.id}">
         ${escapeHtml(t.name)}
         <button type="button" aria-label="Remove ${escapeHtml(t.name)}" data-remove-tag="${t.id}">✕</button>
-      </span>`)
-            .join("");
+      </span>`).join("");
     }
-
     async function addTagToDraft(): Promise<void> {
         if (!draft) return;
-
         const name = tagInput.value.trim().toLowerCase();
         if (!name) return;
-
-        if ((draft.tags ?? []).some((t) => t.name.toLowerCase() === name)) {
-            tagInput.value = "";
-            return;
-        }
-
-        if (!draft.id) {
-            showToast("Save the task first, then add tags.");
-            return;
-        }
-
+        if ((draft.tags ?? []).some((t) => t.name.toLowerCase() === name)) { tagInput.value = ""; return; }
+        if (!draft.id) { showToast("Save the task first, then add tags."); return; }
         try {
             const res = await fetch(`${TAGS_API}/task/${Number(draft.id)}`, {
                 method: "POST",
@@ -1387,7 +1190,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 body: JSON.stringify({ name }),
             });
             if (!res.ok) throw new Error(await res.text());
-
             const updated = await res.json();
             draft.tags = Array.isArray(updated.tags) ? updated.tags : [];
             tagInput.value = "";
@@ -1397,15 +1199,11 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             showToast("Could not add tag");
         }
     }
-
     async function removeTagFromDraft(tagId: number): Promise<void> {
         if (!draft || !draft.id) return;
         try {
-            const res = await fetch(`${TAGS_API}/task/${Number(draft.id)}/${tagId}`, {
-                method: "DELETE",
-            });
+            const res = await fetch(`${TAGS_API}/task/${Number(draft.id)}/${tagId}`, { method: "DELETE" });
             if (!res.ok) throw new Error(await res.text());
-
             const updated = await res.json();
             draft.tags = Array.isArray(updated.tags) ? updated.tags : [];
             renderTags();
@@ -1417,48 +1215,39 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
     async function saveModal(): Promise<void> {
         if (!draft) return;
-
         const title = titleInput.value.trim();
         if (title.length < 2) {
             errorText.textContent = "Give the task a name of at least 2 characters.";
             titleInput.focus();
             return;
         }
-
         draft.title = title;
         draft.description = descriptionBox.value.trim();
         draft.column = columnSelect.value as ColumnId;
         draft.progress = Math.max(0, Math.min(100, Number(progressInput.value) || 0));
-
         const isNew = draft.id === "";
         const ok = isNew ? (await apiCreate(draft)) !== null : await apiUpdate(draft);
         if (!ok) return;
-
         closeModal();
         await refreshFromBackend();
         showToast(isNew ? "Task created" : "Changes saved");
     }
 
     let deleteArmed = false;
-
     function setDeleteArmed(armed: boolean): void {
         deleteArmed = armed;
         deleteBtn.textContent = armed ? "Click again to delete" : "Delete task";
         deleteBtn.classList.toggle("armed", armed);
     }
-
     deleteBtn.addEventListener("click", async () => {
         if (!draft) return;
         if (!deleteArmed) { setDeleteArmed(true); return; }
-
         const ok = await apiDelete(draft.id);
         if (!ok) return;
-
         closeModal();
         await refreshFromBackend();
         showToast("Task deleted");
     });
-
     deleteBtn.addEventListener("blur", () => setDeleteArmed(false));
 
     function closePopovers(): void {
@@ -1479,15 +1268,13 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             }
         });
     });
-
     overlay.querySelectorAll(".popover").forEach((popover) => {
         popover.addEventListener("click", (event) => event.stopPropagation());
     });
-
     overlay.addEventListener("click", (event: MouseEvent) => {
         if (!modalMoreMenu?.classList.contains("visible")) return;
-        const target = event.target as Node;
-        if (modalMoreMenu.contains(target) || modalMoreBtn?.contains(target)) return;
+        const t = event.target as Node;
+        if (modalMoreMenu.contains(t) || modalMoreBtn?.contains(t)) return;
         setModalMoreOpen(false);
     });
 
@@ -1496,34 +1283,29 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         draft.dueDate = dueDateInput.value;
         renderDraft();
     });
-
     requireElement<HTMLButtonElement>("dueDateClearBtn").addEventListener("click", () => {
         if (!draft) return;
         draft.dueDate = "";
         dueDateInput.value = "";
         renderDraft();
     });
-
     estimateInput.addEventListener("input", () => {
         if (!draft) return;
         const hours = Number(estimateInput.value);
         draft.estimateHours = Number.isFinite(hours) && hours > 0 ? hours : 0;
         renderDraft();
     });
-
     requireElement<HTMLButtonElement>("estimateClearBtn").addEventListener("click", () => {
         if (!draft) return;
         draft.estimateHours = 0;
         estimateInput.value = "";
         renderDraft();
     });
-
     prioritySelect.addEventListener("change", () => {
         if (!draft) return;
         draft.priority = prioritySelect.value as Priority;
         renderDraft();
     });
-
     requireElement<HTMLButtonElement>("priorityClearBtn").addEventListener("click", () => {
         if (!draft) return;
         draft.priority = "";
@@ -1538,10 +1320,8 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         progressSlider.value = String(pct);
         progressValue.textContent = `${pct}%`;
     }
-
     progressInput.addEventListener("input", () => syncProgress(progressInput.value));
     progressSlider.addEventListener("input", () => syncProgress(progressSlider.value));
-
     progressClearBtn.addEventListener("click", () => {
         if (!draft) return;
         syncProgress(0);
@@ -1554,13 +1334,11 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             renderAssignControls();
         });
     });
-
     assigneeSelect.addEventListener("change", () => {
         if (!draft) return;
         draft.assignee = assigneeSelect.value ? { kind: "team", teamId: assigneeSelect.value } : null;
         renderAssignControls();
     });
-
     employeeList.addEventListener("change", () => {
         if (!draft) return;
         const employeeIds = Array.from(employeeList.querySelectorAll<HTMLInputElement>("input:checked")).map((box) => box.value);
@@ -1568,24 +1346,16 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         const chip = summary.querySelector(".summary-chip");
         if (chip) chip.innerHTML = `<b>Assigned to</b> ${escapeHtml(assigneeLabel(draft.assignee))}`;
     });
-
     requireElement<HTMLButtonElement>("unassignBtn").addEventListener("click", () => {
         if (!draft) return;
         draft.assignee = null;
         renderDraft();
     });
 
-    addTagBtn.addEventListener("click", () => {
-        void addTagToDraft();
-    });
-
+    addTagBtn.addEventListener("click", () => { void addTagToDraft(); });
     tagInput.addEventListener("keydown", (event: KeyboardEvent) => {
-        if (event.key === "Enter") {
-            event.preventDefault();
-            void addTagToDraft();
-        }
+        if (event.key === "Enter") { event.preventDefault(); void addTagToDraft(); }
     });
-
     tagChips.addEventListener("click", (event: MouseEvent) => {
         const btn = (event.target as HTMLElement).closest<HTMLElement>("[data-remove-tag]");
         if (!btn) return;
@@ -1599,7 +1369,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     });
     requireElement<HTMLButtonElement>("modalCloseBtn").addEventListener("click", closeModal);
     requireElement<HTMLButtonElement>("modalCancelBtn").addEventListener("click", closeModal);
-
     overlay.addEventListener("click", (event) => {
         if (event.target === overlay) closeModal();
         else closePopovers();
@@ -1607,7 +1376,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
     document.addEventListener("keydown", (event: KeyboardEvent) => {
         if (event.key !== "Escape") return;
-
         closeAllMenus();
         if (!overlay.classList.contains("visible")) return;
         if (overlay.querySelector(".popover.visible")) closePopovers();
@@ -1615,10 +1383,188 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         else closeModal();
     });
 
+    // ===================== COMMENTS MODAL =====================
+    const commentsOverlay = document.getElementById("commentsOverlay") as HTMLDivElement | null;
+    const closeCommentsBtn = document.getElementById("closeCommentsBtn") as HTMLButtonElement | null;
+    const commentsTitle = document.getElementById("commentsTitle") as HTMLHeadingElement | null;
+    const commentsSubtitle = document.getElementById("commentsSubtitle") as HTMLParagraphElement | null;
+    const commentsList = document.getElementById("commentsList") as HTMLDivElement | null;
+    const newCommentText = document.getElementById("newCommentText") as HTMLTextAreaElement | null;
+    const commentsCharCount = document.getElementById("commentsCharCount") as HTMLSpanElement | null;
+    const sendCommentBtn = document.getElementById("sendCommentBtn") as HTMLButtonElement | null;
+
+    let commentsTaskId: string | null = null;
+
+    function formatCommentTime(iso: string): string {
+        if (!iso) return "";
+        const d = new Date(iso);
+        const now = new Date();
+        const sameDay =
+            d.getFullYear() === now.getFullYear() &&
+            d.getMonth() === now.getMonth() &&
+            d.getDate() === now.getDate();
+        const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+        if (sameDay) return `Today ${time}`;
+        const date = d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+        return `${date} · ${time}`;
+    }
+
+    function renderCommentList(comments: CommentDto[]): void {
+        if (!commentsList) return;
+        if (!comments || comments.length === 0) {
+            commentsList.innerHTML = `<p class="comments-empty">No comments yet. Start the conversation.</p>`;
+            return;
+        }
+        commentsList.innerHTML = comments.map((c) => {
+            const authorInitials = escapeHtml(
+                String(c.authorName || "?")
+                    .split(/\s+/).filter(Boolean).slice(0, 2)
+                    .map((p) => p.charAt(0).toUpperCase()).join("")
+            );
+            const roleLabel =
+                c.authorRole === "ADMIN" ? "Admin" :
+                c.authorRole === "PRODUCT_OWNER" ? "Product Owner" :
+                c.authorRole === "EMPLOYEE" ? "Employee" : "";
+            const isAdmin = c.authorRole === "ADMIN" || c.authorRole === "PRODUCT_OWNER";
+            return `
+                <div class="comment-row${isAdmin ? " comment-row-admin" : ""}" data-comment-id="${c.id}">
+                    <div class="comment-avatar" style="background:${avatarColor(c.authorName || "?")};">${authorInitials}</div>
+                    <div class="comment-body-wrap">
+                        <div class="comment-meta">
+                            <span class="comment-author">${escapeHtml(c.authorName)}</span>
+                            <span class="comment-role">${roleLabel}</span>
+                            <button type="button" class="comment-delete-btn"
+                                    data-delete-comment="${c.id}"
+                                    title="Delete comment"
+                                    aria-label="Delete comment">✕</button>
+                            <span class="comment-time">${formatCommentTime(c.createdAt)}</span>
+                        </div>
+                        <div class="comment-text">${escapeHtml(c.body)}</div>
+                    </div>
+                </div>`;
+        }).join("");
+        commentsList.scrollTop = commentsList.scrollHeight;
+    }
+
+    async function loadComments(taskId: string): Promise<void> {
+        if (!commentsList) return;
+        commentsList.innerHTML = `<p class="comments-empty">Loading…</p>`;
+        try {
+            const res = await fetch(`${API_BASE}/${taskId}/comments`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const comments = (await res.json()) as CommentDto[];
+            renderCommentList(comments);
+        } catch (err) {
+            console.error("Failed to load comments:", err);
+            commentsList.innerHTML = `<p class="comments-empty">Could not load comments.</p>`;
+        }
+    }
+
+    async function openCommentsModal(): Promise<void> {
+        if (!draft || !draft.id) {
+            showToast("Save the task first, then add comments.");
+            return;
+        }
+        commentsTaskId = draft.id;
+        if (commentsTitle) commentsTitle.textContent = "Comments";
+        if (commentsSubtitle) commentsSubtitle.textContent = `On "${draft.title}"`;
+        if (newCommentText) newCommentText.value = "";
+        updateCommentsCharCount();
+        commentsOverlay?.classList.add("visible");
+        await loadComments(draft.id);
+        newCommentText?.focus();
+    }
+
+    function closeCommentsModal(): void {
+        commentsOverlay?.classList.remove("visible");
+        commentsTaskId = null;
+    }
+
+    function updateCommentsCharCount(): void {
+        if (commentsCharCount && newCommentText) {
+            commentsCharCount.textContent = `${newCommentText.value.length} / 2000`;
+        }
+    }
+
+    closeCommentsBtn?.addEventListener("click", closeCommentsModal);
+    commentsOverlay?.addEventListener("click", (e: MouseEvent) => {
+        if (e.target === commentsOverlay) closeCommentsModal();
+    });
+    newCommentText?.addEventListener("input", updateCommentsCharCount);
+
+    async function sendComment(): Promise<void> {
+        if (!commentsTaskId || !newCommentText || !sendCommentBtn) return;
+        const body = newCommentText.value.trim();
+        if (!body) { showToast("Please type a comment first."); return; }
+        const authorId = Number(sessionStorage.getItem("userId"));
+        if (!authorId || Number.isNaN(authorId)) { showToast("You must be signed in."); return; }
+        sendCommentBtn.disabled = true;
+        sendCommentBtn.textContent = "Sending…";
+        try {
+            const res = await fetch(`${API_BASE}/${commentsTaskId}/comments`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ authorId, body }),
+            });
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || `HTTP ${res.status}`);
+            }
+            newCommentText.value = "";
+            updateCommentsCharCount();
+            await loadComments(commentsTaskId);
+        } catch (err) {
+            console.error("Send comment failed:", err);
+            showToast("Could not send the comment. Please try again.");
+        } finally {
+            sendCommentBtn.disabled = false;
+            sendCommentBtn.textContent = "Send";
+        }
+    }
+    sendCommentBtn?.addEventListener("click", () => { void sendComment(); });
+    newCommentText?.addEventListener("keydown", (e: KeyboardEvent) => {
+        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            void sendComment();
+        }
+    });
+
+    commentsList?.addEventListener("click", async (e: MouseEvent) => {
+        const btn = (e.target as HTMLElement).closest<HTMLElement>("[data-delete-comment]");
+        if (!btn) return;
+        const commentId = btn.dataset["deleteComment"];
+        if (!commentId || !commentsTaskId) return;
+
+        const confirmed = await showConfirmModal({
+            title: "Delete this comment?",
+            message: "This cannot be undone.",
+            confirmText: "Delete",
+            danger: true,
+        });
+        if (!confirmed) return;
+
+        try {
+            const role = sessionStorage.getItem("role") || "";
+            const res = await fetch(`${API_BASE}/${commentsTaskId}/comments/${commentId}`, {
+                method: "DELETE",
+                headers: { "X-Role": role },
+            });
+            if (res.status === 403) { showToast("You are not allowed to delete this comment."); return; }
+            if (res.status === 404) { showToast("That comment no longer exists."); }
+            else if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || `HTTP ${res.status}`);
+            }
+            await loadComments(commentsTaskId);
+        } catch (err) {
+            console.error("Delete comment failed:", err);
+            showToast("Could not delete the comment. Please try again.");
+        }
+    });
+
     // ===================== TOAST =====================
     const toast = requireElement<HTMLDivElement>("toast");
     let toastTimeoutId: number | undefined;
-
     function showToast(message: string): void {
         toast.textContent = message;
         toast.classList.add("visible");
@@ -1639,24 +1585,18 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         projectNameInput.style.width = `${Math.ceil(sizer.getBoundingClientRect().width) + 26}px`;
         sizer.remove();
     }
-
     function commitProjectName(): void {
         const typed = projectNameInput.value.trim();
-        if (typed) {
-            projectName = typed;
-            writeSetting(PROJECT_NAME_KEY, projectName);
-        }
+        if (typed) { projectName = typed; writeSetting(PROJECT_NAME_KEY, projectName); }
         projectNameInput.value = projectName;
         fitProjectName();
     }
-
     projectNameInput.addEventListener("input", fitProjectName);
     projectNameInput.addEventListener("blur", commitProjectName);
     projectNameInput.addEventListener("keydown", (event: KeyboardEvent) => {
         if (event.key === "Enter") projectNameInput.blur();
         else if (event.key === "Escape") { projectNameInput.value = projectName; projectNameInput.blur(); }
     });
-
     projectNameInput.value = projectName;
     fitProjectName();
     document.fonts?.ready.then(fitProjectName);
@@ -1665,33 +1605,23 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     const SIDEBAR_KEY = "symph.sidebarCollapsed";
     const appShell = requireElement<HTMLDivElement>("appShell");
     const sidebarToggle = requireElement<HTMLButtonElement>("sidebarToggle");
-
     function setSidebarCollapsed(collapsed: boolean): void {
         appShell.classList.toggle("sidebar-collapsed", collapsed);
         sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
         sidebarToggle.setAttribute("aria-label", collapsed ? "Expand menu" : "Collapse menu");
         sidebarToggle.title = collapsed ? "Expand menu" : "Collapse menu";
     }
-
     sidebarToggle.addEventListener("click", () => {
         const collapsed = !appShell.classList.contains("sidebar-collapsed");
         setSidebarCollapsed(collapsed);
         writeSetting(SIDEBAR_KEY, collapsed ? "1" : "0");
     });
-
     setSidebarCollapsed(readSetting(SIDEBAR_KEY) === "1");
 
-    // ===================== START / END SPRINT (US23) =====================
+    // ===================== START / END SPRINT =====================
     const startSprintBtn = document.getElementById("startSprintBtn") as HTMLButtonElement | null;
     let currentSprintStatus: string | null = null;
-    let currentSprintNumericId: number | null = null;
 
-    /**
-     * Loads the latest sprint with the given name.
-     * The backend returns 200 with an EMPTY body when no sprint with that
-     * name exists yet — so we read the response as text first and treat an
-     * empty string as "no sprint".
-     */
     async function fetchSprintStatus(tabId: string): Promise<Sprint | null> {
         const name = SPRINT_TAB_NAMES[tabId];
         if (!name) return null;
@@ -1699,19 +1629,16 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             const res = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
             if (!res.ok) return null;
             const text = await res.text();
-            if (!text) return null;                 // empty body = no sprint yet
+            if (!text) return null;
             return JSON.parse(text) as Sprint;
         } catch (err) {
             console.error("Failed to load sprint:", err);
             return null;
         }
     }
-
     function renderSprintButton(status: string | null): void {
         if (!startSprintBtn) return;
-
         startSprintBtn.classList.remove("is-active", "is-completed", "is-planned");
-
         if (status === "ACTIVE") {
             startSprintBtn.textContent = "■ End Sprint";
             startSprintBtn.classList.add("is-active");
@@ -1729,29 +1656,20 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             startSprintBtn.title = "Start the current sprint";
         }
     }
-
     async function refreshSprintButton(): Promise<void> {
         const sprint = await fetchSprintStatus(currentSprintId);
         currentSprintStatus = sprint?.status ?? null;
-        currentSprintNumericId = sprint?.id ?? null;
+        if (sprint?.id != null) currentSprintBackendId = String(sprint.id);
         renderSprintButton(currentSprintStatus);
     }
-
     startSprintBtn?.addEventListener("click", async () => {
         if (!startSprintBtn || startSprintBtn.disabled) return;
-
-        const numericId = currentSprintNumericId;
-        if (numericId === null || !Number.isFinite(numericId) || numericId <= 0) {
-            showNoSprintModal();
-            return;
-        }
-
+        const numericId = currentSprintBackendId != null ? Number(currentSprintBackendId) : null;
+        if (numericId === null || !Number.isFinite(numericId) || numericId <= 0) { showNoSprintModal(); return; }
         const starting = currentSprintStatus !== "ACTIVE";
-
         const confirmMsg = starting
             ? "Start the sprint now? Time tracking will begin."
             : "End this sprint? The sprint will be marked as completed.";
-
         const confirmed = await showConfirmModal({
             title: starting ? "Start sprint?" : "End sprint?",
             message: confirmMsg,
@@ -1759,30 +1677,18 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             danger: !starting,
         });
         if (!confirmed) return;
-
         startSprintBtn.disabled = true;
-
         try {
             const endpoint = starting ? "start" : "complete";
-            const res = await fetch(`${SPRINTS_API}/${numericId}/${endpoint}`, {
-                method: "PUT",
-            });
-
-            if (!res.ok) {
-                const msg = await res.text();
-                throw new Error(msg || `HTTP ${res.status}`);
-            }
-
+            const res = await fetch(`${SPRINTS_API}/${numericId}/${endpoint}`, { method: "PUT" });
+            if (!res.ok) { const msg = await res.text(); throw new Error(msg || `HTTP ${res.status}`); }
             const updated = (await res.json()) as Sprint;
             currentSprintStatus = updated.status;
             renderSprintButton(currentSprintStatus);
             showToast(starting ? "Sprint started" : "Sprint completed");
         } catch (err) {
             console.error("Sprint action failed:", err);
-            showAlertModal(
-                "Sprint update failed",
-                `Failed to update sprint status (sprint ${numericId}). Check the console for details.`
-            );
+            showAlertModal("Sprint update failed", `Failed to update sprint status (sprint ${numericId}).`);
             await refreshSprintButton();
         }
     });
@@ -1792,6 +1698,9 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         await loadEmployeesFromBackend();
         highlightSavedSprintTab();
         initSprintTabs();
+
+        currentSprintBackendId = await resolveSprintBackendId(currentSprintId);
+
         renderTeamFilter();
         renderTagFilter();
         await refreshSprintButton();

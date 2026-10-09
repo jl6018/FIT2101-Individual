@@ -1,8 +1,8 @@
 /**
  * User Board Page Stylesheet — Symph Web Application
- * Employee (read-only) board with navbar, account menu, project header
- * (⋯ menu + team badge), sprint tabs, board columns, task cards, task modal,
- * Log Time modal (US24), My Logs modal, and logout confirmation modal.
+ * Employee (read-only) board with navbar, account menu, project header,
+ * sprint tabs, board columns, task cards, task modal, Comments modal,
+ * Log Time modal, My Logs modal, and logout confirmation modal.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -183,7 +183,7 @@ body {
     font-size: 0.8rem;
 }
 
-/* ===================== NAVBAR RIGHT (account menu) ===================== */
+/* ===================== NAVBAR RIGHT ===================== */
 .navbar-icons {
     display: flex;
     align-items: center;
@@ -857,7 +857,7 @@ body {
     margin: 0 0 20px;
 }
 
-/* ===================== US08: EMPTY STATE ===================== */
+/* ===================== EMPTY STATE ===================== */
 .board-empty {
     text-align: center;
     padding: 40px 20px;
@@ -866,7 +866,7 @@ body {
     margin: 0 32px;
 }
 
-/* ===================== US24: LOG-TIME MODAL ===================== */
+/* ===================== LOG-TIME MODAL ===================== */
 .logtime-icon {
     background: none;
     border: none;
@@ -1166,4 +1166,402 @@ body {
 
 #logoutOverlay .modal-narrow .btn-danger:active {
     transform: scale(0.98);
+}
+
+/* ===================== CONFIRM MODAL ===================== */
+#confirmOverlay .modal-narrow {
+    max-width: 420px;
+    padding: 32px 32px 28px;
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    text-align: center;
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+}
+
+#confirmOverlay .modal-narrow::before {
+    content: "⚠️";
+    display: block;
+    font-size: 36px;
+    line-height: 1;
+    margin-bottom: 16px;
+}
+
+#confirmOverlay .modal-narrow .modal-title {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #111111;
+    margin: 0 0 8px;
+    letter-spacing: -0.3px;
+}
+
+#confirmOverlay .modal-narrow .modal-subtitle {
+    font-size: 14px;
+    color: #6B7280;
+    margin: 0 0 24px;
+    line-height: 1.5;
+}
+
+#confirmOverlay .modal-narrow .modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+    width: 100%;
+}
+
+#confirmOverlay .modal-narrow .btn-secondary,
+#confirmOverlay .modal-narrow .btn-primary,
+#confirmOverlay .modal-narrow .btn-danger {
+    flex: 1;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+#confirmOverlay .modal-narrow .btn-secondary {
+    border: 1px solid #E5E7EB;
+    background: #FFFFFF;
+    color: #111111;
+}
+
+#confirmOverlay .modal-narrow .btn-secondary:hover {
+    background: #F9FAFB;
+    border-color: #D1D5DB;
+}
+
+#confirmOverlay .modal-narrow .btn-primary {
+    border: none;
+    background: #111111;
+    color: #FFFFFF;
+}
+
+#confirmOverlay .modal-narrow .btn-primary:hover {
+    background: #2a2a2a;
+}
+
+#confirmOverlay .modal-narrow .btn-danger {
+    border: none;
+    background: #DC2626;
+    color: #FFFFFF;
+}
+
+#confirmOverlay .modal-narrow .btn-danger:hover {
+    background: #B91C1C;
+}
+
+/* ===================== MODAL ⋯ MENU ===================== */
+.modal-more-wrap { position: relative; }
+
+.modal-more-btn {
+    background: none;
+    border: none;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #000;
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 6px;
+    line-height: 1;
+    font-family: inherit;
+}
+
+.modal-more-btn:hover { background: rgba(0, 0, 0, 0.08); }
+
+.modal-more-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 220px;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+    padding: 6px;
+    z-index: 3000;
+}
+
+.modal-more-menu.visible { display: block; }
+
+.modal-more-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    background: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1a1a;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.modal-more-item:hover { background: #eef0fb; }
+
+.modal-more-item svg {
+    width: 1.1em;
+    height: 1.1em;
+    color: #5f6699;
+    flex-shrink: 0;
+}
+
+/* ===================== COMMENTS MODAL ===================== */
+.comments-modal {
+    background: #ffffff;
+    max-width: 640px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    max-height: 85vh;
+    position: relative;
+    text-align: left;
+    align-items: stretch;
+}
+
+.comments-modal .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 18px;
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #6B7280;
+    cursor: pointer;
+}
+
+.comments-modal .modal-title {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 4px;
+    color: #1a1a1a;
+}
+
+.comments-modal .modal-subtitle {
+    font-size: 13px;
+    color: #6B7280;
+    margin: 0 0 16px;
+    line-height: 1.5;
+}
+
+.comments-list {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 48vh;
+    padding: 8px 4px 8px 0;
+    margin-bottom: 16px;
+    border-top: 1px solid #E5E7EB;
+    border-bottom: 1px solid #E5E7EB;
+}
+
+.comments-empty {
+    padding: 20px 0;
+    text-align: center;
+    color: #9CA3AF;
+    font-size: 13px;
+    font-style: italic;
+}
+
+.comment-row {
+    display: flex;
+    gap: 12px;
+    padding: 12px 4px;
+    align-items: flex-start;
+}
+
+.comment-row + .comment-row {
+    border-top: 1px solid #F3F4F6;
+}
+
+.comment-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #5b3db0;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.comment-row-admin .comment-avatar {
+    background: #111111;
+}
+
+.comment-body-wrap {
+    flex: 1;
+    min-width: 0;
+}
+
+.comment-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+}
+
+.comment-author {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.comment-role {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6672c8;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.comment-time {
+    font-size: 11px;
+    color: #9CA3AF;
+    margin-left: auto;
+}
+
+.comment-text {
+    font-size: 13.5px;
+    color: #1a1a1a;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.comments-composer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.comments-composer textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    box-sizing: border-box;
+    resize: vertical;
+    min-height: 70px;
+}
+
+.comments-composer textarea:focus {
+    outline: 2px solid #6366F1;
+    outline-offset: 1px;
+}
+
+.comments-composer-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.comments-char-count {
+    font-size: 12px;
+    color: #9CA3AF;
+}
+
+.comments-composer .btn-primary {
+    padding: 10px 22px;
+    border: none;
+    border-radius: 10px;
+    background: #111111;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.comments-composer .btn-primary:hover { background: #2a2a2a; }
+.comments-composer .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ===================== TOAST ===================== */
+.toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translate(-50%, 20px);
+    background-color: #1a1a1a;
+    color: white;
+    padding: 12px 22px;
+    border-radius: 24px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 1100;
+}
+
+.toast.visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+/* ===================== COMMENT DELETE ===================== */
+.comment-row {
+    position: relative;
+}
+
+.comment-delete-btn {
+    background: none;
+    border: 1px solid transparent;
+    color: #9CA3AF;
+    cursor: pointer;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 13px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.comment-row:hover .comment-delete-btn {
+    color: #DC2626;
+    border-color: #DC2626;
+}
+
+.comment-delete-btn:hover {
+    background: #DC2626;
+    color: #fff;
+    border-color: #DC2626;
+}
+
+/* ===================== EMPTY SPRINT STATE ===================== */
+.board-empty-sprint {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    background: #cbd6ff;
+    border-radius: 24px;
+    font-size: 15px;
+    color: #1a1a1a;
+}
+.board-empty-sprint p {
+    margin: 8px 0;
+}
+.board-empty-sprint a {
+    color: #2563EB;
+    font-weight: 600;
 }
