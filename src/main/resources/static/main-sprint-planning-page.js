@@ -1,9 +1,6 @@
 /**
  * Sprint Planning Page — Symph Web Application
  * Compiled from main-sprint-planning-page.ts — do not hand-edit.
- * Handles sprint creation, member loading, end-date calculation, and the
- * delete sprint modal. Only employees WITHOUT a team are offered as
- * "Members involved". Task creation happens on the Sprint Board.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -24,7 +21,6 @@ if (sessionStorage.getItem('loggedIn') !== 'true') {
     throw new Error('Not logged in');
 }
 
-// ===================== US22: SPRINT PLANNING GUARD =====================
 const role = sessionStorage.getItem('role');
 if (role !== 'ADMIN' && role !== 'PRODUCT_OWNER') {
     window.location.href = 'index-user-page.html';
@@ -80,6 +76,9 @@ const startSprintPlanningBtn = requireElement('startSprintPlanningBtn');
 const sprintPlanningOverlay = requireElement('sprintPlanningOverlay');
 const closeSprintPlanningBtn = requireElement('closeSprintPlanningBtn');
 const sprintPlanningForm = requireElement('sprintPlanningForm');
+const sprintPlanningTitle = requireElement('sprintPlanningTitle');
+const sprintPlanningSubtitle = document.querySelector('#sprintPlanningOverlay .modal-subtitle');
+const sprintSubmitBtn = document.querySelector('#sprintPlanningForm button[type="submit"]');
 const sprintNameInput = requireElement('sprintName');
 const sprintStartDateInput = requireElement('sprintStartDate');
 const sprintDurationSelect = requireElement('sprintDuration');
@@ -93,16 +92,29 @@ const deleteSprintName = requireElement('deleteSprintName');
 const cancelDeleteBtn = requireElement('cancelDeleteBtn');
 const confirmDeleteBtn = requireElement('confirmDeleteBtn');
 
+// ===================== STATE =====================
+let allSprints = [];
+let editingSprintId = null;
+
 // ===================== MODAL OPEN/CLOSE =====================
 function openModal(overlay) { overlay.classList.add('visible'); }
 function closeModal(overlay) { overlay.classList.remove('visible'); }
 
 startSprintPlanningBtn.addEventListener('click', async () => {
-    await loadMembers();
+    editingSprintId = null;
+    await loadMembers([]);
     populateSprintNameOptions();
     populateDurationOptions();
 
+    sprintPlanningTitle.textContent = 'Sprint Planning';
+    if (sprintPlanningSubtitle) {
+        sprintPlanningSubtitle.textContent = 'Sprints can run up to 3 weeks';
+    }
+    if (sprintSubmitBtn) sprintSubmitBtn.textContent = 'Create sprint';
+
     sprintStartDateInput.value = new Date().toISOString().split('T')[0];
+    sprintNameInput.value = '';
+    sprintDurationSelect.value = '';
     recalculateEndDate();
 
     openModal(sprintPlanningOverlay);
@@ -155,9 +167,9 @@ sprintStartDateInput.addEventListener('change', recalculateEndDate);
 sprintDurationSelect.addEventListener('change', recalculateEndDate);
 
 // ===================== LOAD MEMBERS =====================
-// Only employees who HAVE a team are offered as "Members involved",
-// and each row shows which team they belong to.
-async function loadMembers() {
+// Only employees who HAVE a team are offered as "Members involved".
+// preCheckedIds: array of user IDs to tick. Empty array = tick everyone.
+async function loadMembers(preCheckedIds) {
     try {
         const res = await fetch(USERS_API);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -169,11 +181,15 @@ async function loadMembers() {
 
         membersList.innerHTML = teamMembers.length === 0
             ? `<p class="muted">No team-assigned employees available.</p>`
-            : teamMembers.map((u) => `
+            : teamMembers.map((u) => {
+                const checked =
+                    preCheckedIds.length === 0 || preCheckedIds.includes(u.id);
+                return `
                 <label class="member-row">
-                    <input type="checkbox" name="member" value="${u.id}" checked>
+                    <input type="checkbox" name="member" value="${u.id}" ${checked ? 'checked' : ''}>
                     <span>${escapeHtml(u.name)} — ${escapeHtml(u.team.name)}</span>
-                </label>`).join('');
+                </label>`;
+            }).join('');
     } catch (err) {
         console.error('Failed to load members:', err);
         membersList.innerHTML = `<p class="muted">Could not load members.</p>`;
@@ -182,12 +198,13 @@ async function loadMembers() {
 
 // ===================== POPULATE DROPDOWNS =====================
 function populateSprintNameOptions() {
-    sprintNameInput.innerHTML = `
-        <option value="">Choose a sprint</option>
-        <option value="Sprint 1">Sprint 1</option>
-        <option value="Sprint 2">Sprint 2</option>
-        <option value="Sprint 3">Sprint 3</option>
-    `;
+    const usedNames = new Set(allSprints.map((s) => s.name));
+    const options = ['Sprint 1', 'Sprint 2', 'Sprint 3', 'Sprint 4', 'Sprint 5'];
+    const available = options.filter((n) => !usedNames.has(n));
+
+    sprintNameInput.innerHTML =
+        `<option value="">Choose a sprint</option>` +
+        available.map((n) => `<option value="${n}">${n}</option>`).join('');
 }
 
 function populateDurationOptions() {
@@ -204,16 +221,16 @@ async function loadSprints() {
     try {
         const res = await fetch(SPRINTS_API);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const sprints = await res.json();
+        allSprints = await res.json();
 
         pastSprintsBody.innerHTML = '';
 
-        if (sprints.length === 0) {
+        if (allSprints.length === 0) {
             pastSprintsBody.innerHTML = `<tr><td colspan="5">No sprints yet.</td></tr>`;
             return;
         }
 
-        sprints
+        allSprints
             .sort((a, b) => b.id - a.id)
             .forEach((s) => {
                 const opts = { day: 'numeric', month: 'short' };
@@ -221,15 +238,26 @@ async function loadSprints() {
                 const end = new Date(s.endDate);
                 const range = `${start.toLocaleDateString('en-GB', opts)} - ${end.toLocaleDateString('en-GB', { ...opts, year: 'numeric' })}`;
 
+                const editable = s.status === 'PLANNED';
+                const editBtn = editable
+                    ? `<button class="edit-sprint-btn" type="button">Edit</button>`
+                    : '';
+
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${escapeHtml(s.name)}</td>
                     <td>${range}</td>
                     <td>${s.memberCount ?? 0}</td>
                     <td>${statusLabel(s.status)}</td>
-                    <td><button class="delete-sprint-btn" type="button">Delete</button></td>
+                    <td class="sprint-actions">
+                        ${editBtn}
+                        <button class="delete-sprint-btn" type="button">Delete</button>
+                    </td>
                 `;
 
+                row.querySelector('.edit-sprint-btn')?.addEventListener('click', () => {
+                    void openEditModal(s);
+                });
                 row.querySelector('.delete-sprint-btn')?.addEventListener('click', () => {
                     openDeleteModal(s.id, s.name);
                 });
@@ -239,6 +267,36 @@ async function loadSprints() {
     } catch (err) {
         console.error('Failed to load sprints:', err);
     }
+}
+
+// ===================== EDIT SPRINT =====================
+async function openEditModal(sprint) {
+    editingSprintId = sprint.id;
+
+    // We don't persist a member list, so tick everyone by default.
+    await loadMembers([]);
+    populateDurationOptions();
+
+    sprintNameInput.innerHTML = `<option value="${sprint.name}">${sprint.name}</option>`;
+    sprintNameInput.value = sprint.name;
+
+    sprintStartDateInput.value = sprint.startDate;
+    sprintEndDateInput.value = sprint.endDate;
+
+    // Derive duration in weeks from the stored dates.
+    const start = new Date(sprint.startDate + 'T00:00:00');
+    const end = new Date(sprint.endDate + 'T00:00:00');
+    const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    const weeks = Math.max(1, Math.min(3, Math.round(diffDays / 7)));
+    sprintDurationSelect.value = String(weeks);
+
+    sprintPlanningTitle.textContent = 'Edit Sprint';
+    if (sprintPlanningSubtitle) {
+        sprintPlanningSubtitle.textContent = 'Update the details for this PLANNED sprint';
+    }
+    if (sprintSubmitBtn) sprintSubmitBtn.textContent = 'Save changes';
+
+    openModal(sprintPlanningOverlay);
 }
 
 // ===================== DELETE SPRINT =====================
@@ -283,7 +341,7 @@ confirmDeleteBtn.addEventListener('click', async () => {
     }
 });
 
-// ===================== CREATE SPRINT =====================
+// ===================== CREATE / UPDATE SPRINT =====================
 sprintPlanningForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -317,35 +375,48 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
     const checkedMembers = membersList.querySelectorAll('input[type="checkbox"]:checked');
     const memberCount = checkedMembers.length;
 
+    const payload = {
+        name: sprintName,
+        startDate: startDate,
+        endDate: endDate,
+        memberCount,
+        status: 'PLANNED',
+    };
+
+    const isEdit = editingSprintId !== null;
+    const url = isEdit ? `${SPRINTS_API}/${editingSprintId}` : SPRINTS_API;
+    const method = isEdit ? 'PUT' : 'POST';
+
     try {
-        const res = await fetch(SPRINTS_API, {
-            method: 'POST',
+        const res = await fetch(url, {
+            method,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                name: sprintName,
-                startDate: startDate,
-                endDate: endDate,
-                memberCount,
-                status: 'PLANNED',
-            }),
+            body: JSON.stringify(payload),
         });
 
         if (!res.ok) {
             const msg = await res.text();
-            throw new Error(msg || 'Failed to create sprint');
+            throw new Error(msg || (isEdit ? 'Failed to update sprint' : 'Failed to create sprint'));
         }
 
         closeModal(sprintPlanningOverlay);
-        showToast('Sprint created — add tasks on the Sprint Board.', 'success');
+        showToast(
+            isEdit
+                ? 'Sprint updated.'
+                : 'Sprint created — add tasks on the Sprint Board.',
+            'success'
+        );
 
         sprintPlanningForm.reset();
-        populateSprintNameOptions();
-        populateDurationOptions();
+        editingSprintId = null;
+        sprintPlanningTitle.textContent = 'Sprint Planning';
+        if (sprintSubmitBtn) sprintSubmitBtn.textContent = 'Create sprint';
+
         recalculateEndDate();
         await loadSprints();
     } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to create sprint';
-        showToast('Create sprint failed: ' + message, 'error');
+        const message = err instanceof Error ? err.message : 'Save failed';
+        showToast((isEdit ? 'Update failed: ' : 'Create sprint failed: ') + message, 'error');
     }
 });
 

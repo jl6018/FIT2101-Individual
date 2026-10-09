@@ -515,13 +515,22 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
       </section>`;
         }).join("");
 
+        // ===================== EMPTY STATE MESSAGE =====================
+        // Three distinct cases:
+        //   1. No sprint on this tab
+        //   2. Sprint exists but hasn't started (PLANNED / COMPLETED)
+        //   3. Sprint is ACTIVE, but this employee has no tasks assigned
         if (emptyState) {
             const isEmpty = tasks.length === 0;
             emptyState.style.display = isEmpty ? "block" : "none";
             if (isEmpty) {
-                emptyState.textContent = currentSprintNumericId
-                    ? "This sprint hasn't started yet. Please wait for your admin to start it."
-                    : "You have no tasks assigned yet. Please contact your admin.";
+                if (!currentSprintNumericId) {
+                    emptyState.textContent = "No sprint exists on this tab yet.";
+                } else if (!currentSprintIsActive) {
+                    emptyState.textContent = "This sprint hasn't started yet. Please wait for your admin to start it.";
+                } else {
+                    emptyState.textContent = "You're not part of this sprint, or you have no tasks assigned to you yet.";
+                }
             }
         }
     }
