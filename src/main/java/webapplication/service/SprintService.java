@@ -5,15 +5,18 @@ import webapplication.model.SprintStatus;
 import webapplication.model.Task;
 import webapplication.model.TimeLog;
 import webapplication.repository.SprintRepository;
+import webapplication.repository.TaskCommentRepository;
 import webapplication.repository.TaskRepository;
 import webapplication.repository.TimeLogRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 /**
  * Manages sprint Create, Read, status transition, and Delete operations.
- * Deleting a sprint also cascades to its tasks and those tasks' time logs.
+ * Deleting a sprint cascades to its tasks, those tasks' time logs,
+ * their tags (join table), and their comments.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -25,86 +28,43 @@ public class SprintService {
     private final SprintRepository sprintRepository;
     private final TaskRepository taskRepository;
     private final TimeLogRepository timeLogRepository;
+    private final TaskCommentRepository taskCommentRepository;
 
-    /**
-     * Parameterized constructor with the required repository dependencies.
-     *
-     * @param sprintRepository  The repository handling sprint database operations
-     * @param taskRepository    The repository handling task database operations
-     * @param timeLogRepository The repository handling time log database operations
-     */
     public SprintService(SprintRepository sprintRepository,
                          TaskRepository taskRepository,
-                         TimeLogRepository timeLogRepository) {
+                         TimeLogRepository timeLogRepository,
+                         TaskCommentRepository taskCommentRepository) {
         this.sprintRepository = sprintRepository;
         this.taskRepository = taskRepository;
         this.timeLogRepository = timeLogRepository;
+        this.taskCommentRepository = taskCommentRepository;
     }
 
-    /**
-     * Retrieves all sprints from the database.
-     *
-     * @return A list of all sprints
-     */
     public List<Sprint> getAllSprints() {
         return sprintRepository.findAll();
     }
 
-    /**
-     * Retrieves a single sprint by its unique ID.
-     *
-     * @param id                The ID of the sprint to retrieve
-     * @return                  The Sprint object
-     * @throws RuntimeException if no sprint with the given ID exists
-     */
     public Sprint getSprintById(Long id) {
         return sprintRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Sprint not found"));
     }
 
-    /**
-     * Retrieves the most recent sprint with the given name.
-     *
-     * @param name              The name of the sprint to search for
-     * @return                  The latest matching Sprint object
-     * @throws RuntimeException if no sprint with the given name exists
-     */
     public Sprint getLatestByName(String name) {
         return sprintRepository.findTopByNameOrderByIdDesc(name)
                 .orElseThrow(() -> new RuntimeException("No sprint named '" + name + "'"));
     }
 
-    /**
-     * Creates a new sprint with a PLANNED status.
-     *
-     * @param sprint The Sprint object to save
-     * @return       The saved Sprint object with its assigned ID
-     */
     public Sprint createSprint(Sprint sprint) {
         sprint.setStatus(SprintStatus.PLANNED);
         return sprintRepository.save(sprint);
     }
 
-    /**
-     * Starts a sprint by transitioning its status to ACTIVE.
-     *
-     * @param id                The ID of the sprint to start
-     * @return                  The updated Sprint object
-     * @throws RuntimeException if the sprint does not exist
-     */
     public Sprint startSprint(Long id) {
         Sprint sprint = getSprintById(id);
         sprint.setStatus(SprintStatus.ACTIVE);
         return sprintRepository.save(sprint);
     }
 
-    /**
-     * Completes a sprint by transitioning its status to COMPLETED.
-     *
-     * @param id                The ID of the sprint to complete
-     * @return                  The updated Sprint object
-     * @throws RuntimeException if the sprint does not exist
-     */
     public Sprint completeSprint(Long id) {
         Sprint sprint = getSprintById(id);
         sprint.setStatus(SprintStatus.COMPLETED);
@@ -112,35 +72,45 @@ public class SprintService {
     }
 
     /**
-     * Deletes a sprint from the database by its ID, along with any tasks
-     * attached to it and those tasks' time logs.
+     * Deletes a sprint and every child record that references it.
      *
-     * The order matters:
-     *   1. Delete time logs whose task belongs to this sprint.
-     *   2. Delete the tasks themselves.
-     *   3. Delete the sprint.
+     * Order of deletion is critical — MySQL will refuse to delete any row
+     * that is still being referenced by a foreign key, so child tables
+     * must be cleared first, parents last:
      *
-     * Without step 1 and 2, MySQL would refuse the delete with a foreign
-     * key constraint violation (which the browser would show as HTTP 500).
+     *   1. time_logs   (references tasks.id)
+     *   2. task_comments (references tasks.id)
+     *   3. task_tags   (join table referencing tasks.id and tags.id)
+     *   4. tasks       (references sprints.id)
+     *   5. sprints     (the row we actually want gone)
      *
      * @param id The ID of the sprint to delete
      */
+    @Transactional
     public void deleteSprint(Long id) {
-        // 1. Delete time logs for every task in this sprint.
         List<Task> tasks = taskRepository.findBySprintId(id);
+
         for (Task task : tasks) {
+            // 1. time logs
             List<TimeLog> logs = timeLogRepository.findByTaskId(task.getId());
             if (!logs.isEmpty()) {
                 timeLogRepository.deleteAll(logs);
             }
+
+            // 2. comments
+            taskCommentRepository.deleteByTaskId(task.getId());
+
+            // 3. tags (clears join table rows via cascade on the @ManyToMany)
+            task.getTags().clear();
+            taskRepository.save(task);
         }
 
-        // 2. Delete the tasks themselves.
+        // 4. tasks
         if (!tasks.isEmpty()) {
             taskRepository.deleteAll(tasks);
         }
 
-        // 3. Now it's safe to delete the sprint.
+        // 5. sprint
         sprintRepository.deleteById(id);
     }
 }
