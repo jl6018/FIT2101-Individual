@@ -219,7 +219,7 @@ async function loadMembers(preCheckedIds: number[]): Promise<void> {
 // ===================== POPULATE DROPDOWNS =====================
 function populateSprintNameOptions(): void {
     const usedNames = new Set(allSprints.map((s) => s.name));
-    const options = ['Sprint 1', 'Sprint 2', 'Sprint 3', 'Sprint 4', 'Sprint 5'];
+    const options = ['Sprint 1', 'Sprint 2', 'Sprint 3'];
     const available = options.filter((n) => !usedNames.has(n));
 
     sprintNameInput.innerHTML =
