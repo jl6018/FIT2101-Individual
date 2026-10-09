@@ -5,8 +5,7 @@
 /**
  * User Board Page — Symph Web Application
  * Employee board with read-only task modal, Comments modal, Log Time
- * modal, My Logs modal, and Logout confirmation.
- * Employees only see tasks of the ACTIVE sprint.
+ * modal, My Logs modal, notification bell, and Logout confirmation.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -34,6 +33,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     const SPRINTS_API = "http://localhost:8080/api/sprints";
     const TIMELOGS_API = "http://localhost:8080/api/timelogs";
     const USERS_API = "http://localhost:8080/api/users";
+    const RECENT_COMMENTS_API = "http://localhost:8080/api/tasks/comments/recent?limit=20";
 
     type ColumnId = "PRODUCT_BACKLOG" | "TO_DO" | "IN_PROGRESS" | "IN_REVIEW" | "COMPLETED";
     type Task = {
@@ -84,6 +84,18 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         authorId: number;
         authorName: string;
         authorRole: string;
+        taskId?: number;
+        taskName?: string;
+    };
+    type RecentComment = {
+        id: number;
+        body: string;
+        createdAt: string;
+        authorId: number;
+        authorName: string;
+        authorRole: string;
+        taskId: number;
+        taskName: string;
     };
 
     const SPRINT_TAB_NAMES: Record<string, string> = {
@@ -139,7 +151,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     let searchTerm = "";
     let currentTagName: string = TAG_FILTER_ALL;
 
-    // ✅ Always start on Sprint 1
     let currentSprintId = "1";
     let currentSprintNumericId: number | null = null;
     let currentSprintIsActive = false;
@@ -221,6 +232,8 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     const tagFilterBtn = document.getElementById("tagFilterBtn") as HTMLButtonElement | null;
     const tagFilterMenu = document.getElementById("tagFilterMenu") as HTMLDivElement | null;
     const tagFilterLabel = document.getElementById("tagFilterLabel") as HTMLSpanElement | null;
+    const notifMenu = document.getElementById("notifMenu") as HTMLDivElement | null;
+    const notifBellBtn = document.getElementById("notifBellBtn") as HTMLButtonElement | null;
 
     function setProfileMenuOpen(open: boolean): void {
         if (!profileMenu || !profileMenuBtn) return;
@@ -241,6 +254,10 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         setProfileMenuOpen(false);
         setHeaderMenuOpen(false);
         setTagFilterOpen(false);
+        if (notifMenu && notifBellBtn) {
+            notifMenu.classList.remove("visible");
+            notifBellBtn.setAttribute("aria-expanded", "false");
+        }
     }
 
     profileMenuBtn?.addEventListener("click", (event: MouseEvent) => {
@@ -248,6 +265,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         const willOpen = !profileMenu!.classList.contains("visible");
         setHeaderMenuOpen(false);
         setTagFilterOpen(false);
+        if (notifMenu) notifMenu.classList.remove("visible");
         setProfileMenuOpen(willOpen);
     });
     headerMenuBtn?.addEventListener("click", (event: MouseEvent) => {
@@ -255,6 +273,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         const willOpen = !headerMenu!.classList.contains("visible");
         setProfileMenuOpen(false);
         setTagFilterOpen(false);
+        if (notifMenu) notifMenu.classList.remove("visible");
         setHeaderMenuOpen(willOpen);
     });
     tagFilterBtn?.addEventListener("click", (event: MouseEvent) => {
@@ -263,6 +282,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         const willOpen = !tagFilterMenu!.classList.contains("visible");
         setProfileMenuOpen(false);
         setHeaderMenuOpen(false);
+        if (notifMenu) notifMenu.classList.remove("visible");
         setTagFilterOpen(willOpen);
     });
     document.addEventListener("click", (event: MouseEvent) => {
@@ -278,6 +298,11 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (tagFilterMenu?.classList.contains("visible")
             && !tagFilterMenu.contains(target) && !tagFilterBtn?.contains(target)) {
             setTagFilterOpen(false);
+        }
+        if (notifMenu?.classList.contains("visible")
+            && !notifMenu.contains(target) && !notifBellBtn?.contains(target)) {
+            notifMenu.classList.remove("visible");
+            notifBellBtn?.setAttribute("aria-expanded", "false");
         }
     });
     document.addEventListener("keydown", (event: KeyboardEvent) => {
@@ -343,18 +368,38 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         }
     }
 
+    // ===================== PERMISSION HELPERS =====================
+    // A task is visible / loggable by the current employee if:
+    //   1. The task is assigned to their TEAM as a whole, or
+    //   2. The task is assigned to THEM individually.
+    // Tasks assigned only to another teammate are NOT visible.
     function taskVisibleToCurrentEmployee(task: BackendTask): boolean {
         const myTeam = sessionStorage.getItem("team") || "";
-        if (!myTeam) return false;
-        if (task.assignedTeams) {
+        const myId = sessionStorage.getItem("userId") || "";
+
+        if (task.assignedTeams && myTeam) {
             const teams = String(task.assignedTeams).split(",").map((s) => s.trim()).filter(Boolean);
             if (teams.includes(myTeam)) return true;
         }
         if (task.assignedEmployeeIds) {
             const ids = String(task.assignedEmployeeIds).split(",").map((s) => s.trim()).filter(Boolean);
-            if (ids.some((id) => teammateIds.has(id))) return true;
+            if (ids.includes(myId)) return true;
         }
         return false;
+    }
+
+    function canLogTimeOn(task: Task): boolean {
+        const myTeam = sessionStorage.getItem("team") || "";
+        const myId = sessionStorage.getItem("userId") || "";
+
+        const teamOk = task.assignedTeams
+            ? String(task.assignedTeams).split(",").map((s) => s.trim()).includes(myTeam)
+            : false;
+        const empOk = task.assignedEmployeeIds
+            ? String(task.assignedEmployeeIds).split(",").map((s) => s.trim()).includes(myId)
+            : false;
+
+        return teamOk || empOk;
     }
 
     function assigneeLabel(task: Task): string {
@@ -371,22 +416,15 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     // ===================== BACKEND SYNC =====================
-    /**
-     * Employees can only see tasks from the ACTIVE sprint.
-     * If the current sprint is PLANNED or COMPLETED — or does not exist at
-     * all on this tab — no tasks are shown.
-     */
     async function fetchTasks(): Promise<Task[]> {
         try {
             currentSprintNumericId = await resolveCurrentSprintId();
 
-            // ✅ No sprint exists on this tab → show nothing
             if (currentSprintNumericId == null) {
                 currentSprintIsActive = false;
                 return [];
             }
 
-            // Check the sprint's status
             try {
                 const statusRes = await fetch(`${SPRINTS_API}/${currentSprintNumericId}`);
                 if (statusRes.ok) {
@@ -399,7 +437,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
                 currentSprintIsActive = false;
             }
 
-            // ✅ PLANNED or COMPLETED sprint → nothing to show
             if (!currentSprintIsActive) {
                 return [];
             }
@@ -515,11 +552,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
       </section>`;
         }).join("");
 
-        // ===================== EMPTY STATE MESSAGE =====================
-        // Three distinct cases:
-        //   1. No sprint on this tab
-        //   2. Sprint exists but hasn't started (PLANNED / COMPLETED)
-        //   3. Sprint is ACTIVE, but this employee has no tasks assigned
         if (emptyState) {
             const isEmpty = tasks.length === 0;
             emptyState.style.display = isEmpty ? "block" : "none";
@@ -529,7 +561,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
                 } else if (!currentSprintIsActive) {
                     emptyState.textContent = "This sprint hasn't started yet. Please wait for your admin to start it.";
                 } else {
-                    emptyState.textContent = "You're not part of this sprint, or you have no tasks assigned to you yet.";
+                    emptyState.textContent = "You have no tasks assigned yet. Please contact your admin.";
                 }
             }
         }
@@ -608,6 +640,13 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
     function openLogTimeModal(task: Task): void {
         if (!task || !task.id) return;
+
+        // Frontend guard — only allow logging on tasks assigned to me/my team
+        if (!canLogTimeOn(task)) {
+            showToast("You're not assigned to this task.");
+            return;
+        }
+
         logTimeTaskId = task.id;
         logTimeTaskContext.textContent = `Record your start time, time spent, and date for "${task.title}".`;
         logDate.value = new Date().toISOString().split("T")[0];
@@ -1039,6 +1078,161 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (task) openModal(task);
     });
 
+    // ===================== NOTIFICATION BELL =====================
+    const NOTIF_SEEN_KEY = "symph.lastSeenCommentId";
+    const notifBadge = document.getElementById("notifBadge") as HTMLSpanElement | null;
+    const notifMenuList = document.getElementById("notifMenuList") as HTMLDivElement | null;
+
+    let notifPollTimer: number | null = null;
+
+    function getLastSeenCommentId(): number {
+        try {
+            const v = window.localStorage.getItem(NOTIF_SEEN_KEY);
+            return v ? Number(v) : 0;
+        } catch { return 0; }
+    }
+    function setLastSeenCommentId(id: number): void {
+        try { window.localStorage.setItem(NOTIF_SEEN_KEY, String(id)); } catch { /* ignore */ }
+    }
+
+    function formatNotifTime(iso: string): string {
+        if (!iso) return "";
+        const d = new Date(iso);
+        const now = new Date();
+        const diffSec = Math.floor((now.getTime() - d.getTime()) / 1000);
+        if (diffSec < 60) return "Just now";
+        if (diffSec < 3600) return `${Math.floor(diffSec / 60)} min ago`;
+        if (diffSec < 86400) return `${Math.floor(diffSec / 3600)} hour(s) ago`;
+        return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    }
+
+    function setNotifOpen(open: boolean): void {
+        if (!notifMenu || !notifBellBtn) return;
+        notifMenu.classList.toggle("visible", open);
+        notifBellBtn.setAttribute("aria-expanded", String(open));
+    }
+
+    function renderNotifications(comments: RecentComment[]): void {
+        if (!notifMenuList) return;
+
+        const myId = Number(sessionStorage.getItem("userId"));
+        // Visible task IDs = the tasks currently loaded on THIS board
+        const myTaskIds = new Set(tasks.map(t => t.id));
+
+        const relevant = comments.filter(c =>
+            Number(c.authorId) !== myId && myTaskIds.has(String(c.taskId))
+        );
+
+        if (relevant.length === 0) {
+            notifMenuList.innerHTML = `<p class="notif-empty">No notifications yet.</p>`;
+            if (notifBadge) notifBadge.hidden = true;
+            return;
+        }
+
+        const lastSeen = getLastSeenCommentId();
+        const unreadCount = relevant.filter(c => Number(c.id) > lastSeen).length;
+
+        if (notifBadge) {
+            if (unreadCount > 0) {
+                notifBadge.textContent = String(unreadCount > 9 ? "9+" : unreadCount);
+                notifBadge.hidden = false;
+            } else {
+                notifBadge.hidden = true;
+            }
+        }
+
+        notifMenuList.innerHTML = relevant.map(c => {
+            const authorInitials = escapeHtml(
+                String(c.authorName || "?")
+                    .split(/\s+/).filter(Boolean).slice(0, 2)
+                    .map(p => p.charAt(0).toUpperCase()).join("")
+            );
+            const color = avatarColor(c.authorName || "?");
+            const isUnread = Number(c.id) > lastSeen;
+            return `
+                <button type="button" class="notif-item${isUnread ? " unread" : ""}"
+                        data-notif-task="${c.taskId}"
+                        data-notif-id="${c.id}">
+                    <div class="notif-avatar" style="background:${color};">${authorInitials}</div>
+                    <div class="notif-body">
+                        <div class="notif-text">
+                            <strong>${escapeHtml(c.authorName)}</strong> sent a message in
+                            <span class="notif-task-name">"${escapeHtml(c.taskName)}"</span>
+                        </div>
+                        <div class="notif-time">${formatNotifTime(c.createdAt)}</div>
+                    </div>
+                </button>`;
+        }).join("");
+    }
+
+    async function loadNotifications(): Promise<void> {
+        if (!notifMenuList) return;
+        try {
+            const res = await fetch(RECENT_COMMENTS_API);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const comments = (await res.json()) as RecentComment[];
+            renderNotifications(comments);
+        } catch (err) {
+            console.error("Failed to load notifications:", err);
+        }
+    }
+
+    notifBellBtn?.addEventListener("click", (e: MouseEvent) => {
+        e.stopPropagation();
+        const willOpen = !notifMenu!.classList.contains("visible");
+        closeAllMenus();
+        setNotifOpen(willOpen);
+
+        if (willOpen) {
+            void (async () => {
+                try {
+                    const res = await fetch(RECENT_COMMENTS_API);
+                    if (res.ok) {
+                        const comments = (await res.json()) as RecentComment[];
+                        const myId = Number(sessionStorage.getItem("userId"));
+                        const myTaskIds = new Set(tasks.map(t => t.id));
+                        const relevant = comments.filter(c =>
+                            Number(c.authorId) !== myId && myTaskIds.has(String(c.taskId))
+                        );
+                        if (relevant.length > 0) {
+                            setLastSeenCommentId(relevant[0].id);
+                        }
+                        if (notifBadge) notifBadge.hidden = true;
+                    }
+                } catch { /* ignore */ }
+            })();
+        }
+    });
+
+    notifMenuList?.addEventListener("click", (e: MouseEvent) => {
+        const btn = (e.target as HTMLElement).closest<HTMLElement>("[data-notif-task]");
+        if (!btn) return;
+        const taskId = btn.dataset["notifTask"];
+        if (!taskId) return;
+
+        const commentId = btn.dataset["notifId"];
+        if (commentId) setLastSeenCommentId(Number(commentId));
+
+        setNotifOpen(false);
+
+        const task = tasks.find(t => t.id === String(taskId));
+        if (!task) {
+            showToast("That task is no longer on your board.");
+            return;
+        }
+        openModal(task);
+        setTimeout(() => {
+            void openCommentsModal();
+        }, 100);
+    });
+
+    function startNotifPolling(): void {
+        if (notifPollTimer !== null) return;
+        notifPollTimer = window.setInterval(() => {
+            void loadNotifications();
+        }, 30000);
+    }
+
     // ===================== SPRINT TABS =====================
     function initSprintTabs(): void {
         const tabs = document.querySelectorAll<HTMLButtonElement>(".sprint-tab");
@@ -1053,13 +1247,13 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
                 const sprintId = tab.dataset["sprint"];
                 if (!sprintId) return;
                 currentSprintId = sprintId;
-                // ✅ No sessionStorage write — always start fresh on reload
                 void (async () => {
                     await loadTeammates();
                     tasks = await fetchTasks();
                     currentTagName = TAG_FILTER_ALL;
                     renderTagFilter();
                     renderBoard();
+                    await loadNotifications();
                 })();
             });
         });
@@ -1067,12 +1261,16 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
     // ===================== INIT =====================
     async function init(): Promise<void> {
-        currentSprintId = "1";     // ✅ always start on Sprint 1
+        currentSprintId = "1";
         initSprintTabs();
         await loadTeammates();
         tasks = await fetchTasks();
         renderTagFilter();
         renderBoard();
+
+        // Notifications
+        void loadNotifications();
+        startNotifPolling();
     }
     void init();
 })();
