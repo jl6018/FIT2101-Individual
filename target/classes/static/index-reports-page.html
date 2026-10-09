@@ -46,10 +46,6 @@
                 <span class="dot dot-active"></span> <span class="nav-label">Reports</span>
             </a>
         </nav>
-
-        <div class="sidebar-footer">
-            <div class="signed-in">Signed in as <strong id="signedInName">Admin</strong></div>
-        </div>
     </aside>
 
     <main class="main">
@@ -88,8 +84,7 @@
             <p class="muted">Total logged hours against each task in this range, ordered from
                 highest to lowest.</p>
             <div class="line-chart-wrap">
-                <svg id="taskLineChart" class="line-chart-svg" viewBox="0 0 720 320"
-                     preserveAspectRatio="xMidYMid meet"></svg>
+                <svg id="taskLineChart" class="line-chart-svg" preserveAspectRatio="xMidYMid meet"></svg>
             </div>
             <p id="taskChartEmpty" class="muted" style="display:none;">No hours logged in this range yet.</p>
         </section>
@@ -99,7 +94,7 @@
             <p class="muted">Actual vs projected remaining work for the sprint you selected on the
                 Sprint Board. Projected line assumes even progress from total estimate down to zero.</p>
             <div class="burndown-wrap">
-                <svg id="burndownChart" viewBox="0 0 720 320" class="burndown-svg"></svg>
+                <svg id="burndownChart" class="burndown-svg" preserveAspectRatio="xMidYMid meet"></svg>
             </div>
             <p id="burndownEmpty" class="muted" style="display:none;">
                 No burndown data yet. Create a sprint with dated tasks that have estimates.

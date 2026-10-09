@@ -57,6 +57,8 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             .map((part) => part.charAt(0).toUpperCase()).join("");
         avatarEl.textContent = label || (storedName ? storedName.charAt(0).toUpperCase() : "?");
         if (storedName) avatarEl.title = storedName;
+
+        // ✅ Give each admin / product owner their own unique avatar colour
         avatarEl.style.backgroundColor = avatarColor(storedName || "?");
         avatarEl.style.color = "#ffffff";
     }
@@ -668,18 +670,26 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     const loggedHoursBody = document.getElementById("loggedHoursBody");
     const loggedHoursTotal = document.getElementById("loggedHoursTotal");
     const loggedHoursRangeFilter = document.getElementById("loggedHoursRangeFilter");
+    const loggedHoursRefreshBtn = document.getElementById("loggedHoursRefreshBtn");
     const loggedHoursScope = document.getElementById("loggedHoursScope");
 
     async function loadLoggedHours() {
         if (!loggedHoursBody) return;
+
         loggedHoursBody.innerHTML = `<tr><td colspan="5" class="muted">Loading…</td></tr>`;
         if (loggedHoursTotal) loggedHoursTotal.textContent = "";
 
-        // Team filter follows the top-of-page filter, so admins only pick a team once.
+        // ✅ Team filter comes from the top-of-page team dropdown
         const teamFilter = currentTeamId;
-
         if (loggedHoursScope) {
             loggedHoursScope.textContent = teamFilter === "all" ? "— all teams" : `— ${teamFilter}`;
+        }
+
+        // ✅ No sprint on this tab → show nothing (don't fall through to "show all")
+        if (!currentSprintBackendId) {
+            loggedHoursBody.innerHTML = `<tr><td colspan="5" class="muted">No logs found.</td></tr>`;
+            if (loggedHoursTotal) loggedHoursTotal.textContent = "Total: 0h";
+            return;
         }
 
         try {
@@ -687,7 +697,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             let logs = await res.json();
 
-            // Team filter
+            // ✅ Team filter
             if (teamFilter !== "all") {
                 const memberIds = new Set(
                     EMPLOYEES.filter((e) => e.team === teamFilter).map((e) => e.id)
@@ -695,16 +705,15 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 logs = logs.filter((l) => l.user && memberIds.has(String(l.user.id)));
             }
 
-            // ✅ Sprint filter — only show logs for tasks in the currently viewed sprint
-            if (currentSprintBackendId) {
-                const sprintTaskIds = new Set(
-                    tasks
-                        .filter((t) => t.sprintId === currentSprintBackendId)
-                        .map((t) => String(t.id))
-                );
-                logs = logs.filter((l) => l.task && sprintTaskIds.has(String(l.task.id)));
-            }
+            // ✅ Sprint filter — only show logs whose task is in the current sprint
+            const sprintTaskIds = new Set(
+                tasks
+                    .filter((t) => t.sprintId === currentSprintBackendId)
+                    .map((t) => String(t.id))
+            );
+            logs = logs.filter((l) => l.task && sprintTaskIds.has(String(l.task.id)));
 
+            // Range filter
             const rangeVal = loggedHoursRangeFilter?.value || "all";
             if (rangeVal !== "all") {
                 const days = Number(rangeVal) || 7;
@@ -715,11 +724,13 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             }
 
             logs.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+
             if (logs.length === 0) {
                 loggedHoursBody.innerHTML = `<tr><td colspan="5" class="muted">No logs found.</td></tr>`;
                 if (loggedHoursTotal) loggedHoursTotal.textContent = "Total: 0h";
                 return;
             }
+
             let total = 0;
             loggedHoursBody.innerHTML = logs.map((l) => {
                 const hours = Number(l.hours || 0);
@@ -737,8 +748,10 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                         <td>${desc}</td>
                     </tr>`;
             }).join("");
+
             if (loggedHoursTotal) {
-                loggedHoursTotal.textContent = `Total: ${total.toFixed(1)}h across ${logs.length} log(s)`;
+                loggedHoursTotal.textContent =
+                    `Total: ${total.toFixed(1)}h across ${logs.length} log(s)`;
             }
         } catch (err) {
             console.error("Failed to load logged hours:", err);
@@ -746,6 +759,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         }
     }
 
+    loggedHoursRefreshBtn?.addEventListener("click", () => { void loadLoggedHours(); });
     loggedHoursRangeFilter?.addEventListener("change", () => { void loadLoggedHours(); });
 
     // ===================== DRAG AND DROP =====================
@@ -836,7 +850,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                         currentSprintBackendId = await resolveSprintBackendId(sprintId);
                         await refreshFromBackend();
                         await refreshSprintButton();
-                        void loadLoggedHours();   // ✅ refresh Logged Hours for the new sprint
+                        void loadLoggedHours();   // ✅ refresh panel with new sprint
                     })();
                 }
             });
@@ -893,7 +907,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         setTeamFilterOpen(false);
         renderTeamFilter();
         renderBoard();
-        void loadLoggedHours();   // ✅ refresh Logged Hours when team changes
+        void loadLoggedHours();   // ✅ refresh panel with new team
     });
 
     // ===================== TAG FILTER =====================

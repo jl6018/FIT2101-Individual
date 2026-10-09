@@ -2,6 +2,7 @@
  * User Board Page — Symph Web Application
  * Employee board with read-only task modal, Comments modal, Log Time
  * modal, My Logs modal, and Logout confirmation.
+ * Employees only see tasks of the ACTIVE sprint.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -76,9 +77,10 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     let searchTerm = "";
     let currentTagName = TAG_FILTER_ALL;
 
-    const savedSprintId = sessionStorage.getItem("currentSprintId");
-    let currentSprintId = savedSprintId && savedSprintId !== "" ? savedSprintId : "1";
+    // ✅ Always starts on Sprint 1 on a fresh page load
+    let currentSprintId = "1";
     let currentSprintNumericId = null;
+    let currentSprintIsActive = false;
 
     let teammateIds = new Set();
     let userIdToName = new Map();
@@ -312,25 +314,46 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     // ===================== BACKEND SYNC =====================
+    /**
+     * Employees can only see tasks from the ACTIVE sprint.
+     * If the current sprint is PLANNED or COMPLETED — or does not exist
+     * on this tab — no tasks are shown.
+     */
     async function fetchTasks() {
         try {
             currentSprintNumericId = await resolveCurrentSprintId();
-            let raw = [];
-            if (currentSprintNumericId) {
-                const res = await fetch(`${API_BASE}/sprint/${currentSprintNumericId}`);
-                if (res.ok) raw = await res.json();
-                else {
-                    const allRes = await fetch(API_BASE);
-                    if (allRes.ok) raw = await allRes.json();
+
+            // ✅ No sprint exists on this tab → show nothing
+            if (currentSprintNumericId == null) {
+                currentSprintIsActive = false;
+                return [];
+            }
+
+            // Check the sprint's status
+            try {
+                const statusRes = await fetch(`${SPRINTS_API}/${currentSprintNumericId}`);
+                if (statusRes.ok) {
+                    const sprintData = await statusRes.json();
+                    currentSprintIsActive = sprintData.status === "ACTIVE";
+                } else {
+                    currentSprintIsActive = false;
                 }
+            } catch {
+                currentSprintIsActive = false;
+            }
+
+            // ✅ PLANNED or COMPLETED sprint → nothing to show
+            if (!currentSprintIsActive) {
+                return [];
+            }
+
+            let raw = [];
+            const res = await fetch(`${API_BASE}/sprint/${currentSprintNumericId}`);
+            if (res.ok) {
+                raw = await res.json();
             } else {
                 const allRes = await fetch(API_BASE);
-                if (!allRes.ok) throw new Error(`HTTP ${allRes.status}`);
-                const all = await allRes.json();
-                raw = all.filter((t) => {
-                    const taskSprintId = t.sprint?.id ? String(t.sprint.id) : "";
-                    return taskSprintId === "";
-                });
+                if (allRes.ok) raw = await allRes.json();
             }
             return raw.filter(taskVisibleToCurrentEmployee).map(mapTask);
         } catch (err) {
@@ -435,7 +458,16 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         <div class="card-list">${cards.map(renderCard).join("")}</div>
       </section>`;
         }).join("");
-        if (emptyState) emptyState.style.display = tasks.length === 0 ? "block" : "none";
+
+        if (emptyState) {
+            const isEmpty = tasks.length === 0;
+            emptyState.style.display = isEmpty ? "block" : "none";
+            if (isEmpty) {
+                emptyState.textContent = currentSprintNumericId
+                    ? "This sprint hasn't started yet. Please wait for your admin to start it."
+                    : "You have no tasks assigned yet. Please contact your admin.";
+            }
+        }
     }
 
     // ===================== SEARCH =====================
@@ -953,7 +985,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
                 const sprintId = tab.dataset["sprint"];
                 if (!sprintId) return;
                 currentSprintId = sprintId;
-                sessionStorage.setItem("currentSprintId", sprintId);
+                // ✅ No sessionStorage write — always start fresh on reload
                 void (async () => {
                     await loadTeammates();
                     tasks = await fetchTasks();
@@ -967,6 +999,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
     // ===================== INIT =====================
     async function init() {
+        currentSprintId = "1";     // ✅ always start on Sprint 1
         initSprintTabs();
         await loadTeammates();
         tasks = await fetchTasks();
