@@ -9,7 +9,7 @@ import java.util.List;
 
 /**
  * Exposes REST endpoints for managing sprints.
- * Handles creation, retrieval, status transitions, and deletion of sprints.
+ * Handles creation, retrieval, status transitions, edits, and deletion.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -22,20 +22,10 @@ public class SprintController {
 
     private final SprintService sprintService;
 
-    /**
-     * Parameterized constructor with the required SprintService dependency.
-     *
-     * @param sprintService The service handling sprint business logic
-     */
     public SprintController(SprintService sprintService) {
         this.sprintService = sprintService;
     }
 
-    /**
-     * Retrieves all sprints from the database.
-     *
-     * @return A list of all sprints
-     */
     @GetMapping
     public List<Sprint> getAllSprints() {
         return sprintService.getAllSprints();
@@ -43,76 +33,59 @@ public class SprintController {
 
     /**
      * Retrieves the most recent sprint with the given name.
-     * Used by the board page so tabs reflect the newest sprint with that name.
-     *
-     * If no sprint with that name exists yet, this returns 200 with an empty
-     * body (rather than 404) so the browser does not log a red console error
-     * on first load before any sprint has been created.
-     *
-     * @param name              The name of the sprint to search for
-     * @return                  A ResponseEntity with the latest matching sprint,
-     *                          or an empty 200 response when none exists
+     * Returns 200 with an empty body when no such sprint exists yet.
      */
     @GetMapping("/latest")
     public ResponseEntity<?> getLatestByName(@RequestParam String name) {
         try {
             return ResponseEntity.ok(sprintService.getLatestByName(name));
         } catch (RuntimeException e) {
-            // No sprint with this name yet — return 200 with an empty body
-            // instead of 404 so the frontend's initial load stays quiet.
             return ResponseEntity.ok().build();
         }
     }
 
-    /**
-     * Retrieves a single sprint by its unique ID.
-     *
-     * @param id The ID of the sprint to retrieve
-     * @return   The Sprint object
-     */
     @GetMapping("/{id}")
     public Sprint getSprint(@PathVariable Long id) {
         return sprintService.getSprintById(id);
     }
 
-    /**
-     * Creates a new sprint with a PLANNED status.
-     *
-     * @param sprint The Sprint object to save
-     * @return       The saved Sprint object with its assigned ID
-     */
     @PostMapping
     public Sprint createSprint(@RequestBody Sprint sprint) {
         return sprintService.createSprint(sprint);
     }
 
     /**
-     * Starts a sprint by transitioning its status to ACTIVE.
+     * Updates a PLANNED sprint's name, dates, and member count.
+     * Only PLANNED sprints may be edited — ACTIVE and COMPLETED sprints
+     * are locked. Returns 400 with an explanatory message on rejection.
      *
-     * @param id The ID of the sprint to start
-     * @return   The updated Sprint object
+     * @param id                The ID of the sprint to update
+     * @param sprint            The Sprint object containing the updated values
+     * @return                  200 with the updated sprint, or 400 on error
      */
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateSprint(
+            @PathVariable Long id,
+            @RequestBody Sprint sprint) {
+        try {
+            return ResponseEntity.ok(sprintService.updateSprint(id, sprint));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        }
+    }
+
     @PutMapping("/{id}/start")
     public Sprint startSprint(@PathVariable Long id) {
         return sprintService.startSprint(id);
     }
 
-    /**
-     * Completes a sprint by transitioning its status to COMPLETED.
-     *
-     * @param id The ID of the sprint to complete
-     * @return   The updated Sprint object
-     */
     @PutMapping("/{id}/complete")
     public Sprint completeSprint(@PathVariable Long id) {
         return sprintService.completeSprint(id);
     }
 
-    /**
-     * Deletes a sprint from the database by its ID.
-     *
-     * @param id The ID of the sprint to delete
-     */
     @DeleteMapping("/{id}")
     public void deleteSprint(@PathVariable Long id) {
         sprintService.deleteSprint(id);

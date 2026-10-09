@@ -14,9 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * Manages sprint Create, Read, status transition, and Delete operations.
- * Deleting a sprint cascades to its tasks, those tasks' time logs,
- * their tags (join table), and their comments.
+ * Manages sprint Create, Read, Update, status transition, and Delete operations.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -59,6 +57,41 @@ public class SprintService {
         return sprintRepository.save(sprint);
     }
 
+    /**
+     * Updates a PLANNED sprint's name, dates, and member count.
+     * Refuses to edit ACTIVE or COMPLETED sprints.
+     *
+     * @param id                    The sprint to update
+     * @param updatedSprint         The incoming values
+     * @return                      The saved Sprint object
+     * @throws IllegalArgumentException if the sprint is not PLANNED
+     * @throws RuntimeException         if the sprint does not exist
+     */
+    public Sprint updateSprint(Long id, Sprint updatedSprint) {
+        Sprint sprint = getSprintById(id);
+
+        if (sprint.getStatus() != SprintStatus.PLANNED) {
+            throw new IllegalArgumentException(
+                    "Only PLANNED sprints can be edited. This sprint is "
+                            + sprint.getStatus() + ".");
+        }
+
+        if (updatedSprint.getName() != null && !updatedSprint.getName().isBlank()) {
+            sprint.setName(updatedSprint.getName().trim());
+        }
+        if (updatedSprint.getStartDate() != null) {
+            sprint.setStartDate(updatedSprint.getStartDate());
+        }
+        if (updatedSprint.getEndDate() != null) {
+            sprint.setEndDate(updatedSprint.getEndDate());
+        }
+        if (updatedSprint.getMemberCount() > 0) {
+            sprint.setMemberCount(updatedSprint.getMemberCount());
+        }
+
+        return sprintRepository.save(sprint);
+    }
+
     public Sprint startSprint(Long id) {
         Sprint sprint = getSprintById(id);
         sprint.setStatus(SprintStatus.ACTIVE);
@@ -71,46 +104,24 @@ public class SprintService {
         return sprintRepository.save(sprint);
     }
 
-    /**
-     * Deletes a sprint and every child record that references it.
-     *
-     * Order of deletion is critical — MySQL will refuse to delete any row
-     * that is still being referenced by a foreign key, so child tables
-     * must be cleared first, parents last:
-     *
-     *   1. time_logs   (references tasks.id)
-     *   2. task_comments (references tasks.id)
-     *   3. task_tags   (join table referencing tasks.id and tags.id)
-     *   4. tasks       (references sprints.id)
-     *   5. sprints     (the row we actually want gone)
-     *
-     * @param id The ID of the sprint to delete
-     */
     @Transactional
     public void deleteSprint(Long id) {
         List<Task> tasks = taskRepository.findBySprintId(id);
 
         for (Task task : tasks) {
-            // 1. time logs
             List<TimeLog> logs = timeLogRepository.findByTaskId(task.getId());
             if (!logs.isEmpty()) {
                 timeLogRepository.deleteAll(logs);
             }
-
-            // 2. comments
             taskCommentRepository.deleteByTaskId(task.getId());
-
-            // 3. tags (clears join table rows via cascade on the @ManyToMany)
             task.getTags().clear();
             taskRepository.save(task);
         }
 
-        // 4. tasks
         if (!tasks.isEmpty()) {
             taskRepository.deleteAll(tasks);
         }
 
-        // 5. sprint
         sprintRepository.deleteById(id);
     }
 }
