@@ -1547,3 +1547,21 @@ body {
     color: #fff;
     border-color: #DC2626;
 }
+
+/* ===================== EMPTY SPRINT STATE ===================== */
+.board-empty-sprint {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    background: #cbd6ff;
+    border-radius: 24px;
+    font-size: 15px;
+    color: #1a1a1a;
+}
+.board-empty-sprint p {
+    margin: 8px 0;
+}
+.board-empty-sprint a {
+    color: #2563EB;
+    font-weight: 600;
+}

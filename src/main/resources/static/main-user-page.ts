@@ -436,7 +436,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             const ids = String(task.assignedEmployeeIds).split(",").map((s) => s.trim()).filter(Boolean);
             return ids.map((id) => {
                 const name = userIdToName.get(id) || `User ${id}`;
-                return `<div class="avatar avatar-small avatar-purple" title="${escapeHtml(name)}">${escapeHtml(initials(name))}</div>`;
+                return `<div class="avatar avatar-small" style="background:${avatarColor(name)};" title="${escapeHtml(name)}">${escapeHtml(initials(name))}</div>`;
             }).join("");
         }
         return "";
@@ -848,7 +848,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             const isAdmin = c.authorRole === "ADMIN" || c.authorRole === "PRODUCT_OWNER";
             return `
                 <div class="comment-row${isAdmin ? " comment-row-admin" : ""}" data-comment-id="${c.id}">
-                    <div class="comment-avatar">${authorInitials}</div>
+                    <div class="comment-avatar" style="background:${avatarColor(c.authorName || "?")};">${authorInitials}</div>
                     <div class="comment-body-wrap">
                         <div class="comment-meta">
                             <span class="comment-author">${escapeHtml(c.authorName)}</span>

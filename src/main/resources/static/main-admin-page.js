@@ -282,6 +282,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     // ===================== STATE =====================
     let tasks = [];
     let currentSprintId = readSprintSetting();
+    let currentSprintBackendId = null;
     let currentTeamId = "all";
     let currentTagName = TAG_FILTER_ALL;
     let sortByTag = false;
@@ -307,6 +308,23 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             if (names.length > 1) return { kind: "teams", teamIds: names };
         }
         return null;
+    }
+
+    // ===================== SPRINT RESOLUTION =====================
+    async function resolveSprintBackendId(tabId) {
+        const name = SPRINT_TAB_NAMES[tabId];
+        if (!name) return null;
+        try {
+            const res = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
+            if (!res.ok) return null;
+            const text = await res.text();
+            if (!text) return null;
+            const sprint = JSON.parse(text);
+            return sprint?.id != null ? String(sprint.id) : null;
+        } catch (err) {
+            console.error("Failed to resolve sprint backend id:", err);
+            return null;
+        }
     }
 
     // ===================== CUSTOM MODALS =====================
@@ -405,7 +423,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             const data = await res.json();
             return data.map((t) => ({
                 id: String(t.id),
-                sprintId: "1",
+                sprintId: t.sprint?.id != null ? String(t.sprint.id) : "",
                 column: t.status ?? "PRODUCT_BACKLOG",
                 title: t.name,
                 description: t.description ?? "",
@@ -447,7 +465,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                     priority: task.priority || null,
                     position: task.position,
                     progress: task.progress ?? 0,
-                    sprint: { id: Number(currentSprintId) },
+                    sprint: currentSprintBackendId ? { id: Number(currentSprintBackendId) } : null,
                 }),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -478,7 +496,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 priority: task.priority || null,
                 position: task.position,
                 progress: task.progress ?? 0,
-                sprint: { id: Number(currentSprintId) },
+                sprint: currentSprintBackendId ? { id: Number(currentSprintBackendId) } : null,
             };
             const res = await fetch(`${API_BASE}/${numericId}`, {
                 method: "PUT",
@@ -521,7 +539,8 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     function visibleTasks() {
         const term = searchTerm.toLowerCase();
         return tasks.filter((task) => {
-            if (task.sprintId !== currentSprintId) return false;
+            if (!currentSprintBackendId) return false;
+            if (task.sprintId !== currentSprintBackendId) return false;
             if (currentTeamId !== "all" && !teamsOfTask(task).includes(currentTeamId)) return false;
             if (currentTagName !== TAG_FILTER_ALL) {
                 const hasTag = (task.tags ?? []).some(
@@ -545,7 +564,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         }
         return assignedEmployees(task.assignee)
             .map((employee) =>
-                `<div class="avatar avatar-small avatar-purple" title="${escapeHtml(employee.name)} · ${escapeHtml(employee.team)}">${escapeHtml(initials(employee.name))}</div>`
+                `<div class="avatar avatar-small" style="background:${avatarColor(employee.name)};" title="${escapeHtml(employee.name)} · ${escapeHtml(employee.team)}">${escapeHtml(initials(employee.name))}</div>`
             ).join("");
     }
 
@@ -589,6 +608,18 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     }
 
     function renderBoard() {
+        // If the tab's sprint doesn't exist in the DB, show a helpful message
+        // and disable card creation.
+        if (!currentSprintBackendId) {
+            board.innerHTML = `
+                <div class="board-empty-sprint">
+                    <p><strong>No sprint exists on this tab yet.</strong></p>
+                    <p>Go to <a href="index-sprint-planning-page.html">Sprint Planning</a>, create
+                    <em>${escapeHtml(SPRINT_TAB_NAMES[currentSprintId] || "a sprint")}</em>, then come back to this page.</p>
+                </div>`;
+            return;
+        }
+
         const shown = visibleTasks();
         board.innerHTML = COLUMNS.map((column) => {
             const cards = shown
@@ -622,6 +653,13 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
         const addBtn = target.closest("[data-add]");
         if (addBtn) {
+            if (!currentSprintBackendId) {
+                showAlertModal(
+                    "No sprint on this tab",
+                    "Create a sprint on this tab first in Sprint Planning, then you can add cards."
+                );
+                return;
+            }
             const draftTask = blankTask(currentSprintId, addBtn.dataset["add"]);
             if (currentTeamId !== "all") draftTask.assignee = { kind: "team", teamId: currentTeamId };
             openModal(draftTask);
@@ -631,7 +669,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     // ===================== LOGGED HOURS PANEL =====================
     const loggedHoursBody = document.getElementById("loggedHoursBody");
     const loggedHoursTotal = document.getElementById("loggedHoursTotal");
-    const loggedHoursUserFilter = document.getElementById("loggedHoursUserFilter");
+    const loggedHoursTeamFilter = document.getElementById("loggedHoursTeamFilter");
     const loggedHoursRangeFilter = document.getElementById("loggedHoursRangeFilter");
     const loggedHoursRefreshBtn = document.getElementById("loggedHoursRefreshBtn");
 
@@ -640,20 +678,20 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         loggedHoursBody.innerHTML = `<tr><td colspan="5" class="muted">Loading…</td></tr>`;
         if (loggedHoursTotal) loggedHoursTotal.textContent = "";
 
-        const mode = loggedHoursUserFilter?.value || "all";
-        const userId = sessionStorage.getItem("userId");
+        const teamFilter = loggedHoursTeamFilter?.value || "all";
 
         try {
-            let logs;
-            if (mode === "me" && userId) {
-                const res = await fetch(`${TIMELOGS_API}/user/${userId}`);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                logs = await res.json();
-            } else {
-                const res = await fetch(TIMELOGS_API);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                logs = await res.json();
+            const res = await fetch(TIMELOGS_API);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            let logs = await res.json();
+
+            if (teamFilter !== "all") {
+                const memberIds = new Set(
+                    EMPLOYEES.filter((e) => e.team === teamFilter).map((e) => e.id)
+                );
+                logs = logs.filter((l) => l.user && memberIds.has(String(l.user.id)));
             }
+
             const rangeVal = loggedHoursRangeFilter?.value || "all";
             if (rangeVal !== "all") {
                 const days = Number(rangeVal) || 7;
@@ -662,6 +700,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 const cutoffIso = cutoff.toISOString().split("T")[0];
                 logs = logs.filter((l) => (l.date ?? "") >= cutoffIso);
             }
+
             logs.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
 
             if (logs.length === 0) {
@@ -699,7 +738,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     }
 
     loggedHoursRefreshBtn?.addEventListener("click", () => { void loadLoggedHours(); });
-    loggedHoursUserFilter?.addEventListener("change", () => { void loadLoggedHours(); });
+    loggedHoursTeamFilter?.addEventListener("change", () => { void loadLoggedHours(); });
     loggedHoursRangeFilter?.addEventListener("change", () => { void loadLoggedHours(); });
 
     // ===================== DRAG AND DROP =====================
@@ -786,10 +825,11 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 if (sprintId) {
                     currentSprintId = sprintId;
                     writeSprintSetting(sprintId);
-                    renderBoard();
-                    renderTeamFilter();
-                    renderTagFilter();
-                    void refreshSprintButton();
+                    void (async () => {
+                        currentSprintBackendId = await resolveSprintBackendId(sprintId);
+                        await refreshFromBackend();
+                        await refreshSprintButton();
+                    })();
                 }
             });
         });
@@ -809,7 +849,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     const teamFilterLabel = requireElement("teamFilterLabel");
 
     function renderTeamFilter() {
-        const inSprint = tasks.filter((t) => t.sprintId === currentSprintId);
+        const inSprint = tasks.filter((t) => !currentSprintBackendId || t.sprintId === currentSprintBackendId);
         const options = [
             { id: "all", name: "All teams", count: inSprint.length },
             ...TEAMS.map((team) => ({
@@ -852,14 +892,15 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
     function availableTagNames() {
         const names = new Set();
-        tasks.filter((t) => t.sprintId === currentSprintId)
+        tasks
+            .filter((t) => !currentSprintBackendId || t.sprintId === currentSprintBackendId)
             .forEach((t) => (t.tags ?? []).forEach((tag) => names.add(tag.name)));
         return Array.from(names).sort((a, b) => a.localeCompare(b));
     }
 
     function renderTagFilter() {
         if (!tagFilterMenu) return;
-        const inSprint = tasks.filter((t) => t.sprintId === currentSprintId);
+        const inSprint = tasks.filter((t) => !currentSprintBackendId || t.sprintId === currentSprintBackendId);
         const names = availableTagNames();
         const countFor = (name) =>
             inSprint.filter((t) =>
@@ -1293,7 +1334,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             const isAdmin = c.authorRole === "ADMIN" || c.authorRole === "PRODUCT_OWNER";
             return `
                 <div class="comment-row${isAdmin ? " comment-row-admin" : ""}" data-comment-id="${c.id}">
-                    <div class="comment-avatar">${authorInitials}</div>
+                    <div class="comment-avatar" style="background:${avatarColor(c.authorName || "?")};">${authorInitials}</div>
                     <div class="comment-body-wrap">
                         <div class="comment-meta">
                             <span class="comment-author">${escapeHtml(c.authorName)}</span>
@@ -1485,7 +1526,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     // ===================== START / END SPRINT =====================
     const startSprintBtn = document.getElementById("startSprintBtn");
     let currentSprintStatus = null;
-    let currentSprintNumericId = null;
 
     async function fetchSprintStatus(tabId) {
         const name = SPRINT_TAB_NAMES[tabId];
@@ -1525,12 +1565,12 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     async function refreshSprintButton() {
         const sprint = await fetchSprintStatus(currentSprintId);
         currentSprintStatus = sprint?.status ?? null;
-        currentSprintNumericId = sprint?.id ?? null;
+        if (sprint?.id != null) currentSprintBackendId = String(sprint.id);
         renderSprintButton(currentSprintStatus);
     }
     startSprintBtn?.addEventListener("click", async () => {
         if (!startSprintBtn || startSprintBtn.disabled) return;
-        const numericId = currentSprintNumericId;
+        const numericId = currentSprintBackendId != null ? Number(currentSprintBackendId) : null;
         if (numericId === null || !Number.isFinite(numericId) || numericId <= 0) { showNoSprintModal(); return; }
         const starting = currentSprintStatus !== "ACTIVE";
         const confirmMsg = starting
@@ -1564,6 +1604,9 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         await loadEmployeesFromBackend();
         highlightSavedSprintTab();
         initSprintTabs();
+
+        currentSprintBackendId = await resolveSprintBackendId(currentSprintId);
+
         renderTeamFilter();
         renderTagFilter();
         await refreshSprintButton();

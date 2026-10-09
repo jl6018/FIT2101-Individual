@@ -200,6 +200,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         position?: number | null;
         tags?: { id: number; name: string }[] | null;
         progress?: number | null;
+        sprint?: { id: number } | null;
     };
     type BackendUser = {
         id: number;
@@ -355,6 +356,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     // ===================== STATE =====================
     let tasks: Task[] = [];
     let currentSprintId = readSprintSetting();
+    let currentSprintBackendId: string | null = null;
     let currentTeamId = "all";
     let currentTagName: string = TAG_FILTER_ALL;
     let sortByTag = false;
@@ -382,6 +384,23 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             if (names.length > 1) return { kind: "teams", teamIds: names };
         }
         return null;
+    }
+
+    // ===================== SPRINT RESOLUTION =====================
+    async function resolveSprintBackendId(tabId: string): Promise<string | null> {
+        const name = SPRINT_TAB_NAMES[tabId];
+        if (!name) return null;
+        try {
+            const res = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(name)}`);
+            if (!res.ok) return null;
+            const text = await res.text();
+            if (!text) return null;
+            const sprint = JSON.parse(text) as Sprint;
+            return sprint?.id != null ? String(sprint.id) : null;
+        } catch (err) {
+            console.error("Failed to resolve sprint backend id:", err);
+            return null;
+        }
     }
 
     // ===================== CUSTOM MODALS =====================
@@ -488,7 +507,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             const data: BackendTask[] = await res.json();
             return data.map((t) => ({
                 id: String(t.id),
-                sprintId: "1",
+                sprintId: t.sprint?.id != null ? String(t.sprint.id) : "",
                 column: (t.status ?? "PRODUCT_BACKLOG") as ColumnId,
                 title: t.name,
                 description: t.description ?? "",
@@ -530,7 +549,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                     priority: task.priority || null,
                     position: task.position,
                     progress: task.progress ?? 0,
-                    sprint: { id: Number(currentSprintId) },
+                    sprint: currentSprintBackendId ? { id: Number(currentSprintBackendId) } : null,
                 }),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -561,7 +580,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 priority: task.priority || null,
                 position: task.position,
                 progress: task.progress ?? 0,
-                sprint: { id: Number(currentSprintId) },
+                sprint: currentSprintBackendId ? { id: Number(currentSprintBackendId) } : null,
             };
             const res = await fetch(`${API_BASE}/${numericId}`, {
                 method: "PUT",
@@ -604,7 +623,8 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     function visibleTasks(): Task[] {
         const term = searchTerm.toLowerCase();
         return tasks.filter((task) => {
-            if (task.sprintId !== currentSprintId) return false;
+            if (!currentSprintBackendId) return false;
+            if (task.sprintId !== currentSprintBackendId) return false;
             if (currentTeamId !== "all" && !teamsOfTask(task).includes(currentTeamId)) return false;
             if (currentTagName !== TAG_FILTER_ALL) {
                 const hasTag = (task.tags ?? []).some(
@@ -628,7 +648,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         }
         return assignedEmployees(task.assignee)
             .map((employee) =>
-                `<div class="avatar avatar-small avatar-purple" title="${escapeHtml(employee.name)} · ${escapeHtml(employee.team)}">${escapeHtml(initials(employee.name))}</div>`
+                `<div class="avatar avatar-small" style="background:${avatarColor(employee.name)};" title="${escapeHtml(employee.name)} · ${escapeHtml(employee.team)}">${escapeHtml(initials(employee.name))}</div>`
             ).join("");
     }
 
@@ -672,6 +692,16 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     }
 
     function renderBoard(): void {
+        if (!currentSprintBackendId) {
+            board.innerHTML = `
+                <div class="board-empty-sprint">
+                    <p><strong>No sprint exists on this tab yet.</strong></p>
+                    <p>Go to <a href="index-sprint-planning-page.html">Sprint Planning</a>, create
+                    <em>${escapeHtml(SPRINT_TAB_NAMES[currentSprintId] || "a sprint")}</em>, then come back to this page.</p>
+                </div>`;
+            return;
+        }
+
         const shown = visibleTasks();
         board.innerHTML = COLUMNS.map((column) => {
             const cards = shown
@@ -705,6 +735,13 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
         const addBtn = target.closest<HTMLElement>("[data-add]");
         if (addBtn) {
+            if (!currentSprintBackendId) {
+                showAlertModal(
+                    "No sprint on this tab",
+                    "Create a sprint on this tab first in Sprint Planning, then you can add cards."
+                );
+                return;
+            }
             const draftTask = blankTask(currentSprintId, addBtn.dataset["add"] as ColumnId);
             if (currentTeamId !== "all") draftTask.assignee = { kind: "team", teamId: currentTeamId };
             openModal(draftTask);
@@ -714,7 +751,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     // ===================== LOGGED HOURS PANEL =====================
     const loggedHoursBody = document.getElementById("loggedHoursBody") as HTMLTableSectionElement | null;
     const loggedHoursTotal = document.getElementById("loggedHoursTotal") as HTMLParagraphElement | null;
-    const loggedHoursUserFilter = document.getElementById("loggedHoursUserFilter") as HTMLSelectElement | null;
+    const loggedHoursTeamFilter = document.getElementById("loggedHoursTeamFilter") as HTMLSelectElement | null;
     const loggedHoursRangeFilter = document.getElementById("loggedHoursRangeFilter") as HTMLSelectElement | null;
     const loggedHoursRefreshBtn = document.getElementById("loggedHoursRefreshBtn") as HTMLButtonElement | null;
 
@@ -723,20 +760,20 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         loggedHoursBody.innerHTML = `<tr><td colspan="5" class="muted">Loading…</td></tr>`;
         if (loggedHoursTotal) loggedHoursTotal.textContent = "";
 
-        const mode = loggedHoursUserFilter?.value || "all";
-        const userId = sessionStorage.getItem("userId");
+        const teamFilter = loggedHoursTeamFilter?.value || "all";
 
         try {
-            let logs: TimeLogRow[];
-            if (mode === "me" && userId) {
-                const res = await fetch(`${TIMELOGS_API}/user/${userId}`);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                logs = (await res.json()) as TimeLogRow[];
-            } else {
-                const res = await fetch(TIMELOGS_API);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                logs = (await res.json()) as TimeLogRow[];
+            const res = await fetch(TIMELOGS_API);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            let logs = (await res.json()) as TimeLogRow[];
+
+            if (teamFilter !== "all") {
+                const memberIds = new Set(
+                    EMPLOYEES.filter((e) => e.team === teamFilter).map((e) => e.id)
+                );
+                logs = logs.filter((l) => l.user && memberIds.has(String(l.user.id)));
             }
+
             const rangeVal = loggedHoursRangeFilter?.value || "all";
             if (rangeVal !== "all") {
                 const days = Number(rangeVal) || 7;
@@ -745,6 +782,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 const cutoffIso = cutoff.toISOString().split("T")[0];
                 logs = logs.filter((l) => (l.date ?? "") >= cutoffIso);
             }
+
             logs.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
             if (logs.length === 0) {
                 loggedHoursBody.innerHTML = `<tr><td colspan="5" class="muted">No logs found.</td></tr>`;
@@ -778,7 +816,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     }
 
     loggedHoursRefreshBtn?.addEventListener("click", () => { void loadLoggedHours(); });
-    loggedHoursUserFilter?.addEventListener("change", () => { void loadLoggedHours(); });
+    loggedHoursTeamFilter?.addEventListener("change", () => { void loadLoggedHours(); });
     loggedHoursRangeFilter?.addEventListener("change", () => { void loadLoggedHours(); });
 
     // ===================== DRAG AND DROP =====================
@@ -865,10 +903,11 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 if (sprintId) {
                     currentSprintId = sprintId;
                     writeSprintSetting(sprintId);
-                    renderBoard();
-                    renderTeamFilter();
-                    renderTagFilter();
-                    void refreshSprintButton();
+                    void (async () => {
+                        currentSprintBackendId = await resolveSprintBackendId(sprintId);
+                        await refreshFromBackend();
+                        await refreshSprintButton();
+                    })();
                 }
             });
         });
@@ -888,7 +927,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     const teamFilterLabel = requireElement<HTMLSpanElement>("teamFilterLabel");
 
     function renderTeamFilter(): void {
-        const inSprint = tasks.filter((t) => t.sprintId === currentSprintId);
+        const inSprint = tasks.filter((t) => !currentSprintBackendId || t.sprintId === currentSprintBackendId);
         const options = [
             { id: "all", name: "All teams", count: inSprint.length },
             ...TEAMS.map((team) => ({
@@ -933,14 +972,15 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
     function availableTagNames(): string[] {
         const names = new Set<string>();
-        tasks.filter((t) => t.sprintId === currentSprintId)
+        tasks
+            .filter((t) => !currentSprintBackendId || t.sprintId === currentSprintBackendId)
             .forEach((t) => (t.tags ?? []).forEach((tag) => names.add(tag.name)));
         return Array.from(names).sort((a, b) => a.localeCompare(b));
     }
 
     function renderTagFilter(): void {
         if (!tagFilterMenu) return;
-        const inSprint = tasks.filter((t) => t.sprintId === currentSprintId);
+        const inSprint = tasks.filter((t) => !currentSprintBackendId || t.sprintId === currentSprintBackendId);
         const names = availableTagNames();
         const countFor = (name: string) =>
             inSprint.filter((t) =>
@@ -1373,7 +1413,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             const isAdmin = c.authorRole === "ADMIN" || c.authorRole === "PRODUCT_OWNER";
             return `
                 <div class="comment-row${isAdmin ? " comment-row-admin" : ""}" data-comment-id="${c.id}">
-                    <div class="comment-avatar">${authorInitials}</div>
+                    <div class="comment-avatar" style="background:${avatarColor(c.authorName || "?")};">${authorInitials}</div>
                     <div class="comment-body-wrap">
                         <div class="comment-meta">
                             <span class="comment-author">${escapeHtml(c.authorName)}</span>
@@ -1566,7 +1606,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     // ===================== START / END SPRINT =====================
     const startSprintBtn = document.getElementById("startSprintBtn") as HTMLButtonElement | null;
     let currentSprintStatus: string | null = null;
-    let currentSprintNumericId: number | null = null;
 
     async function fetchSprintStatus(tabId: string): Promise<Sprint | null> {
         const name = SPRINT_TAB_NAMES[tabId];
@@ -1605,12 +1644,12 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     async function refreshSprintButton(): Promise<void> {
         const sprint = await fetchSprintStatus(currentSprintId);
         currentSprintStatus = sprint?.status ?? null;
-        currentSprintNumericId = sprint?.id ?? null;
+        if (sprint?.id != null) currentSprintBackendId = String(sprint.id);
         renderSprintButton(currentSprintStatus);
     }
     startSprintBtn?.addEventListener("click", async () => {
         if (!startSprintBtn || startSprintBtn.disabled) return;
-        const numericId = currentSprintNumericId;
+        const numericId = currentSprintBackendId != null ? Number(currentSprintBackendId) : null;
         if (numericId === null || !Number.isFinite(numericId) || numericId <= 0) { showNoSprintModal(); return; }
         const starting = currentSprintStatus !== "ACTIVE";
         const confirmMsg = starting
@@ -1644,6 +1683,9 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         await loadEmployeesFromBackend();
         highlightSavedSprintTab();
         initSprintTabs();
+
+        currentSprintBackendId = await resolveSprintBackendId(currentSprintId);
+
         renderTeamFilter();
         renderTagFilter();
         await refreshSprintButton();
