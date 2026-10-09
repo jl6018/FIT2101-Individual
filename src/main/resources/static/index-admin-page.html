@@ -44,10 +44,6 @@
                 <span class="dot"></span> <span class="nav-label">Reports</span>
             </a>
         </nav>
-
-        <div class="sidebar-footer">
-            <div class="signed-in">Signed in as <strong id="signedInName">Admin</strong></div>
-        </div>
     </aside>
 
     <div class="app-main">
@@ -222,6 +218,23 @@
             <div class="modal-toolbar">
                 <div class="toolbar-group">
                     <div class="pill-wrap">
+                        <button class="pill" type="button" data-popover="membersPopover">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"/></svg>
+                            Members
+                        </button>
+                        <div class="popover popover-wide" id="membersPopover">
+                            <span class="popover-label">Assign this task to</span>
+                            <div class="segmented" role="group" aria-label="Assign to a team or to employees">
+                                <button type="button" class="segment" data-assign-kind="team">A team</button>
+                                <button type="button" class="segment" data-assign-kind="employees">Employees</button>
+                            </div>
+                            <select id="assigneeSelect" aria-label="Team"></select>
+                            <div id="employeeList" class="employee-list" role="group" aria-label="Employees" hidden></div>
+                            <button class="popover-btn popover-btn-quiet" id="unassignBtn" type="button">Unassign</button>
+                        </div>
+                    </div>
+
+                    <div class="pill-wrap">
                         <button class="pill" type="button" data-popover="datePopover">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
                             Dates
@@ -250,23 +263,6 @@
                     </div>
 
                     <div class="pill-wrap">
-                        <button class="pill" type="button" data-popover="membersPopover">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"/></svg>
-                            Members
-                        </button>
-                        <div class="popover popover-wide" id="membersPopover">
-                            <span class="popover-label">Assign this task to</span>
-                            <div class="segmented" role="group" aria-label="Assign to a team or to employees">
-                                <button type="button" class="segment" data-assign-kind="team">A team</button>
-                                <button type="button" class="segment" data-assign-kind="employees">Employees</button>
-                            </div>
-                            <select id="assigneeSelect" aria-label="Team"></select>
-                            <div id="employeeList" class="employee-list" role="group" aria-label="Employees" hidden></div>
-                            <button class="popover-btn popover-btn-quiet" id="unassignBtn" type="button">Unassign</button>
-                        </div>
-                    </div>
-
-                    <div class="pill-wrap">
                         <button class="pill" type="button" data-popover="priorityPopover">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M5 21V4M5 4h11l-2 4 2 4H5"/>
@@ -287,25 +283,6 @@
                     </div>
 
                     <div class="pill-wrap">
-                        <button class="pill" type="button" data-popover="tagsPopover">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M20 12l-8 8-9-9V4h7l10 8z"/>
-                                <circle cx="7.5" cy="7.5" r="1.2"/>
-                            </svg>
-                            Tags
-                        </button>
-                        <div class="popover" id="tagsPopover">
-                            <label class="popover-label" for="tagInput">Add a tag</label>
-                            <div class="popover-row">
-                                <input type="text" id="tagInput" placeholder="e.g. frontend" maxlength="50" />
-                                <button class="popover-btn" id="addTagBtn" type="button">Add</button>
-                            </div>
-                            <div id="tagChips" class="tag-chip-list"></div>
-                            <p class="employee-empty" id="tagEmpty">No tags yet.</p>
-                        </div>
-                    </div>
-
-                    <div class="pill-wrap">
                         <button class="pill" type="button" data-popover="progressPopover">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M3 12a9 9 0 1 1 9 9"/>
@@ -322,6 +299,25 @@
                             <input type="range" id="progressSlider" min="0" max="100" step="5" value="0"
                                    class="progress-slider" aria-label="Progress slider" />
                             <button class="popover-btn popover-btn-quiet" id="progressClearBtn" type="button">Reset to 0%</button>
+                        </div>
+                    </div>
+
+                    <div class="pill-wrap">
+                        <button class="pill" type="button" data-popover="tagsPopover">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M20 12l-8 8-9-9V4h7l10 8z"/>
+                                <circle cx="7.5" cy="7.5" r="1.2"/>
+                            </svg>
+                            Tags
+                        </button>
+                        <div class="popover" id="tagsPopover">
+                            <label class="popover-label" for="tagInput">Add a tag</label>
+                            <div class="popover-row">
+                                <input type="text" id="tagInput" placeholder="e.g. frontend" maxlength="50" />
+                                <button class="popover-btn" id="addTagBtn" type="button">Add</button>
+                            </div>
+                            <div id="tagChips" class="tag-chip-list"></div>
+                            <p class="employee-empty" id="tagEmpty">No tags yet.</p>
                         </div>
                     </div>
                 </div>
