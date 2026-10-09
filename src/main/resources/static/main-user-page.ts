@@ -117,6 +117,11 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         return String(name).split(/\s+/).filter(Boolean).slice(0, 2)
             .map((part) => part.charAt(0).toUpperCase()).join("");
     }
+    function avatarColor(name: string): string {
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        return `hsl(${Math.abs(hash) % 360}, 65%, 55%)`;
+    }
 
     const COLUMNS: { id: ColumnId; name: string }[] = [
         { id: "PRODUCT_BACKLOG", name: "Product Backlog" },
@@ -197,6 +202,8 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         const label = initials(storedName) || (storedName ? storedName.charAt(0).toUpperCase() : "?");
         avatarEl.textContent = label;
         if (storedName) avatarEl.title = storedName;
+        avatarEl.style.backgroundColor = avatarColor(storedName || "?");
+        avatarEl.style.color = "#ffffff";
     }
 
     const roleBadgeEl = document.getElementById("roleBadge");
@@ -938,7 +945,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         }
     });
 
-    // ===== Delete a comment =====
     commentsList?.addEventListener("click", async (e: MouseEvent) => {
         const btn = (e.target as HTMLElement).closest<HTMLElement>("[data-delete-comment]");
         if (!btn) return;

@@ -27,6 +27,13 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 }
 
 (() => {
+    // ===================== HELPERS =====================
+    function avatarColor(name) {
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        return `hsl(${Math.abs(hash) % 360}, 65%, 55%)`;
+    }
+
     // ===================== SHOW CURRENT USER =====================
     const avatarEl = document.getElementById("userAvatar");
     const profileMenuName = document.getElementById("profileMenuName");
@@ -50,6 +57,8 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             .map((part) => part.charAt(0).toUpperCase()).join("");
         avatarEl.textContent = label || (storedName ? storedName.charAt(0).toUpperCase() : "?");
         if (storedName) avatarEl.title = storedName;
+        avatarEl.style.backgroundColor = avatarColor(storedName || "?");
+        avatarEl.style.color = "#ffffff";
     }
 
     if (roleBadgeEl) {
@@ -1384,7 +1393,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         }
     });
 
-    // ===== Delete a comment =====
     commentsList?.addEventListener("click", async (e) => {
         const btn = e.target.closest("[data-delete-comment]");
         if (!btn) return;
