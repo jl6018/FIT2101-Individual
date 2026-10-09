@@ -2,13 +2,18 @@ package webapplication.service;
 
 import webapplication.model.Sprint;
 import webapplication.model.SprintStatus;
+import webapplication.model.Task;
+import webapplication.model.TimeLog;
 import webapplication.repository.SprintRepository;
+import webapplication.repository.TaskRepository;
+import webapplication.repository.TimeLogRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 /**
  * Manages sprint Create, Read, status transition, and Delete operations.
+ * Deleting a sprint also cascades to its tasks and those tasks' time logs.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -18,14 +23,22 @@ import java.util.List;
 public class SprintService {
 
     private final SprintRepository sprintRepository;
+    private final TaskRepository taskRepository;
+    private final TimeLogRepository timeLogRepository;
 
     /**
-     * Parameterized constructor with the required SprintRepository dependency.
+     * Parameterized constructor with the required repository dependencies.
      *
-     * @param sprintRepository The repository handling sprint database operations
+     * @param sprintRepository  The repository handling sprint database operations
+     * @param taskRepository    The repository handling task database operations
+     * @param timeLogRepository The repository handling time log database operations
      */
-    public SprintService(SprintRepository sprintRepository) {
+    public SprintService(SprintRepository sprintRepository,
+                         TaskRepository taskRepository,
+                         TimeLogRepository timeLogRepository) {
         this.sprintRepository = sprintRepository;
+        this.taskRepository = taskRepository;
+        this.timeLogRepository = timeLogRepository;
     }
 
     /**
@@ -99,11 +112,35 @@ public class SprintService {
     }
 
     /**
-     * Deletes a sprint from the database by its ID.
+     * Deletes a sprint from the database by its ID, along with any tasks
+     * attached to it and those tasks' time logs.
+     *
+     * The order matters:
+     *   1. Delete time logs whose task belongs to this sprint.
+     *   2. Delete the tasks themselves.
+     *   3. Delete the sprint.
+     *
+     * Without step 1 and 2, MySQL would refuse the delete with a foreign
+     * key constraint violation (which the browser would show as HTTP 500).
      *
      * @param id The ID of the sprint to delete
      */
     public void deleteSprint(Long id) {
+        // 1. Delete time logs for every task in this sprint.
+        List<Task> tasks = taskRepository.findBySprintId(id);
+        for (Task task : tasks) {
+            List<TimeLog> logs = timeLogRepository.findByTaskId(task.getId());
+            if (!logs.isEmpty()) {
+                timeLogRepository.deleteAll(logs);
+            }
+        }
+
+        // 2. Delete the tasks themselves.
+        if (!tasks.isEmpty()) {
+            taskRepository.deleteAll(tasks);
+        }
+
+        // 3. Now it's safe to delete the sprint.
         sprintRepository.deleteById(id);
     }
 }
