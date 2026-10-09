@@ -1705,10 +1705,10 @@ button, select, input, textarea {
 
 /* ===================== LOGGED HOURS SCOPE LABEL ===================== */
 .logged-hours-scope {
-    font-size: 1.1rem;         /* ✅ match the h2 size ("LOGGED HOURS") */
-    font-weight: 400;          /* lighter than the heading */
-    text-transform: none;      /* keep title case, not all caps */
-    letter-spacing: normal;
-    color: #4b5563;            /* muted grey */
+    font-size: inherit;
+    font-weight: inherit;
+    text-transform: inherit;
+    letter-spacing: inherit;
+    color: inherit;
     margin-left: 8px;
 }
