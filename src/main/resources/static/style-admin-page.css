@@ -216,7 +216,7 @@ button, select, input, textarea {
 
 .search-bar input {
     width: 100%;
-    padding: 11px 230px 11px 44px;
+    padding: 11px 260px 11px 44px;
     border-radius: 8px;
     border: none;
     background: white;
@@ -235,21 +235,6 @@ button, select, input, textarea {
     top: 50%;
     transform: translateY(-50%);
     pointer-events: none;
-}
-
-/* ---- Tag filter + team filter: each is a positioning context ---- */
-.tag-filter {
-    position: absolute;
-    right: 110px;
-    top: 50%;
-    transform: translateY(-50%);
-}
-
-.team-filter {
-    position: absolute;
-    right: 6px;
-    top: 50%;
-    transform: translateY(-50%);
 }
 
 .team-filter-btn {
@@ -350,7 +335,7 @@ button, select, input, textarea {
     font-size: 0.62rem;
 }
 
-.avatar-dark { background-color: #000; }
+.avatar-dark { background-color: #6672c8; }
 .avatar-purple { background-color: #5b3db0; }
 
 /* ===================== NAVBAR ACCOUNT MENU ===================== */
@@ -1524,17 +1509,6 @@ button, select, input, textarea {
     padding: 0;
 }
 
-/* ===================== US14: TAG FILTER (responsive) ===================== */
-@media (max-width: 900px) {
-    .tag-filter { right: 110px; }
-    .search-bar input { padding-right: 220px; }
-}
-
-@media (max-width: 720px) {
-    .tag-filter { right: 105px; }
-    .search-bar input { padding-right: 210px; }
-}
-
 /* ===================== US16: PROGRESS ===================== */
 .progress-value-label {
     font-weight: 700;
@@ -1685,4 +1659,56 @@ button, select, input, textarea {
         margin-left: 16px;
         margin-right: 16px;
     }
+}
+
+/* ===================== FILTER BUTTONS (right of search bar) ===================== */
+.filter-buttons {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tag-filter,
+.team-filter {
+    position: relative;
+}
+
+.team-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    color: #1a1a1a;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.team-filter-btn svg {
+    width: 1.4em;
+    height: 1.4em;
+}
+
+.team-filter-btn:hover,
+.team-filter-btn.filtered {
+    background-color: #e3e6fa;
+}
+
+/* ===================== LOGGED HOURS SCOPE LABEL ===================== */
+.logged-hours-scope {
+    font-size: 1.1rem;         /* ✅ match the h2 size ("LOGGED HOURS") */
+    font-weight: 400;          /* lighter than the heading */
+    text-transform: none;      /* keep title case, not all caps */
+    letter-spacing: normal;
+    color: #4b5563;            /* muted grey */
+    margin-left: 8px;
 }

@@ -166,7 +166,7 @@ body {
     padding-left: 4px;
 }
 
-/* ===================== MAIN CONTENT (full width, no white bg) ========== */
+/* ===================== MAIN CONTENT ===================== */
 .main {
     flex-grow: 1;
     width: 100%;
@@ -277,7 +277,7 @@ h1 {
     font-weight: 500;
 }
 
-/* ===================== BAR CHART ===================== */
+/* ===================== BAR CHART (member modal) ===================== */
 .bar-chart {
     display: flex;
     align-items: flex-end;
@@ -324,7 +324,7 @@ h1 {
     padding: 24px 0 0;
 }
 
-/* ===================== BURNDOWN ===================== */
+/* ===================== BURNDOWN WRAPPER ===================== */
 .burndown-wrap {
     width: 100%;
     overflow-x: auto;
@@ -333,14 +333,27 @@ h1 {
     padding: 12px;
 }
 
-.burndown-svg {
+/* ===================== CHART WRAPPERS ===================== */
+.line-chart-wrap {
     width: 100%;
-    max-width: 720px;
-    height: auto;
-    display: block;
-    margin: 0 auto;
+    background: #fff;
+    border-radius: 8px;
+    padding: 12px;
+    overflow-x: auto;
 }
 
+/* ===================== CHART SVGs ===================== *
+ * width: 100% + height: auto → the SVG grows with the panel.
+ * No max-width / no auto-margin → no left/right gap.
+ */
+.line-chart-svg,
+.burndown-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* ===================== LEGEND ===================== */
 .legend {
     display: flex;
     gap: 20px;
@@ -501,21 +514,4 @@ h1 {
     color: #6B7280;
     font-style: italic;
     text-align: center;
-}
-
-/* ===================== US29: HOURS-PER-TASK LINE CHART ===================== */
-.line-chart-wrap {
-    width: 100%;
-    background: #fff;
-    border-radius: 8px;
-    padding: 12px;
-    overflow-x: auto;
-}
-
-.line-chart-svg {
-    width: 100%;
-    max-width: 720px;
-    height: auto;
-    display: block;
-    margin: 0 auto;
 }

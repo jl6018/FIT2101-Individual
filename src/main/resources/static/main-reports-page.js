@@ -85,6 +85,17 @@ function escapeHtml(text) {
         .replace(/'/g, "&#39;");
 }
 
+/**
+ * Reads the usable inner width of the SVG's parent container.
+ * Falls back to 720 if the container isn't measurable yet.
+ */
+function chartWidth(svgEl, fallback = 720) {
+    const wrap = svgEl.parentElement;
+    if (!wrap) return fallback;
+    // Subtract ~24px so the SVG doesn't touch the very edge of the card
+    return Math.max(fallback, wrap.clientWidth - 24);
+}
+
 // ===================== ELEMENTS =====================
 const timeRangeRow = requireElement("timeRangeRow");
 const contributionTitle = requireElement("contributionTitle");
@@ -183,7 +194,6 @@ async function loadBurndown() {
         const sRes = await fetch(`${SPRINTS_API}/latest?name=${encodeURIComponent(sprintName)}`);
         if (!sRes.ok) throw new Error(`HTTP ${sRes.status}`);
 
-        // Backend returns 200 with an empty body when no sprint exists yet.
         const sText = await sRes.text();
         if (!sText) {
             burndownEmpty.textContent = `No sprint named "${sprintName}" exists yet.`;
@@ -278,7 +288,6 @@ function renderMemberChart(logs) {
         return;
     }
 
-    // ---- Bar chart ----
     const byDate = {};
     logs.forEach((log) => {
         byDate[log.date] = (byDate[log.date] || 0) + Number(log.hours || 0);
@@ -302,7 +311,6 @@ function renderMemberChart(logs) {
         memberChartWrap.appendChild(item);
     });
 
-    // ---- Log entries table ----
     const sorted = [...logs].sort((a, b) =>
         (b.date || "").localeCompare(a.date || "")
     );
@@ -335,13 +343,16 @@ function renderTaskLineChart(rows) {
     }
     taskChartEmpty.style.display = "none";
 
-    const width = 720, height = 320;
+    // ✅ Use the actual container width instead of a hard-coded 720
+    const width = chartWidth(taskLineChart);
+    const height = 320;
     const paddingLeft = 60, paddingRight = 30, paddingTop = 30, paddingBottom = 80;
     const plotWidth = width - paddingLeft - paddingRight;
     const plotHeight = height - paddingTop - paddingBottom;
 
     const niceMax = Math.ceil(Math.max(...rows.map((r) => r.totalHours), 1));
     const svgNS = "http://www.w3.org/2000/svg";
+
     taskLineChart.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
     addAxis(svgNS, taskLineChart, paddingLeft, paddingTop, paddingLeft, height - paddingBottom);
@@ -389,7 +400,9 @@ function renderBurndown(points) {
     }
     burndownEmpty.style.display = "none";
 
-    const width = 720, height = 320;
+    // ✅ Use the actual container width instead of a hard-coded 720
+    const width = chartWidth(burndownChart);
+    const height = 320;
     const paddingLeft = 60, paddingRight = 30, paddingTop = 30, paddingBottom = 50;
     const plotWidth = width - paddingLeft - paddingRight;
     const plotHeight = height - paddingTop - paddingBottom;
