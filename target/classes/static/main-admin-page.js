@@ -58,7 +58,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         avatarEl.textContent = label || (storedName ? storedName.charAt(0).toUpperCase() : "?");
         if (storedName) avatarEl.title = storedName;
 
-        // ✅ Give each admin / product owner their own unique avatar colour
         avatarEl.style.backgroundColor = avatarColor(storedName || "?");
         avatarEl.style.color = "#ffffff";
     }
@@ -100,11 +99,19 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         teamFilterMenu.classList.toggle("visible", open);
         teamFilterBtn.setAttribute("aria-expanded", String(open));
     }
+
+    const notifMenu = document.getElementById("notifMenu");
+    const notifBellBtn = document.getElementById("notifBellBtn");
+
     function closeAllMenus() {
         setProfileMenuOpen(false);
         setHeaderMenuOpen(false);
         setTagFilterOpen(false);
         setTeamFilterOpen(false);
+        if (notifMenu && notifBellBtn) {
+            notifMenu.classList.remove("visible");
+            notifBellBtn.setAttribute("aria-expanded", "false");
+        }
     }
 
     profileMenuBtn?.addEventListener("click", (event) => {
@@ -158,6 +165,11 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             && !teamFilterMenu.contains(t) && !teamFilterBtn?.contains(t)) {
             setTeamFilterOpen(false);
         }
+        if (notifMenu?.classList.contains("visible")
+            && !notifMenu.contains(t) && !notifBellBtn?.contains(t)) {
+            notifMenu.classList.remove("visible");
+            notifBellBtn?.setAttribute("aria-expanded", "false");
+        }
     });
 
     document.addEventListener("keydown", (event) => {
@@ -170,6 +182,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     const SPRINTS_API = "http://localhost:8080/api/sprints";
     const TAGS_API = "http://localhost:8080/api/tags";
     const TIMELOGS_API = "http://localhost:8080/api/timelogs";
+    const RECENT_COMMENTS_API = "http://localhost:8080/api/tasks/comments/recent?limit=20";
 
     const TAG_FILTER_ALL = "all";
 
@@ -679,13 +692,11 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         loggedHoursBody.innerHTML = `<tr><td colspan="5" class="muted">Loading…</td></tr>`;
         if (loggedHoursTotal) loggedHoursTotal.textContent = "";
 
-        // ✅ Team filter comes from the top-of-page team dropdown
         const teamFilter = currentTeamId;
         if (loggedHoursScope) {
             loggedHoursScope.textContent = teamFilter === "all" ? "— all teams" : `— ${teamFilter}`;
         }
 
-        // ✅ No sprint on this tab → show nothing (don't fall through to "show all")
         if (!currentSprintBackendId) {
             loggedHoursBody.innerHTML = `<tr><td colspan="5" class="muted">No logs found.</td></tr>`;
             if (loggedHoursTotal) loggedHoursTotal.textContent = "Total: 0h";
@@ -697,7 +708,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             let logs = await res.json();
 
-            // ✅ Team filter
             if (teamFilter !== "all") {
                 const memberIds = new Set(
                     EMPLOYEES.filter((e) => e.team === teamFilter).map((e) => e.id)
@@ -705,7 +715,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 logs = logs.filter((l) => l.user && memberIds.has(String(l.user.id)));
             }
 
-            // ✅ Sprint filter — only show logs whose task is in the current sprint
             const sprintTaskIds = new Set(
                 tasks
                     .filter((t) => t.sprintId === currentSprintBackendId)
@@ -713,7 +722,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             );
             logs = logs.filter((l) => l.task && sprintTaskIds.has(String(l.task.id)));
 
-            // Range filter
             const rangeVal = loggedHoursRangeFilter?.value || "all";
             if (rangeVal !== "all") {
                 const days = Number(rangeVal) || 7;
@@ -850,7 +858,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                         currentSprintBackendId = await resolveSprintBackendId(sprintId);
                         await refreshFromBackend();
                         await refreshSprintButton();
-                        void loadLoggedHours();   // ✅ refresh panel with new sprint
+                        void loadLoggedHours();
                     })();
                 }
             });
@@ -907,7 +915,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         setTeamFilterOpen(false);
         renderTeamFilter();
         renderBoard();
-        void loadLoggedHours();   // ✅ refresh panel with new team
+        void loadLoggedHours();
     });
 
     // ===================== TAG FILTER =====================
@@ -1500,6 +1508,156 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         toastTimeoutId = window.setTimeout(() => toast.classList.remove("visible"), 3000);
     }
 
+    // ===================== NOTIFICATION BELL =====================
+    const NOTIF_SEEN_KEY = "symph.lastSeenCommentId";
+    const notifBadge = document.getElementById("notifBadge");
+    const notifMenuList = document.getElementById("notifMenuList");
+
+    let notifPollTimer = null;
+
+    function getLastSeenCommentId() {
+        try {
+            const v = window.localStorage.getItem(NOTIF_SEEN_KEY);
+            return v ? Number(v) : 0;
+        } catch { return 0; }
+    }
+    function setLastSeenCommentId(id) {
+        try { window.localStorage.setItem(NOTIF_SEEN_KEY, String(id)); } catch { /* ignore */ }
+    }
+
+    function formatNotifTime(iso) {
+        if (!iso) return "";
+        const d = new Date(iso);
+        const now = new Date();
+        const diffSec = Math.floor((now - d) / 1000);
+        if (diffSec < 60) return "Just now";
+        if (diffSec < 3600) return `${Math.floor(diffSec / 60)} min ago`;
+        if (diffSec < 86400) return `${Math.floor(diffSec / 3600)} hour(s) ago`;
+        return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    }
+
+    function setNotifOpen(open) {
+        if (!notifMenu || !notifBellBtn) return;
+        notifMenu.classList.toggle("visible", open);
+        notifBellBtn.setAttribute("aria-expanded", String(open));
+    }
+
+    function renderNotifications(comments) {
+        if (!notifMenuList) return;
+
+        const myId = Number(sessionStorage.getItem("userId"));
+        const others = comments.filter(c => Number(c.authorId) !== myId);
+
+        if (others.length === 0) {
+            notifMenuList.innerHTML = `<p class="notif-empty">No notifications yet.</p>`;
+            if (notifBadge) notifBadge.hidden = true;
+            return;
+        }
+
+        const lastSeen = getLastSeenCommentId();
+        const unreadCount = others.filter(c => Number(c.id) > lastSeen).length;
+
+        if (notifBadge) {
+            if (unreadCount > 0) {
+                notifBadge.textContent = String(unreadCount > 9 ? "9+" : unreadCount);
+                notifBadge.hidden = false;
+            } else {
+                notifBadge.hidden = true;
+            }
+        }
+
+        notifMenuList.innerHTML = others.map(c => {
+            const authorInitials = escapeHtml(
+                String(c.authorName || "?")
+                    .split(/\s+/).filter(Boolean).slice(0, 2)
+                    .map(p => p.charAt(0).toUpperCase()).join("")
+            );
+            const color = avatarColor(c.authorName || "?");
+            const isUnread = Number(c.id) > lastSeen;
+            return `
+                <button type="button" class="notif-item${isUnread ? " unread" : ""}"
+                        data-notif-task="${c.taskId}"
+                        data-notif-id="${c.id}">
+                    <div class="notif-avatar" style="background:${color};">${authorInitials}</div>
+                    <div class="notif-body">
+                        <div class="notif-text">
+                            <strong>${escapeHtml(c.authorName)}</strong> sent a message in
+                            <span class="notif-task-name">"${escapeHtml(c.taskName)}"</span>
+                        </div>
+                        <div class="notif-time">${formatNotifTime(c.createdAt)}</div>
+                    </div>
+                </button>`;
+        }).join("");
+    }
+
+    async function loadNotifications() {
+        if (!notifMenuList) return;
+        try {
+            const res = await fetch(RECENT_COMMENTS_API);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const comments = await res.json();
+            renderNotifications(comments);
+        } catch (err) {
+            console.error("Failed to load notifications:", err);
+        }
+    }
+
+    notifBellBtn?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const willOpen = !notifMenu.classList.contains("visible");
+        closeAllMenus();
+        setNotifOpen(willOpen);
+
+        if (willOpen) {
+            void (async () => {
+                try {
+                    const res = await fetch(RECENT_COMMENTS_API);
+                    if (res.ok) {
+                        const comments = await res.json();
+                        const myId = Number(sessionStorage.getItem("userId"));
+                        const others = comments.filter(c => Number(c.authorId) !== myId);
+                        if (others.length > 0) {
+                            setLastSeenCommentId(others[0].id);
+                        }
+                        if (notifBadge) notifBadge.hidden = true;
+                    }
+                } catch { /* ignore */ }
+            })();
+        }
+    });
+
+    notifMenuList?.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-notif-task]");
+        if (!btn) return;
+        const taskId = btn.dataset["notifTask"];
+        if (!taskId) return;
+
+        const commentId = btn.dataset["notifId"];
+        if (commentId) setLastSeenCommentId(Number(commentId));
+
+        setNotifOpen(false);
+
+        void (async () => {
+            await refreshFromBackend();
+            const task = tasks.find(t => t.id === String(taskId));
+            if (!task) {
+                showToast("That task no longer exists.");
+                return;
+            }
+            openModal(task);
+            setTimeout(() => {
+                void openCommentsModal();
+            }, 100);
+        })();
+    });
+
+    function startNotifPolling() {
+        if (notifPollTimer !== null) return;
+        notifPollTimer = window.setInterval(() => {
+            void loadNotifications();
+        }, 30000);
+    }
+
     // ===================== PROJECT NAME =====================
     const PROJECT_NAME_KEY = "symph.projectName";
     const projectNameInput = requireElement("projectName");
@@ -1636,6 +1794,10 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         await refreshFromBackend();
         renderTagFilter();
         await loadLoggedHours();
+
+        // ✅ Notifications
+        void loadNotifications();
+        startNotifPolling();
     }
     void init();
 })();
