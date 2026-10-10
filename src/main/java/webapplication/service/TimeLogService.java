@@ -1,7 +1,7 @@
 package webapplication.service;
 
 import webapplication.dto.BurndownPoint;
-import webapplication.dto.TaskHoursSummary;
+import webapplication.dto.TaskHours;
 import webapplication.dto.TimeLogSummary;
 import webapplication.model.Sprint;
 import webapplication.model.Task;
@@ -162,7 +162,7 @@ public class TimeLogService {
                 .collect(Collectors.toList());
     }
 
-    public List<TaskHoursSummary> getHoursPerTask(LocalDate from, LocalDate to) {
+    public List<TaskHours> getHoursPerTask(LocalDate from, LocalDate to) {
         List<TimeLog> logs = timeLogRepository.findByDateBetween(from, to);
 
         Map<Long, Double> hoursByTaskId = new LinkedHashMap<>();
@@ -175,9 +175,9 @@ public class TimeLogService {
             hoursByTaskId.merge(tid, log.getHours(), Double::sum);
         }
 
-        List<TaskHoursSummary> rows = new ArrayList<>();
+        List<TaskHours> rows = new ArrayList<>();
         for (Map.Entry<Long, Double> e : hoursByTaskId.entrySet()) {
-            rows.add(new TaskHoursSummary(e.getKey(), nameByTaskId.get(e.getKey()), e.getValue()));
+            rows.add(new TaskHours(e.getKey(), nameByTaskId.get(e.getKey()), e.getValue()));
         }
         rows.sort((a, b) -> Double.compare(b.getTotalHours(), a.getTotalHours()));
         return rows;

@@ -1,6 +1,6 @@
 package webapplication.controller;
 
-import webapplication.dto.TaskHoursSummary;
+import webapplication.dto.TaskHours;
 import webapplication.dto.TimeLogSummary;
 import webapplication.dto.TimeLogRequest;
 import webapplication.model.TimeLog;
@@ -121,7 +121,7 @@ public class TimeLogController {
     }
 
     @GetMapping("/by-task")
-    public List<TaskHoursSummary> getHoursPerTask(
+    public List<TaskHours> getHoursPerTask(
             @RequestParam String from,
             @RequestParam String to) {
         return timeLogService.getHoursPerTask(LocalDate.parse(from), LocalDate.parse(to));
