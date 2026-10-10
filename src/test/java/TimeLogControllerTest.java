@@ -8,7 +8,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import webapplication.Application;
 import webapplication.controller.TimeLogController;
-import webapplication.dto.TaskHoursSummary;
+import webapplication.dto.TaskHours;
 import webapplication.dto.TimeLogSummary;
 import webapplication.model.TimeLog;
 import webapplication.service.TimeLogService;
@@ -186,7 +186,7 @@ class TimeLogControllerTest {
      */
     @Test
     void testGetHoursPerTask() throws Exception {
-        TaskHoursSummary row = new TaskHoursSummary(1L, "Login page", 5.5);
+        TaskHours row = new TaskHours(1L, "Login page", 5.5);
 
         when(timeLogService.getHoursPerTask(any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(Collections.singletonList(row));
