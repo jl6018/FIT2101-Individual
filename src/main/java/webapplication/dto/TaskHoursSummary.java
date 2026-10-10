@@ -6,16 +6,16 @@ package webapplication.dto;
  * @author Lim Jia Li
  * @version 17.0.16
  */
-public class TaskHours {
+public class TaskHoursSummary {
 
     private Long taskId;
     private String taskName;
     private double totalHours;
 
-    public TaskHours() {
+    public TaskHoursSummary() {
     }
 
-    public TaskHours(Long taskId, String taskName, double totalHours) {
+    public TaskHoursSummary(Long taskId, String taskName, double totalHours) {
         this.taskId = taskId;
         this.taskName = taskName;
         this.totalHours = totalHours;
