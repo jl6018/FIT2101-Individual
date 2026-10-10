@@ -180,6 +180,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     const TAGS_API = "http://localhost:8080/api/tags";
     const TIMELOGS_API = "http://localhost:8080/api/timelogs";
     const RECENT_COMMENTS_API = "http://localhost:8080/api/tasks/comments/recent?limit=20";
+    const INVITES_API = "http://localhost:8080/api/invites";
 
     const TAG_FILTER_ALL = "all";
 
@@ -272,7 +273,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     }
     function formatEstimate(hours) { return `${hours}h`; }
 
-    // ✅ Due date now shows the full year, e.g. "10 Oct 2026"
     function formatDateBadge(isoDate) {
         const date = new Date(`${isoDate}T00:00:00`);
         return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -397,9 +397,74 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     const inviteForm = document.getElementById("inviteForm");
     const ownerEmailInput = document.getElementById("ownerEmail");
 
+    // ===================== INVITE LIST =====================
+    const inviteList = document.getElementById("inviteList");
+
+    async function loadInvites() {
+        if (!inviteList) return;
+        inviteList.innerHTML = `<p class="invite-empty">Loading…</p>`;
+        try {
+            const res = await fetch(INVITES_API);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const invites = await res.json();
+            renderInvites(invites);
+        } catch (err) {
+            console.error("Failed to load invites:", err);
+            inviteList.innerHTML = `<p class="invite-empty">Could not load invites.</p>`;
+        }
+    }
+
+    function renderInvites(invites) {
+        if (!inviteList) return;
+        if (!invites || invites.length === 0) {
+            inviteList.innerHTML = `<p class="invite-empty">No pending invites.</p>`;
+            return;
+        }
+        inviteList.innerHTML = invites.map((inv) => `
+            <div class="invite-row" data-invite-id="${inv.id}">
+                <span class="invite-row-email">${escapeHtml(inv.email)}</span>
+                <button type="button" class="invite-revoke-btn"
+                        data-revoke="${inv.id}"
+                        aria-label="Revoke invite for ${escapeHtml(inv.email)}">Revoke</button>
+            </div>
+        `).join("");
+    }
+
+    async function revokeInvite(id) {
+        const confirmed = await showConfirmModal({
+            title: "Revoke this invite?",
+            message: "They will no longer be able to log in as a Product Owner.",
+            confirmText: "Revoke",
+            danger: true,
+        });
+        if (!confirmed) return;
+        try {
+            const res = await fetch(`${INVITES_API}/${id}`, { method: "DELETE" });
+            if (res.status === 404) {
+                showToast("That invite no longer exists.");
+            } else if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            } else {
+                showToast("Invite revoked");
+            }
+            await loadInvites();
+        } catch (err) {
+            console.error("Revoke invite failed:", err);
+            showToast("Could not revoke the invite. Please try again.");
+        }
+    }
+
+    inviteList?.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-revoke]");
+        if (!btn) return;
+        const id = btn.dataset["revoke"];
+        if (id) void revokeInvite(Number(id));
+    });
+
     shareBtn?.addEventListener("click", () => {
         closeAllMenus();
         inviteOverlay?.classList.add("visible");
+        void loadInvites();
     });
     closeInviteBtn?.addEventListener("click", () => inviteOverlay?.classList.remove("visible"));
     inviteOverlay?.addEventListener("click", (e) => {
@@ -411,7 +476,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         const email = ownerEmailInput?.value.trim();
         if (!email) { showToast("Please enter an email address."); return; }
         try {
-            const res = await fetch("/api/invites", {
+            const res = await fetch(INVITES_API, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email }),
@@ -421,14 +486,15 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 console.error("Invite failed — backend said:", text);
                 throw new Error(text || "Failed to send invite.");
             }
-            inviteOverlay?.classList.remove("visible");
             showToast(`Invite sent to ${email}`);
             inviteForm.reset();
+            await loadInvites();
         } catch (err) {
             const message = err instanceof Error ? err.message : "Failed to send invite";
             showToast(message);
         }
     });
+    // ===================== /INVITE LIST =====================
 
     // ===================== BACKEND SYNC =====================
     async function fetchTasks() {
@@ -1314,6 +1380,14 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
     document.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") return;
+
+        // Close the confirm dialog first if it's on top
+        const confirmOverlayEl = document.getElementById("confirmOverlay");
+        if (confirmOverlayEl?.classList.contains("visible")) {
+            closeConfirmModal(false);
+            return;
+        }
+
         closeAllMenus();
         if (!overlay.classList.contains("visible")) return;
         if (overlay.querySelector(".popover.visible")) closePopovers();

@@ -199,12 +199,10 @@ button, select, input, textarea {
     min-width: 0;
 }
 
-/* Navbar logo is hidden — the only Symph logo lives in the sidebar */
 .navbar-logo {
     display: none;
 }
 
-/* ---- Search bar ---- */
 .search-bar {
     flex: 1;
     min-width: 0;
@@ -261,7 +259,6 @@ button, select, input, textarea {
     background-color: #e3e6fa;
 }
 
-/* ---- Popovers: anchor to the right edge of the button ---- */
 .popover.team-filter-menu {
     position: absolute;
     top: calc(100% + 8px);
@@ -597,8 +594,6 @@ button, select, input, textarea {
 }
 
 /* ===== Board ===== */
-/* minmax(0, 1fr) lets each column shrink below its natural width,
-   so 5 columns always fit — no horizontal scrollbar ever appears. */
 .board {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1661,7 +1656,7 @@ button, select, input, textarea {
     }
 }
 
-/* ===================== FILTER BUTTONS (right of search bar) ===================== */
+/* ===================== FILTER BUTTONS ===================== */
 .filter-buttons {
     position: absolute;
     right: 8px;
@@ -1713,7 +1708,7 @@ button, select, input, textarea {
     margin-left: 8px;
 }
 
-/* ===================== COMMENTS MODAL (redesigned) ===================== */
+/* ===================== COMMENTS MODAL ===================== */
 .comments-modal {
     background: #ffffff;
     border-radius: 16px;
@@ -1755,7 +1750,7 @@ button, select, input, textarea {
     font-weight: 700;
     color: #111111;
     margin: 0 0 4px;
-    padding-right: 40px; /* leave room for the X */
+    padding-right: 40px;
 }
 
 .comments-modal .modal-subtitle {
@@ -1765,7 +1760,6 @@ button, select, input, textarea {
     line-height: 1.5;
 }
 
-/* --- Scrollable comment list --- */
 .comments-list {
     flex: 1;
     overflow-y: auto;
@@ -1785,7 +1779,6 @@ button, select, input, textarea {
     font-style: italic;
 }
 
-/* --- Individual comment rows --- */
 .comment-row {
     display: flex;
     gap: 12px;
@@ -1894,7 +1887,6 @@ button, select, input, textarea {
     border-color: #DC2626;
 }
 
-/* --- Composer (textarea + send) --- */
 .comments-composer {
     display: flex;
     flex-direction: column;
@@ -2123,4 +2115,89 @@ button, select, input, textarea {
 .notif-time {
     font-size: 11px;
     color: #9CA3AF;
+}
+
+/* ===================== INVITE LIST ===================== */
+.invite-list-section {
+    margin-top: 20px;
+    border-top: 1px solid #E5E7EB;
+    padding-top: 16px;
+}
+
+.invite-list-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #111;
+    margin: 0 0 10px;
+    font-family: inherit;
+}
+
+.invite-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.invite-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    background: #F9FAFB;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: inherit;
+}
+
+.invite-row-email {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #1a1a1a;
+}
+
+.invite-revoke-btn {
+    flex-shrink: 0;
+    background: none;
+    border: 1px solid #DC2626;
+    color: #DC2626;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s, color 0.15s;
+}
+
+.invite-revoke-btn:hover {
+    background: #DC2626;
+    color: #fff;
+}
+
+.invite-empty {
+    font-size: 13px;
+    color: #6B7280;
+    font-style: italic;
+    padding: 8px 0;
+    margin: 0;
+}
+
+/* ===================== STACKING ORDER FOR NESTED MODALS ===================== */
+/* Invite modal sits below confirm dialogs */
+#inviteOverlay { z-index: 1000; }
+
+/* Confirm + Alert always appear above the invite modal */
+#confirmOverlay { z-index: 2000; }
+#alertOverlay   { z-index: 2000; }
+
+/* Soften the confirm backdrop so the invite modal shows through cleanly */
+#confirmOverlay,
+#alertOverlay {
+    background: rgba(0, 0, 0, 0.35);
 }
