@@ -345,7 +345,7 @@ function renderTaskLineChart(rows) {
 
     // ✅ Use the actual container width instead of a hard-coded 720
     const width = chartWidth(taskLineChart);
-    const height = 320;
+    const height = 480;
     const paddingLeft = 60, paddingRight = 30, paddingTop = 30, paddingBottom = 80;
     const plotWidth = width - paddingLeft - paddingRight;
     const plotHeight = height - paddingTop - paddingBottom;
@@ -402,7 +402,7 @@ function renderBurndown(points) {
 
     // ✅ Use the actual container width instead of a hard-coded 720
     const width = chartWidth(burndownChart);
-    const height = 320;
+    const height = 480;
     const paddingLeft = 60, paddingRight = 30, paddingTop = 30, paddingBottom = 50;
     const plotWidth = width - paddingLeft - paddingRight;
     const plotHeight = height - paddingTop - paddingBottom;

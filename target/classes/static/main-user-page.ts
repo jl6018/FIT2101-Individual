@@ -121,7 +121,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
     function formatDateBadge(isoDate: string): string {
         const date = new Date(`${isoDate}T00:00:00`);
-        return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+        return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
     }
     function formatDateShort(iso: string | null | undefined): string {
         if (!iso) return "—";
@@ -369,10 +369,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     // ===================== PERMISSION HELPERS =====================
-    // A task is visible / loggable by the current employee if:
-    //   1. The task is assigned to their TEAM as a whole, or
-    //   2. The task is assigned to THEM individually.
-    // Tasks assigned only to another teammate are NOT visible.
     function taskVisibleToCurrentEmployee(task: BackendTask): boolean {
         const myTeam = sessionStorage.getItem("team") || "";
         const myId = sessionStorage.getItem("userId") || "";
@@ -641,7 +637,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     function openLogTimeModal(task: Task): void {
         if (!task || !task.id) return;
 
-        // Frontend guard — only allow logging on tasks assigned to me/my team
         if (!canLogTimeOn(task)) {
             showToast("You're not assigned to this task.");
             return;
@@ -649,6 +644,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
         logTimeTaskId = task.id;
         logTimeTaskContext.textContent = `Record your start time, time spent, and date for "${task.title}".`;
+        logDate.max = new Date().toISOString().split("T")[0];
         logDate.value = new Date().toISOString().split("T")[0];
         logStartTime.value = "";
         logHours.value = "";
@@ -696,8 +692,10 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
                 const text = await res.text();
                 throw new Error(text || `HTTP ${res.status}`);
             }
+            const logTask = tasks.find((t) => t.id === logTimeTaskId);
+            const logTaskName = logTask && logTask.title ? logTask.title : "this task";
             closeLogTimeModal();
-            showToast(`Logged ${payload.hours}h on this task`);
+            showToast(`Logged ${payload.hours}h on "${logTaskName}"`);
         } catch (err) {
             console.error("Log time failed:", err);
             logTimeErrorText.textContent = err instanceof Error ? err.message : "Could not save the time log.";
@@ -1116,7 +1114,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (!notifMenuList) return;
 
         const myId = Number(sessionStorage.getItem("userId"));
-        // Visible task IDs = the tasks currently loaded on THIS board
         const myTaskIds = new Set(tasks.map(t => t.id));
 
         const relevant = comments.filter(c =>
@@ -1268,7 +1265,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         renderTagFilter();
         renderBoard();
 
-        // Notifications
         void loadNotifications();
         startNotifPolling();
     }
