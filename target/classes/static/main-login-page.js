@@ -57,11 +57,6 @@ function showNoInviteModal(email) {
     noInviteOverlay?.classList.add('visible');
 }
 
-/**
- * Logs the user out (clears any session) and returns them to the login page.
- * Used by the "No invitation" modal — the user never entered the app, so
- * this just resets the form and closes the modal.
- */
 function dismissNoInviteModal() {
     sessionStorage.clear();
     if (noInviteOverlay) noInviteOverlay.classList.remove('visible');
@@ -75,7 +70,6 @@ function dismissNoInviteModal() {
 
 logoutNoInviteBtn?.addEventListener('click', dismissNoInviteModal);
 
-// Clicking outside the modal also dismisses it (with the same log-out behaviour)
 noInviteOverlay?.addEventListener('click', (e) => {
     if (e.target === noInviteOverlay) dismissNoInviteModal();
 });
@@ -84,7 +78,7 @@ noInviteOverlay?.addEventListener('click', (e) => {
 async function handleLoginDemo(userId, password) {
     await new Promise((resolve) => setTimeout(resolve, 400));
     const success = userId === 'admin' && password === 'admin';
-    if (!success) throw new Error('Incorrect user ID or password.');
+    if (!success) throw new Error('Incorrect email or password.');
     return {
         id: 1,
         name: 'Admin',
@@ -110,18 +104,12 @@ async function handleLoginReal(userId, password) {
     }
 
     if (!res.ok) {
-        throw new Error(data.message || 'Incorrect user ID or password.');
+        throw new Error(data.message || 'Incorrect email or password.');
     }
 
     return data;
 }
 
-/**
- * Checks whether the given email has been invited as a Product Owner.
- *
- * @param {string} email The email to check
- * @returns {Promise<boolean>} True if invited, false otherwise
- */
 async function checkInvited(email) {
     try {
         const res = await fetch(`/api/invites/check?email=${encodeURIComponent(email)}`);
@@ -182,7 +170,7 @@ form.addEventListener('submit', async (e) => {
         }
 
     } catch (err) {
-        const message = err instanceof Error ? err.message : 'Incorrect user ID or password.';
+        const message = err instanceof Error ? err.message : 'Incorrect email or password.';
         showError(message);
         passwordInput.value = '';
         passwordInput.focus();

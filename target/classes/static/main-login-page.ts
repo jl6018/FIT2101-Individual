@@ -68,10 +68,6 @@ function showNoInviteModal(email: string): void {
     noInviteOverlay?.classList.add('visible');
 }
 
-/**
- * Logs the user out (clears any session) and returns them to the login page.
- * Used by the "No invitation" modal — the user never entered the app.
- */
 function dismissNoInviteModal(): void {
     sessionStorage.clear();
     if (noInviteOverlay) noInviteOverlay.classList.remove('visible');
@@ -91,7 +87,7 @@ noInviteOverlay?.addEventListener('click', (e: MouseEvent) => {
 async function handleLoginDemo(userId: string, password: string): Promise<LoginResponse> {
     await new Promise((resolve) => setTimeout(resolve, 400));
     const success = userId === 'admin' && password === 'admin';
-    if (!success) throw new Error('Incorrect user ID or password.');
+    if (!success) throw new Error('Incorrect email or password.');
     return {
         id: 1,
         name: 'Admin',
@@ -117,7 +113,7 @@ async function handleLoginReal(userId: string, password: string): Promise<LoginR
     }
 
     if (!res.ok) {
-        throw new Error(data.message || 'Incorrect user ID or password.');
+        throw new Error(data.message || 'Incorrect email or password.');
     }
 
     return data;
@@ -182,7 +178,7 @@ form.addEventListener('submit', async (e: SubmitEvent) => {
         }
 
     } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Incorrect user ID or password.';
+        const message = err instanceof Error ? err.message : 'Incorrect email or password.';
         showError(message);
         passwordInput.value = '';
         passwordInput.focus();
