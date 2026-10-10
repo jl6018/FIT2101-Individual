@@ -624,8 +624,11 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
                 const text = await res.text();
                 throw new Error(text || `HTTP ${res.status}`);
             }
+            // Capture the task name BEFORE closing the modal (which nulls logTimeTaskId)
+            const logTask = tasks.find((t) => t.id === logTimeTaskId);
+            const logTaskName = logTask && logTask.title ? logTask.title : "this task";
             closeLogTimeModal();
-            showToast(`Logged ${payload.hours}h on this task`);
+            showToast(`Logged ${payload.hours}h on "${logTaskName}"`);
         } catch (err) {
             console.error("Log time failed:", err);
             logTimeErrorText.textContent = err instanceof Error ? err.message : "Could not save the time log.";

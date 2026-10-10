@@ -434,7 +434,7 @@ function renderTaskLineChart(rows: TaskHoursRow[]): void {
 
     // ✅ Read the actual container width so the chart fills the panel
     const width = chartWidth(taskLineChart);
-    const height = 320;
+    const height = 480;
     const paddingLeft = 60, paddingRight = 30, paddingTop = 30, paddingBottom = 80;
     const plotWidth = width - paddingLeft - paddingRight;
     const plotHeight = height - paddingTop - paddingBottom;
@@ -489,7 +489,7 @@ function renderBurndown(points: BurndownPoint[]): void {
 
     // ✅ Read the actual container width so the chart fills the panel
     const width = chartWidth(burndownChart);
-    const height = 320;
+    const height = 480;
     const paddingLeft = 60, paddingRight = 30, paddingTop = 30, paddingBottom = 50;
     const plotWidth = width - paddingLeft - paddingRight;
     const plotHeight = height - paddingTop - paddingBottom;

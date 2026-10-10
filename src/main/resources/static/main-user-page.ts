@@ -369,10 +369,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
 
     // ===================== PERMISSION HELPERS =====================
-    // A task is visible / loggable by the current employee if:
-    //   1. The task is assigned to their TEAM as a whole, or
-    //   2. The task is assigned to THEM individually.
-    // Tasks assigned only to another teammate are NOT visible.
     function taskVisibleToCurrentEmployee(task: BackendTask): boolean {
         const myTeam = sessionStorage.getItem("team") || "";
         const myId = sessionStorage.getItem("userId") || "";
@@ -696,8 +692,11 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
                 const text = await res.text();
                 throw new Error(text || `HTTP ${res.status}`);
             }
+            // Capture the task name BEFORE closing the modal (which nulls logTimeTaskId)
+            const logTask = tasks.find((t) => t.id === logTimeTaskId);
+            const logTaskName = logTask && logTask.title ? logTask.title : "this task";
             closeLogTimeModal();
-            showToast(`Logged ${payload.hours}h on this task`);
+            showToast(`Logged ${payload.hours}h on "${logTaskName}"`);
         } catch (err) {
             console.error("Log time failed:", err);
             logTimeErrorText.textContent = err instanceof Error ? err.message : "Could not save the time log.";
@@ -1116,7 +1115,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (!notifMenuList) return;
 
         const myId = Number(sessionStorage.getItem("userId"));
-        // Visible task IDs = the tasks currently loaded on THIS board
         const myTaskIds = new Set(tasks.map(t => t.id));
 
         const relevant = comments.filter(c =>
@@ -1268,7 +1266,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         renderTagFilter();
         renderBoard();
 
-        // Notifications
         void loadNotifications();
         startNotifPolling();
     }
