@@ -85,14 +85,9 @@ function escapeHtml(text) {
         .replace(/'/g, "&#39;");
 }
 
-/**
- * Reads the usable inner width of the SVG's parent container.
- * Falls back to 720 if the container isn't measurable yet.
- */
 function chartWidth(svgEl, fallback = 720) {
     const wrap = svgEl.parentElement;
     if (!wrap) return fallback;
-    // Subtract ~24px so the SVG doesn't touch the very edge of the card
     return Math.max(fallback, wrap.clientWidth - 24);
 }
 
@@ -204,7 +199,7 @@ async function loadBurndown() {
 
         const bRes = await fetch(`${TIMELOGS_API}/burndown/${sprint.id}`);
         if (!bRes.ok) throw new Error(`HTTP ${bRes.status}`);
-        renderBurndown(await bRes.json());
+        renderBurndown(await bRes.json(), sprint);
     } catch (err) {
         console.error("Failed to load burndown:", err);
         burndownEmpty.textContent = "Could not load burndown data.";
@@ -333,145 +328,11 @@ function renderMemberChart(logs) {
     memberModalTotal.textContent = `Total: ${totalHours.toFixed(1)}h across ${entries.length} day(s)`;
 }
 
-// ===================== HOURS PER TASK — LINE CHART (US29) =====================
-function renderTaskLineChart(rows) {
-    taskLineChart.innerHTML = "";
-
-    if (!rows || rows.length === 0) {
-        taskChartEmpty.style.display = "block";
-        return;
-    }
-    taskChartEmpty.style.display = "none";
-
-    // ✅ Use the actual container width instead of a hard-coded 720
-    const width = chartWidth(taskLineChart);
-    const height = 480;
-    const paddingLeft = 60, paddingRight = 30, paddingTop = 30, paddingBottom = 80;
-    const plotWidth = width - paddingLeft - paddingRight;
-    const plotHeight = height - paddingTop - paddingBottom;
-
-    const niceMax = Math.ceil(Math.max(...rows.map((r) => r.totalHours), 1));
-    const svgNS = "http://www.w3.org/2000/svg";
-
-    taskLineChart.setAttribute("viewBox", `0 0 ${width} ${height}`);
-
-    addAxis(svgNS, taskLineChart, paddingLeft, paddingTop, paddingLeft, height - paddingBottom);
-    addAxis(svgNS, taskLineChart, paddingLeft, height - paddingBottom, width - paddingRight, height - paddingBottom);
-
-    for (let i = 0; i <= 4; i++) {
-        const value = (niceMax / 4) * i;
-        const y = paddingTop + plotHeight - (value / niceMax) * plotHeight;
-        addGridLine(svgNS, taskLineChart, paddingLeft, y, width - paddingRight, y);
-        addYLabel(svgNS, taskLineChart, paddingLeft - 8, y + 4, `${value.toFixed(0)}h`);
-    }
-
-    const points = rows.map((row, i) => {
-        const x = rows.length === 1
-            ? paddingLeft + plotWidth / 2
-            : paddingLeft + (i / (rows.length - 1)) * plotWidth;
-        const y = paddingTop + plotHeight - (row.totalHours / niceMax) * plotHeight;
-        return { x, y, row };
-    });
-
-    const poly = document.createElementNS(svgNS, "polyline");
-    poly.setAttribute("points", points.map((p) => `${p.x},${p.y}`).join(" "));
-    poly.setAttribute("fill", "none");
-    poly.setAttribute("stroke", "#6672c8");
-    poly.setAttribute("stroke-width", "2.5");
-    taskLineChart.appendChild(poly);
-
-    points.forEach(({ x, y, row }) => {
-        addDot(svgNS, taskLineChart, x, y);
-        addValueLabel(svgNS, taskLineChart, x, y - 10, `${row.totalHours.toFixed(1)}h`);
-        addRotatedXLabel(svgNS, taskLineChart, x, height - paddingBottom + 14,
-            row.taskName.length > 16 ? row.taskName.slice(0, 15) + "…" : row.taskName);
-    });
-
-    addYTitle(svgNS, taskLineChart, "Hours");
-}
-
-// ===================== SPRINT BURNDOWN (US30) =====================
-function renderBurndown(points) {
-    burndownChart.innerHTML = "";
-
-    if (!points || points.length === 0) {
-        burndownEmpty.style.display = "block";
-        return;
-    }
-    burndownEmpty.style.display = "none";
-
-    // ✅ Use the actual container width instead of a hard-coded 720
-    const width = chartWidth(burndownChart);
-    const height = 480;
-    const paddingLeft = 60, paddingRight = 30, paddingTop = 30, paddingBottom = 50;
-    const plotWidth = width - paddingLeft - paddingRight;
-    const plotHeight = height - paddingTop - paddingBottom;
-
-    const maxValue = Math.max(
-        ...points.map((p) => Math.max(p.projectedRemaining, p.actualRemaining)),
-        1
-    );
-    const niceMax = Math.ceil(maxValue);
-
-    const svgNS = "http://www.w3.org/2000/svg";
-    burndownChart.setAttribute("viewBox", `0 0 ${width} ${height}`);
-
-    addAxis(svgNS, burndownChart, paddingLeft, paddingTop, paddingLeft, height - paddingBottom);
-    addAxis(svgNS, burndownChart, paddingLeft, height - paddingBottom, width - paddingRight, height - paddingBottom);
-
-    for (let i = 0; i <= 4; i++) {
-        const value = (niceMax / 4) * i;
-        const y = paddingTop + plotHeight - (value / niceMax) * plotHeight;
-        addGridLine(svgNS, burndownChart, paddingLeft, y, width - paddingRight, y);
-        addYLabel(svgNS, burndownChart, paddingLeft - 8, y + 4, `${value.toFixed(0)}h`);
-    }
-
-    const lastIndex = points.length - 1;
-    const xFor = (i) => lastIndex === 0
-        ? paddingLeft + plotWidth / 2
-        : paddingLeft + (i / lastIndex) * plotWidth;
-    const yFor = (v) => paddingTop + plotHeight - (v / niceMax) * plotHeight;
-
-    const projectedLine = document.createElementNS(svgNS, "polyline");
-    projectedLine.setAttribute("points",
-        points.map((p, i) => `${xFor(i)},${yFor(p.projectedRemaining)}`).join(" "));
-    projectedLine.setAttribute("fill", "none");
-    projectedLine.setAttribute("stroke", "#111111");
-    projectedLine.setAttribute("stroke-width", "2");
-    projectedLine.setAttribute("stroke-dasharray", "6,4");
-    burndownChart.appendChild(projectedLine);
-
-    const actualLine = document.createElementNS(svgNS, "polyline");
-    actualLine.setAttribute("points",
-        points.map((p, i) => `${xFor(i)},${yFor(p.actualRemaining)}`).join(" "));
-    actualLine.setAttribute("fill", "none");
-    actualLine.setAttribute("stroke", "#4F7FFF");
-    actualLine.setAttribute("stroke-width", "2.5");
-    burndownChart.appendChild(actualLine);
-
-    points.forEach((p, i) => {
-        const x = xFor(i);
-        addDot(svgNS, burndownChart, x, yFor(p.projectedRemaining), "#111111", 3);
-        addDot(svgNS, burndownChart, x, yFor(p.actualRemaining), "#4F7FFF", 3);
-
-        if (i === 0 || i === lastIndex || i % 2 === 0) {
-            const lbl = document.createElementNS(svgNS, "text");
-            lbl.setAttribute("x", String(x));
-            lbl.setAttribute("y", String(height - paddingBottom + 16));
-            lbl.setAttribute("text-anchor", "middle");
-            lbl.setAttribute("font-size", "10");
-            lbl.setAttribute("fill", "#6B7280");
-            lbl.textContent = p.date.slice(5);
-            burndownChart.appendChild(lbl);
-        }
-    });
-
-    addYTitle(svgNS, burndownChart, "Remaining hours");
-}
-
 // ===================== SVG HELPERS =====================
-function addAxis(svgNS, svg, x1, y1, x2, y2) {
-    const line = document.createElementNS(svgNS, "line");
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function addAxis(svg, x1, y1, x2, y2) {
+    const line = document.createElementNS(SVG_NS, "line");
     line.setAttribute("x1", String(x1));
     line.setAttribute("y1", String(y1));
     line.setAttribute("x2", String(x2));
@@ -480,8 +341,8 @@ function addAxis(svgNS, svg, x1, y1, x2, y2) {
     svg.appendChild(line);
 }
 
-function addGridLine(svgNS, svg, x1, y1, x2, y2) {
-    const line = document.createElementNS(svgNS, "line");
+function addGridLine(svg, x1, y1, x2, y2) {
+    const line = document.createElementNS(SVG_NS, "line");
     line.setAttribute("x1", String(x1));
     line.setAttribute("y1", String(y1));
     line.setAttribute("x2", String(x2));
@@ -490,8 +351,8 @@ function addGridLine(svgNS, svg, x1, y1, x2, y2) {
     svg.appendChild(line);
 }
 
-function addYLabel(svgNS, svg, x, y, text) {
-    const t = document.createElementNS(svgNS, "text");
+function addYLabel(svg, x, y, text) {
+    const t = document.createElementNS(SVG_NS, "text");
     t.setAttribute("x", String(x));
     t.setAttribute("y", String(y));
     t.setAttribute("text-anchor", "end");
@@ -501,18 +362,48 @@ function addYLabel(svgNS, svg, x, y, text) {
     svg.appendChild(t);
 }
 
-function addYTitle(svgNS, svg, text) {
-    const t = document.createElementNS(svgNS, "text");
-    t.setAttribute("x", "14");
-    t.setAttribute("y", "18");
-    t.setAttribute("font-size", "11");
-    t.setAttribute("fill", "#6B7280");
+/* ✅ Chart title — centered at the top of the SVG */
+function addChartTitle(svg, x, text) {
+    const t = document.createElementNS(SVG_NS, "text");
+    t.setAttribute("x", String(x));
+    t.setAttribute("y", "24");
+    t.setAttribute("text-anchor", "middle");
+    t.setAttribute("font-size", "16");
+    t.setAttribute("font-weight", "700");
+    t.setAttribute("fill", "#111111");
     t.textContent = text;
     svg.appendChild(t);
 }
 
-function addDot(svgNS, svg, cx, cy, stroke = "#6672c8", r = 5) {
-    const dot = document.createElementNS(svgNS, "circle");
+/* ✅ Y-axis title — rotated vertically, positioned lower so it isn't clipped */
+function addYTitle(svg, text) {
+    const t = document.createElementNS(SVG_NS, "text");
+    t.setAttribute("x", "-240");
+    t.setAttribute("y", "16");
+    t.setAttribute("transform", "rotate(-90)");
+    t.setAttribute("text-anchor", "middle");
+    t.setAttribute("font-size", "11");
+    t.setAttribute("font-weight", "600");
+    t.setAttribute("fill", "#4B5563");
+    t.textContent = text;
+    svg.appendChild(t);
+}
+
+/* ✅ X-axis title — centered below the axis labels */
+function addAxisTitle(svg, x, y, text) {
+    const t = document.createElementNS(SVG_NS, "text");
+    t.setAttribute("x", String(x));
+    t.setAttribute("y", String(y));
+    t.setAttribute("text-anchor", "middle");
+    t.setAttribute("font-size", "11");
+    t.setAttribute("font-weight", "600");
+    t.setAttribute("fill", "#4B5563");
+    t.textContent = text;
+    svg.appendChild(t);
+}
+
+function addDot(svg, cx, cy, stroke = "#6672c8", r = 5) {
+    const dot = document.createElementNS(SVG_NS, "circle");
     dot.setAttribute("cx", String(cx));
     dot.setAttribute("cy", String(cy));
     dot.setAttribute("r", String(r));
@@ -522,8 +413,8 @@ function addDot(svgNS, svg, cx, cy, stroke = "#6672c8", r = 5) {
     svg.appendChild(dot);
 }
 
-function addValueLabel(svgNS, svg, x, y, text) {
-    const t = document.createElementNS(svgNS, "text");
+function addValueLabel(svg, x, y, text) {
+    const t = document.createElementNS(SVG_NS, "text");
     t.setAttribute("x", String(x));
     t.setAttribute("y", String(y));
     t.setAttribute("text-anchor", "middle");
@@ -534,8 +425,8 @@ function addValueLabel(svgNS, svg, x, y, text) {
     svg.appendChild(t);
 }
 
-function addRotatedXLabel(svgNS, svg, x, y, text) {
-    const t = document.createElementNS(svgNS, "text");
+function addRotatedXLabel(svg, x, y, text) {
+    const t = document.createElementNS(SVG_NS, "text");
     t.setAttribute("x", String(x));
     t.setAttribute("y", String(y));
     t.setAttribute("text-anchor", "end");
@@ -546,8 +437,157 @@ function addRotatedXLabel(svgNS, svg, x, y, text) {
     svg.appendChild(t);
 }
 
+// ===================== HOURS PER TASK — LINE CHART (US29) =====================
+function renderTaskLineChart(rows) {
+    taskLineChart.innerHTML = "";
+
+    if (!rows || rows.length === 0) {
+        taskChartEmpty.style.display = "block";
+        return;
+    }
+    taskChartEmpty.style.display = "none";
+
+    const width = chartWidth(taskLineChart);
+    const height = 480;
+    const paddingLeft = 80, paddingRight = 30, paddingTop = 56, paddingBottom = 100;
+    const plotWidth = width - paddingLeft - paddingRight;
+    const plotHeight = height - paddingTop - paddingBottom;
+
+    const niceMax = Math.ceil(Math.max(...rows.map((r) => r.totalHours), 1));
+    taskLineChart.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+    addAxis(taskLineChart, paddingLeft, paddingTop, paddingLeft, height - paddingBottom);
+    addAxis(taskLineChart, paddingLeft, height - paddingBottom, width - paddingRight, height - paddingBottom);
+
+    for (let i = 0; i <= 4; i++) {
+        const value = (niceMax / 4) * i;
+        const y = paddingTop + plotHeight - (value / niceMax) * plotHeight;
+        addGridLine(taskLineChart, paddingLeft, y, width - paddingRight, y);
+        addYLabel(taskLineChart, paddingLeft - 8, y + 4, `${value.toFixed(0)}h`);
+    }
+
+    const points = rows.map((row, i) => {
+        const x = rows.length === 1
+            ? paddingLeft + plotWidth / 2
+            : paddingLeft + (i / (rows.length - 1)) * plotWidth;
+        const y = paddingTop + plotHeight - (row.totalHours / niceMax) * plotHeight;
+        return { x, y, row };
+    });
+
+    const poly = document.createElementNS(SVG_NS, "polyline");
+    poly.setAttribute("points", points.map((p) => `${p.x},${p.y}`).join(" "));
+    poly.setAttribute("fill", "none");
+    poly.setAttribute("stroke", "#6672c8");
+    poly.setAttribute("stroke-width", "2.5");
+    taskLineChart.appendChild(poly);
+
+    points.forEach(({ x, y, row }) => {
+        addDot(taskLineChart, x, y);
+        addValueLabel(taskLineChart, x, y - 10, `${row.totalHours.toFixed(1)}h`);
+        addRotatedXLabel(taskLineChart, x, height - paddingBottom + 14,
+            row.taskName.length > 16 ? row.taskName.slice(0, 15) + "…" : row.taskName);
+    });
+
+    /* ✅ Meaningful chart title */
+    const days = selectedWeeks * 7;
+    addChartTitle(taskLineChart, paddingLeft + plotWidth / 2,
+        `Total hours logged per task — last ${days} days`);
+
+    /* ✅ Axis titles */
+    addYTitle(taskLineChart, "Hours");
+    addAxisTitle(taskLineChart, paddingLeft + plotWidth / 2, height - 8, "Task");
+}
+
+// ===================== SPRINT BURNDOWN (US30) =====================
+function renderBurndown(points, sprint) {
+    burndownChart.innerHTML = "";
+
+    if (!points || points.length === 0) {
+        burndownEmpty.style.display = "block";
+        return;
+    }
+    burndownEmpty.style.display = "none";
+
+    const width = chartWidth(burndownChart);
+    const height = 480;
+    const paddingLeft = 80, paddingRight = 30, paddingTop = 56, paddingBottom = 60;
+    const plotWidth = width - paddingLeft - paddingRight;
+    const plotHeight = height - paddingTop - paddingBottom;
+
+    const maxValue = Math.max(
+        ...points.map((p) => Math.max(p.projectedRemaining, p.actualRemaining)),
+        1
+    );
+    const niceMax = Math.ceil(maxValue);
+
+    burndownChart.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+    addAxis(burndownChart, paddingLeft, paddingTop, paddingLeft, height - paddingBottom);
+    addAxis(burndownChart, paddingLeft, height - paddingBottom, width - paddingRight, height - paddingBottom);
+
+    for (let i = 0; i <= 4; i++) {
+        const value = (niceMax / 4) * i;
+        const y = paddingTop + plotHeight - (value / niceMax) * plotHeight;
+        addGridLine(burndownChart, paddingLeft, y, width - paddingRight, y);
+        addYLabel(burndownChart, paddingLeft - 8, y + 4, `${value.toFixed(0)}h`);
+    }
+
+    const lastIndex = points.length - 1;
+    const xFor = (i) => lastIndex === 0
+        ? paddingLeft + plotWidth / 2
+        : paddingLeft + (i / lastIndex) * plotWidth;
+    const yFor = (v) => paddingTop + plotHeight - (v / niceMax) * plotHeight;
+
+    const projectedLine = document.createElementNS(SVG_NS, "polyline");
+    projectedLine.setAttribute("points",
+        points.map((p, i) => `${xFor(i)},${yFor(p.projectedRemaining)}`).join(" "));
+    projectedLine.setAttribute("fill", "none");
+    projectedLine.setAttribute("stroke", "#111111");
+    projectedLine.setAttribute("stroke-width", "2");
+    projectedLine.setAttribute("stroke-dasharray", "6,4");
+    burndownChart.appendChild(projectedLine);
+
+    const actualLine = document.createElementNS(SVG_NS, "polyline");
+    actualLine.setAttribute("points",
+        points.map((p, i) => `${xFor(i)},${yFor(p.actualRemaining)}`).join(" "));
+    actualLine.setAttribute("fill", "none");
+    actualLine.setAttribute("stroke", "#4F7FFF");
+    actualLine.setAttribute("stroke-width", "2.5");
+    burndownChart.appendChild(actualLine);
+
+    points.forEach((p, i) => {
+        const x = xFor(i);
+        addDot(burndownChart, x, yFor(p.projectedRemaining), "#111111", 3);
+        addDot(burndownChart, x, yFor(p.actualRemaining), "#4F7FFF", 3);
+
+        if (i === 0 || i === lastIndex || i % 2 === 0) {
+            const lbl = document.createElementNS(SVG_NS, "text");
+            lbl.setAttribute("x", String(x));
+            lbl.setAttribute("y", String(height - paddingBottom + 16));
+            lbl.setAttribute("text-anchor", "middle");
+            lbl.setAttribute("font-size", "10");
+            lbl.setAttribute("fill", "#6B7280");
+            lbl.textContent = p.date.slice(5);
+            burndownChart.appendChild(lbl);
+        }
+    });
+
+    /* ✅ Meaningful chart title with sprint name + date range */
+    const title = sprint
+        ? `Sprint burndown — ${sprint.name}` +
+          (sprint.startDate && sprint.endDate
+              ? ` (${sprint.startDate} → ${sprint.endDate})`
+              : "")
+        : "Sprint burndown";
+    addChartTitle(burndownChart, paddingLeft + plotWidth / 2, title);
+
+    /* ✅ Axis titles */
+    addYTitle(burndownChart, "Remaining hours");
+    addAxisTitle(burndownChart, paddingLeft + plotWidth / 2, height - 8, "Date");
+}
+
 // ===================== INIT =====================
 void reloadAll();
 
-// Refresh when the tab regains focus (e.g. after logging time elsewhere)
+// Refresh when the tab regains focus
 window.addEventListener("focus", () => { void reloadAll(); });
