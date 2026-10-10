@@ -50,7 +50,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     }
     function formatDateBadge(isoDate) {
         const date = new Date(`${isoDate}T00:00:00`);
-        return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+        return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
     }
     function formatDateShort(iso) {
         if (!iso) return "—";
@@ -577,6 +577,8 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
         logTimeTaskId = task.id;
         logTimeTaskContext.textContent = `Record your start time, time spent, and date for "${task.title}".`;
+        // ✅ Block future dates — no logging time for a day that hasn't happened yet
+        logDate.max = new Date().toISOString().split("T")[0];
         logDate.value = new Date().toISOString().split("T")[0];
         logStartTime.value = "";
         logHours.value = "";
@@ -624,7 +626,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
                 const text = await res.text();
                 throw new Error(text || `HTTP ${res.status}`);
             }
-            // Capture the task name BEFORE closing the modal (which nulls logTimeTaskId)
             const logTask = tasks.find((t) => t.id === logTimeTaskId);
             const logTaskName = logTask && logTask.title ? logTask.title : "this task";
             closeLogTimeModal();

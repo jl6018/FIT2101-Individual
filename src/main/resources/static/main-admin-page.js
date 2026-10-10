@@ -57,7 +57,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             .map((part) => part.charAt(0).toUpperCase()).join("");
         avatarEl.textContent = label || (storedName ? storedName.charAt(0).toUpperCase() : "?");
         if (storedName) avatarEl.title = storedName;
-
         avatarEl.style.backgroundColor = avatarColor(storedName || "?");
         avatarEl.style.color = "#ffffff";
     }
@@ -78,6 +77,8 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     const tagFilterMenu = document.getElementById("tagFilterMenu");
     const teamFilterBtn = document.getElementById("teamFilterBtn");
     const teamFilterMenu = document.getElementById("teamFilterMenu");
+    const notifMenu = document.getElementById("notifMenu");
+    const notifBellBtn = document.getElementById("notifBellBtn");
 
     function setProfileMenuOpen(open) {
         if (!profileMenu || !profileMenuBtn) return;
@@ -99,10 +100,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         teamFilterMenu.classList.toggle("visible", open);
         teamFilterBtn.setAttribute("aria-expanded", String(open));
     }
-
-    const notifMenu = document.getElementById("notifMenu");
-    const notifBellBtn = document.getElementById("notifBellBtn");
-
     function closeAllMenus() {
         setProfileMenuOpen(false);
         setHeaderMenuOpen(false);
@@ -274,10 +271,13 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         return names.length > 0 ? names.join(", ") : "Unassigned";
     }
     function formatEstimate(hours) { return `${hours}h`; }
+
+    // ✅ Due date now shows the full year, e.g. "10 Oct 2026"
     function formatDateBadge(isoDate) {
         const date = new Date(`${isoDate}T00:00:00`);
-        return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+        return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
     }
+
     function formatDateShort(iso) {
         if (!iso) return "—";
         const d = new Date(`${iso}T00:00:00`);
@@ -1795,7 +1795,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         renderTagFilter();
         await loadLoggedHours();
 
-        // ✅ Notifications
         void loadNotifications();
         startNotifPolling();
     }
