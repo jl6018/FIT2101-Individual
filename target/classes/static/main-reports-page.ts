@@ -6,7 +6,6 @@
  * Reports Page — Symph Web Application
  * Per-member time contribution (US26/27), member-history modal (US28),
  * line chart of hours per task (US29), and sprint burndown (US30).
- * Also shows the detailed log entries (with description) per member.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -82,7 +81,13 @@ interface LogEntry {
 }
 interface TaskHoursRow { taskId: number; taskName: string; totalHours: number; }
 interface BurndownPoint { date: string; projectedRemaining: number; actualRemaining: number; }
-interface Sprint { id: number; name: string; status: string; }
+interface Sprint {
+    id: number;
+    name: string;
+    status: string;
+    startDate?: string;
+    endDate?: string;
+}
 
 // ===================== HELPERS =====================
 function requireElement<T extends HTMLElement>(id: string): T {
@@ -98,10 +103,6 @@ function escapeHtml(text: string): string {
         .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
-/**
- * Reads the usable inner width of the SVG's parent container.
- * Falls back to the given value when the container isn't measurable yet.
- */
 function chartWidth(svgEl: SVGElement, fallback = 720): number {
     const wrap = svgEl.parentElement;
     if (!wrap) return fallback;
@@ -216,7 +217,7 @@ async function loadBurndown(): Promise<void> {
 
         const bRes = await fetch(`${TIMELOGS_API}/burndown/${sprint.id}`);
         if (!bRes.ok) throw new Error(`HTTP ${bRes.status}`);
-        renderBurndown((await bRes.json()) as BurndownPoint[]);
+        renderBurndown((await bRes.json()) as BurndownPoint[], sprint);
     } catch (err) {
         console.error("Failed to load burndown:", err);
         burndownEmpty.textContent = "Could not load burndown data.";
@@ -301,7 +302,9 @@ function renderMemberChart(logs: LogEntry[]): void {
     }
 
     const byDate: Record<string, number> = {};
-    logs.forEach((log) => { byDate[log.date] = (byDate[log.date] || 0) + Number(log.hours || 0); });
+    logs.forEach((log) => {
+        byDate[log.date] = (byDate[log.date] || 0) + Number(log.hours || 0);
+    });
 
     const entries = Object.entries(byDate)
         .map(([date, hours]) => ({ date, hours }))
@@ -377,12 +380,42 @@ function addYLabel(svg: SVGElement, x: number, y: number, text: string): void {
     svg.appendChild(t);
 }
 
+/* ✅ Chart title — centered at the top of the SVG */
+function addChartTitle(svg: SVGElement, x: number, text: string): void {
+    const t = document.createElementNS(SVG_NS, "text");
+    t.setAttribute("x", String(x));
+    t.setAttribute("y", "24");
+    t.setAttribute("text-anchor", "middle");
+    t.setAttribute("font-size", "16");
+    t.setAttribute("font-weight", "700");
+    t.setAttribute("fill", "#111111");
+    t.textContent = text;
+    svg.appendChild(t);
+}
+
+/* ✅ Y-axis title — rotated vertically, positioned lower so it isn't clipped */
 function addYTitle(svg: SVGElement, text: string): void {
     const t = document.createElementNS(SVG_NS, "text");
-    t.setAttribute("x", "14");
-    t.setAttribute("y", "18");
+    t.setAttribute("x", "-240");
+    t.setAttribute("y", "16");
+    t.setAttribute("transform", "rotate(-90)");
+    t.setAttribute("text-anchor", "middle");
     t.setAttribute("font-size", "11");
-    t.setAttribute("fill", "#6B7280");
+    t.setAttribute("font-weight", "600");
+    t.setAttribute("fill", "#4B5563");
+    t.textContent = text;
+    svg.appendChild(t);
+}
+
+/* ✅ X-axis title — centered below the axis labels */
+function addAxisTitle(svg: SVGElement, x: number, y: number, text: string): void {
+    const t = document.createElementNS(SVG_NS, "text");
+    t.setAttribute("x", String(x));
+    t.setAttribute("y", String(y));
+    t.setAttribute("text-anchor", "middle");
+    t.setAttribute("font-size", "11");
+    t.setAttribute("font-weight", "600");
+    t.setAttribute("fill", "#4B5563");
     t.textContent = text;
     svg.appendChild(t);
 }
@@ -432,10 +465,9 @@ function renderTaskLineChart(rows: TaskHoursRow[]): void {
     }
     taskChartEmpty.style.display = "none";
 
-    // ✅ Read the actual container width so the chart fills the panel
     const width = chartWidth(taskLineChart);
     const height = 480;
-    const paddingLeft = 60, paddingRight = 30, paddingTop = 30, paddingBottom = 80;
+    const paddingLeft = 80, paddingRight = 30, paddingTop = 56, paddingBottom = 100;
     const plotWidth = width - paddingLeft - paddingRight;
     const plotHeight = height - paddingTop - paddingBottom;
 
@@ -474,11 +506,18 @@ function renderTaskLineChart(rows: TaskHoursRow[]): void {
             row.taskName.length > 16 ? row.taskName.slice(0, 15) + "…" : row.taskName);
     });
 
+    /* ✅ Meaningful chart title */
+    const days = selectedWeeks * 7;
+    addChartTitle(taskLineChart, paddingLeft + plotWidth / 2,
+        `Total hours logged per task — last ${days} days`);
+
+    /* ✅ Axis titles */
     addYTitle(taskLineChart, "Hours");
+    addAxisTitle(taskLineChart, paddingLeft + plotWidth / 2, height - 8, "Task");
 }
 
 // ===================== SPRINT BURNDOWN (US30) =====================
-function renderBurndown(points: BurndownPoint[]): void {
+function renderBurndown(points: BurndownPoint[], sprint?: Sprint): void {
     burndownChart.innerHTML = "";
 
     if (!points || points.length === 0) {
@@ -487,10 +526,9 @@ function renderBurndown(points: BurndownPoint[]): void {
     }
     burndownEmpty.style.display = "none";
 
-    // ✅ Read the actual container width so the chart fills the panel
     const width = chartWidth(burndownChart);
     const height = 480;
-    const paddingLeft = 60, paddingRight = 30, paddingTop = 30, paddingBottom = 50;
+    const paddingLeft = 80, paddingRight = 30, paddingTop = 56, paddingBottom = 60;
     const plotWidth = width - paddingLeft - paddingRight;
     const plotHeight = height - paddingTop - paddingBottom;
 
@@ -552,7 +590,18 @@ function renderBurndown(points: BurndownPoint[]): void {
         }
     });
 
+    /* ✅ Meaningful chart title with sprint name + date range */
+    const title = sprint
+        ? `Sprint burndown — ${sprint.name}` +
+          (sprint.startDate && sprint.endDate
+              ? ` (${sprint.startDate} → ${sprint.endDate})`
+              : "")
+        : "Sprint burndown";
+    addChartTitle(burndownChart, paddingLeft + plotWidth / 2, title);
+
+    /* ✅ Axis titles */
     addYTitle(burndownChart, "Remaining hours");
+    addAxisTitle(burndownChart, paddingLeft + plotWidth / 2, height - 8, "Date");
 }
 
 // ===================== INIT =====================

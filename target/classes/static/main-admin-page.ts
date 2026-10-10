@@ -246,6 +246,16 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         taskId?: number;
         taskName?: string;
     };
+    type RecentComment = {
+        id: number;
+        body: string;
+        createdAt: string;
+        authorId: number;
+        authorName: string;
+        authorRole: string;
+        taskId: number;
+        taskName: string;
+    };
 
     // ===================== CONFIG =====================
     const API_BASE = "http://localhost:8080/api/tasks";
@@ -347,10 +357,13 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         return names.length > 0 ? names.join(", ") : "Unassigned";
     }
     function formatEstimate(hours: number): string { return `${hours}h`; }
+
+    // ✅ Due date now shows the full year, e.g. "10 Oct 2026"
     function formatDateBadge(isoDate: string): string {
         const date = new Date(`${isoDate}T00:00:00`);
-        return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+        return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
     }
+
     function formatDateShort(iso: string | null | undefined): string {
         if (!iso) return "—";
         const d = new Date(`${iso}T00:00:00`);
@@ -1600,17 +1613,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 
     let notifPollTimer: number | null = null;
 
-    interface RecentComment {
-        id: number;
-        body: string;
-        createdAt: string;
-        authorId: number;
-        authorName: string;
-        authorRole: string;
-        taskId: number;
-        taskName: string;
-    }
-
     function getLastSeenCommentId(): number {
         try {
             const v = window.localStorage.getItem(NOTIF_SEEN_KEY);
@@ -1890,7 +1892,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         renderTagFilter();
         await loadLoggedHours();
 
-        // Notifications
         void loadNotifications();
         startNotifPolling();
     }
