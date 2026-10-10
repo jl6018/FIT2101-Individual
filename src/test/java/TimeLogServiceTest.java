@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 import webapplication.Application;
-import webapplication.dto.TaskHours;
+import webapplication.dto.TaskHoursSummary;
 import webapplication.dto.TimeLogSummary;
 import webapplication.model.*;
 import webapplication.repository.*;
@@ -227,7 +227,7 @@ class TimeLogServiceTest {
         timeLogService.logHours(new TimeLog(LocalDate.now(), LocalTime.of(9, 0),
                 2.0, "Work", secondTask, testUser));
 
-        List<TaskHours> rows = timeLogService.getHoursPerTask(
+        List<TaskHoursSummary> rows = timeLogService.getHoursPerTask(
                 LocalDate.now().minusDays(7), LocalDate.now());
 
         assertEquals(2, rows.size());
