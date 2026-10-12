@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TagService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Symph</a> &gt; <a href="index.source.html" class="el_package">webapplication.service</a> &gt; <span class="el_source">TagService.java</span></div><h1>TagService.java</h1><pre class="source lang-java linenums">package webapplication.service;
+
+import webapplication.model.Tag;
+import webapplication.model.Task;
+import webapplication.repository.TagRepository;
+import webapplication.repository.TaskRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+/**
+ * Manages tag creation, retrieval, and attachment to tasks.
+ *
+ * @author Symph Team
+ * @version 17.0.16
+ */
+@Service
+public class TagService {
+
+    private final TagRepository tagRepository;
+    private final TaskRepository taskRepository;
+
+<span class="fc" id="L23">    public TagService(TagRepository tagRepository, TaskRepository taskRepository) {</span>
+<span class="fc" id="L24">        this.tagRepository = tagRepository;</span>
+<span class="fc" id="L25">        this.taskRepository = taskRepository;</span>
+<span class="fc" id="L26">    }</span>
+
+    public List&lt;Tag&gt; getAllTags() {
+<span class="fc" id="L29">        return tagRepository.findAll();</span>
+    }
+
+    /**
+     * Adds a tag to a task, creating the tag if it doesn't already exist.
+     * If the task already carries the tag, the task is returned unchanged.
+     *
+     * @param taskId  The ID of the task to tag
+     * @param tagName The name of the tag (case-insensitive, stored lowercase)
+     * @return        The updated Task object
+     * @throws IllegalArgumentException if tagName is null or blank
+     * @throws RuntimeException         if the task does not exist
+     */
+    public Task addTagToTask(Long taskId, String tagName) {
+<span class="pc bpc" id="L43" title="1 of 4 branches missed.">        if (tagName == null || tagName.isBlank()) {</span>
+<span class="fc" id="L44">            throw new IllegalArgumentException(&quot;Tag name is required&quot;);</span>
+        }
+
+<span class="fc" id="L47">        String clean = tagName.trim().toLowerCase();</span>
+
+<span class="fc" id="L49">        Tag tag = tagRepository.findByNameIgnoreCase(clean)</span>
+<span class="fc" id="L50">                .orElseGet(() -&gt; tagRepository.save(new Tag(clean)));</span>
+
+<span class="fc" id="L52">        Task task = taskRepository.findById(taskId)</span>
+<span class="fc" id="L53">                .orElseThrow(() -&gt; new RuntimeException(&quot;Task not found&quot;));</span>
+
+<span class="fc bfc" id="L55" title="All 2 branches covered.">        if (!task.getTags().contains(tag)) {</span>
+<span class="fc" id="L56">            task.getTags().add(tag);</span>
+<span class="fc" id="L57">            return taskRepository.save(task);</span>
+        }
+<span class="fc" id="L59">        return task;</span>
+    }
+
+    /**
+     * Removes a tag from a task.
+     *
+     * @param taskId The ID of the task
+     * @param tagId  The ID of the tag to remove
+     * @return       The updated Task object
+     * @throws RuntimeException if the task does not exist
+     */
+    public Task removeTagFromTask(Long taskId, Long tagId) {
+<span class="fc" id="L71">        Task task = taskRepository.findById(taskId)</span>
+<span class="fc" id="L72">                .orElseThrow(() -&gt; new RuntimeException(&quot;Task not found&quot;));</span>
+
+<span class="fc" id="L74">        task.getTags().removeIf(t -&gt; t.getId().equals(tagId));</span>
+<span class="fc" id="L75">        return taskRepository.save(task);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

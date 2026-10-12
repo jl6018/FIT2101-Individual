@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SprintController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Symph</a> &gt; <a href="index.source.html" class="el_package">webapplication.controller</a> &gt; <span class="el_source">SprintController.java</span></div><h1>SprintController.java</h1><pre class="source lang-java linenums">package webapplication.controller;
+
+import webapplication.model.Sprint;
+import webapplication.service.SprintService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * Exposes REST endpoints for managing sprints.
+ * Handles creation, retrieval, status transitions, edits, and deletion.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+@RestController
+@RequestMapping(&quot;/api/sprints&quot;)
+@CrossOrigin
+public class SprintController {
+
+    private final SprintService sprintService;
+
+<span class="fc" id="L25">    public SprintController(SprintService sprintService) {</span>
+<span class="fc" id="L26">        this.sprintService = sprintService;</span>
+<span class="fc" id="L27">    }</span>
+
+    @GetMapping
+    public List&lt;Sprint&gt; getAllSprints() {
+<span class="fc" id="L31">        return sprintService.getAllSprints();</span>
+    }
+
+    /**
+     * Retrieves the most recent sprint with the given name.
+     * Returns 200 with an empty body when no such sprint exists yet.
+     */
+    @GetMapping(&quot;/latest&quot;)
+    public ResponseEntity&lt;?&gt; getLatestByName(@RequestParam String name) {
+        try {
+<span class="nc" id="L41">            return ResponseEntity.ok(sprintService.getLatestByName(name));</span>
+<span class="nc" id="L42">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L43">            return ResponseEntity.ok().build();</span>
+        }
+    }
+
+    @GetMapping(&quot;/{id}&quot;)
+    public Sprint getSprint(@PathVariable Long id) {
+<span class="fc" id="L49">        return sprintService.getSprintById(id);</span>
+    }
+
+    @PostMapping
+    public Sprint createSprint(@RequestBody Sprint sprint) {
+<span class="fc" id="L54">        return sprintService.createSprint(sprint);</span>
+    }
+
+    /**
+     * Updates a PLANNED sprint's name, dates, and member count.
+     * Only PLANNED sprints may be edited — ACTIVE and COMPLETED sprints
+     * are locked. Returns 400 with an explanatory message on rejection.
+     *
+     * @param id                The ID of the sprint to update
+     * @param sprint            The Sprint object containing the updated values
+     * @return                  200 with the updated sprint, or 400 on error
+     */
+    @PutMapping(&quot;/{id}&quot;)
+    public ResponseEntity&lt;?&gt; updateSprint(
+            @PathVariable Long id,
+            @RequestBody Sprint sprint) {
+        try {
+<span class="nc" id="L71">            return ResponseEntity.ok(sprintService.updateSprint(id, sprint));</span>
+<span class="nc" id="L72">        } catch (IllegalArgumentException e) {</span>
+<span class="nc" id="L73">            return ResponseEntity.badRequest().body(e.getMessage());</span>
+<span class="nc" id="L74">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L75">            return ResponseEntity.status(404).body(e.getMessage());</span>
+        }
+    }
+
+    @PutMapping(&quot;/{id}/start&quot;)
+    public Sprint startSprint(@PathVariable Long id) {
+<span class="nc" id="L81">        return sprintService.startSprint(id);</span>
+    }
+
+    @PutMapping(&quot;/{id}/complete&quot;)
+    public Sprint completeSprint(@PathVariable Long id) {
+<span class="nc" id="L86">        return sprintService.completeSprint(id);</span>
+    }
+
+    @DeleteMapping(&quot;/{id}&quot;)
+    public void deleteSprint(@PathVariable Long id) {
+<span class="nc" id="L91">        sprintService.deleteSprint(id);</span>
+<span class="nc" id="L92">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

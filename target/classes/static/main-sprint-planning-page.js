@@ -68,8 +68,8 @@ function escapeHtml(text) {
 }
 
 // ===================== CONFIG =====================
-const SPRINTS_API = "http://localhost:8080/api/sprints";
-const USERS_API = "http://localhost:8080/api/users";
+const SPRINTS_API = "/api/sprints";
+const USERS_API = "/api/users";
 
 // ===================== ELEMENTS =====================
 const startSprintPlanningBtn = requireElement('startSprintPlanningBtn');

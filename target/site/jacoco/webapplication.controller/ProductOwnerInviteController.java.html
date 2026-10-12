@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProductOwnerInviteController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Symph</a> &gt; <a href="index.source.html" class="el_package">webapplication.controller</a> &gt; <span class="el_source">ProductOwnerInviteController.java</span></div><h1>ProductOwnerInviteController.java</h1><pre class="source lang-java linenums">package webapplication.controller;
+
+import webapplication.model.ProductOwnerInvite;
+import webapplication.service.ProductOwnerInviteService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * Exposes REST endpoints for managing Product Owner invitations.
+ * Handles creation, retrieval, deletion, and invitation checks.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+@RestController
+@RequestMapping(&quot;/api/invites&quot;)
+@CrossOrigin
+public class ProductOwnerInviteController {
+
+    private final ProductOwnerInviteService inviteService;
+
+    /**
+     * Parameterized constructor with the required ProductOwnerInviteService dependency.
+     *
+     * @param inviteService The service handling invite business logic
+     */
+<span class="fc" id="L30">    public ProductOwnerInviteController(ProductOwnerInviteService inviteService) {</span>
+<span class="fc" id="L31">        this.inviteService = inviteService;</span>
+<span class="fc" id="L32">    }</span>
+
+    /**
+     * Creates a new Product Owner invitation.
+     *
+     * @param invite            The invite object containing the email to invite
+     * @return                  A ResponseEntity with the saved invite on success, or an error message on failure
+     */
+    @PostMapping
+    public ResponseEntity&lt;?&gt; invite(@RequestBody ProductOwnerInvite invite) {
+        try {
+<span class="fc" id="L43">            ProductOwnerInvite saved = inviteService.inviteProductOwner(invite);</span>
+<span class="fc" id="L44">            return ResponseEntity.ok(saved);</span>
+<span class="fc" id="L45">        } catch (IllegalArgumentException e) {</span>
+<span class="fc" id="L46">            return ResponseEntity.badRequest().body(e.getMessage());</span>
+<span class="nc" id="L47">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L48">            return ResponseEntity.badRequest().body(e.getMessage());</span>
+        }
+    }
+
+    /**
+     * Retrieves all Product Owner invitations.
+     *
+     * @return A list of all invites
+     */
+    @GetMapping
+    public List&lt;ProductOwnerInvite&gt; getAll() {
+<span class="fc" id="L59">        return inviteService.getAllInvites();</span>
+    }
+
+    /**
+     * Checks whether an email has been invited as a Product Owner.
+     * Used by the login page to gate PRODUCT_OWNER logins (US20 + US22).
+     *
+     * @param email The email address to check
+     * @return      200 OK if invited, 404 Not Found if not
+     */
+    @GetMapping(&quot;/check&quot;)
+    public ResponseEntity&lt;?&gt; checkInvited(@RequestParam String email) {
+<span class="nc" id="L71">        boolean invited = inviteService.isInvited(email);</span>
+<span class="nc bnc" id="L72" title="All 2 branches missed.">        if (invited) {</span>
+<span class="nc" id="L73">            return ResponseEntity.ok().build();</span>
+        }
+<span class="nc" id="L75">        return ResponseEntity.status(404).body(&quot;Not invited&quot;);</span>
+    }
+
+    /**
+     * Retrieves a single invitation by its unique ID.
+     *
+     * @param id                The ID of the invite to retrieve
+     * @return                  A ResponseEntity with the invite on success, or an error message on failure
+     */
+    @GetMapping(&quot;/{id}&quot;)
+    public ResponseEntity&lt;?&gt; getById(@PathVariable Long id) {
+        try {
+<span class="fc" id="L87">            return ResponseEntity.ok(inviteService.getInviteById(id));</span>
+<span class="nc" id="L88">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L89">            return ResponseEntity.status(404).body(e.getMessage());</span>
+        }
+    }
+
+    /**
+     * Deletes an invitation by its unique ID.
+     *
+     * @param id                The ID of the invite to delete
+     * @return                  A ResponseEntity with no content on success, or an error message on failure
+     */
+    @DeleteMapping(&quot;/{id}&quot;)
+    public ResponseEntity&lt;?&gt; delete(@PathVariable Long id) {
+        try {
+<span class="nc" id="L102">            inviteService.deleteInvite(id);</span>
+<span class="nc" id="L103">            return ResponseEntity.ok().build();</span>
+<span class="nc" id="L104">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L105">            return ResponseEntity.status(404).body(e.getMessage());</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

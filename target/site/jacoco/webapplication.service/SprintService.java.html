@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SprintService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Symph</a> &gt; <a href="index.source.html" class="el_package">webapplication.service</a> &gt; <span class="el_source">SprintService.java</span></div><h1>SprintService.java</h1><pre class="source lang-java linenums">package webapplication.service;
+
+import webapplication.model.Sprint;
+import webapplication.model.SprintStatus;
+import webapplication.model.Task;
+import webapplication.model.TimeLog;
+import webapplication.repository.SprintRepository;
+import webapplication.repository.TaskCommentRepository;
+import webapplication.repository.TaskRepository;
+import webapplication.repository.TimeLogRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+/**
+ * Manages sprint Create, Read, Update, status transition, and Delete operations.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+@Service
+public class SprintService {
+
+    private final SprintRepository sprintRepository;
+    private final TaskRepository taskRepository;
+    private final TimeLogRepository timeLogRepository;
+    private final TaskCommentRepository taskCommentRepository;
+
+    public SprintService(SprintRepository sprintRepository,
+                         TaskRepository taskRepository,
+                         TimeLogRepository timeLogRepository,
+<span class="fc" id="L34">                         TaskCommentRepository taskCommentRepository) {</span>
+<span class="fc" id="L35">        this.sprintRepository = sprintRepository;</span>
+<span class="fc" id="L36">        this.taskRepository = taskRepository;</span>
+<span class="fc" id="L37">        this.timeLogRepository = timeLogRepository;</span>
+<span class="fc" id="L38">        this.taskCommentRepository = taskCommentRepository;</span>
+<span class="fc" id="L39">    }</span>
+
+    public List&lt;Sprint&gt; getAllSprints() {
+<span class="fc" id="L42">        return sprintRepository.findAll();</span>
+    }
+
+    public Sprint getSprintById(Long id) {
+<span class="fc" id="L46">        return sprintRepository.findById(id)</span>
+<span class="fc" id="L47">                .orElseThrow(() -&gt; new RuntimeException(&quot;Sprint not found&quot;));</span>
+    }
+
+    public Sprint getLatestByName(String name) {
+<span class="nc" id="L51">        return sprintRepository.findTopByNameOrderByIdDesc(name)</span>
+<span class="nc" id="L52">                .orElseThrow(() -&gt; new RuntimeException(&quot;No sprint named '&quot; + name + &quot;'&quot;));</span>
+    }
+
+    public Sprint createSprint(Sprint sprint) {
+<span class="fc" id="L56">        sprint.setStatus(SprintStatus.PLANNED);</span>
+<span class="fc" id="L57">        return sprintRepository.save(sprint);</span>
+    }
+
+    /**
+     * Updates a PLANNED sprint's name, dates, and member count.
+     * Refuses to edit ACTIVE or COMPLETED sprints.
+     *
+     * @param id                    The sprint to update
+     * @param updatedSprint         The incoming values
+     * @return                      The saved Sprint object
+     * @throws IllegalArgumentException if the sprint is not PLANNED
+     * @throws RuntimeException         if the sprint does not exist
+     */
+    public Sprint updateSprint(Long id, Sprint updatedSprint) {
+<span class="nc" id="L71">        Sprint sprint = getSprintById(id);</span>
+
+<span class="nc bnc" id="L73" title="All 2 branches missed.">        if (sprint.getStatus() != SprintStatus.PLANNED) {</span>
+<span class="nc" id="L74">            throw new IllegalArgumentException(</span>
+                    &quot;Only PLANNED sprints can be edited. This sprint is &quot;
+<span class="nc" id="L76">                            + sprint.getStatus() + &quot;.&quot;);</span>
+        }
+
+<span class="nc bnc" id="L79" title="All 4 branches missed.">        if (updatedSprint.getName() != null &amp;&amp; !updatedSprint.getName().isBlank()) {</span>
+<span class="nc" id="L80">            sprint.setName(updatedSprint.getName().trim());</span>
+        }
+<span class="nc bnc" id="L82" title="All 2 branches missed.">        if (updatedSprint.getStartDate() != null) {</span>
+<span class="nc" id="L83">            sprint.setStartDate(updatedSprint.getStartDate());</span>
+        }
+<span class="nc bnc" id="L85" title="All 2 branches missed.">        if (updatedSprint.getEndDate() != null) {</span>
+<span class="nc" id="L86">            sprint.setEndDate(updatedSprint.getEndDate());</span>
+        }
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        if (updatedSprint.getMemberCount() &gt; 0) {</span>
+<span class="nc" id="L89">            sprint.setMemberCount(updatedSprint.getMemberCount());</span>
+        }
+
+<span class="nc" id="L92">        return sprintRepository.save(sprint);</span>
+    }
+
+    public Sprint startSprint(Long id) {
+<span class="fc" id="L96">        Sprint sprint = getSprintById(id);</span>
+<span class="fc" id="L97">        sprint.setStatus(SprintStatus.ACTIVE);</span>
+<span class="fc" id="L98">        return sprintRepository.save(sprint);</span>
+    }
+
+    public Sprint completeSprint(Long id) {
+<span class="fc" id="L102">        Sprint sprint = getSprintById(id);</span>
+<span class="fc" id="L103">        sprint.setStatus(SprintStatus.COMPLETED);</span>
+<span class="fc" id="L104">        return sprintRepository.save(sprint);</span>
+    }
+
+    @Transactional
+    public void deleteSprint(Long id) {
+<span class="fc" id="L109">        List&lt;Task&gt; tasks = taskRepository.findBySprintId(id);</span>
+
+<span class="pc bpc" id="L111" title="1 of 2 branches missed.">        for (Task task : tasks) {</span>
+<span class="nc" id="L112">            List&lt;TimeLog&gt; logs = timeLogRepository.findByTaskId(task.getId());</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">            if (!logs.isEmpty()) {</span>
+<span class="nc" id="L114">                timeLogRepository.deleteAll(logs);</span>
+            }
+<span class="nc" id="L116">            taskCommentRepository.deleteByTaskId(task.getId());</span>
+<span class="nc" id="L117">            task.getTags().clear();</span>
+<span class="nc" id="L118">            taskRepository.save(task);</span>
+<span class="nc" id="L119">        }</span>
+
+<span class="pc bpc" id="L121" title="1 of 2 branches missed.">        if (!tasks.isEmpty()) {</span>
+<span class="nc" id="L122">            taskRepository.deleteAll(tasks);</span>
+        }
+
+<span class="fc" id="L125">        sprintRepository.deleteById(id);</span>
+<span class="fc" id="L126">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

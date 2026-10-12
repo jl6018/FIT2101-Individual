@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TimeLogRequest.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Symph</a> &gt; <a href="index.source.html" class="el_package">webapplication.dto</a> &gt; <span class="el_source">TimeLogRequest.java</span></div><h1>TimeLogRequest.java</h1><pre class="source lang-java linenums">package webapplication.dto;
+
+/**
+ * Payload used by the frontend when logging hours against a task.
+ * The taskId and userId are resolved server-side to the actual Task and
+ * User entities before the TimeLog is persisted.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+public class TimeLogRequest {
+
+    private String date;
+    private String startTime;
+    private double hours;
+    private String description;
+    private Long taskId;
+    private Long userId;
+
+    /**
+     * Default constructor.
+     */
+<span class="fc" id="L23">    public TimeLogRequest() {</span>
+<span class="fc" id="L24">    }</span>
+
+    /**
+     * Parameterized constructor with all fields.
+     *
+     * @param date        ISO date string (YYYY-MM-DD)
+     * @param startTime   ISO time string (HH:mm or HH:mm:ss)
+     * @param hours       Hours worked
+     * @param description Optional description of the work
+     * @param taskId      The ID of the task the hours were logged against
+     * @param userId      The ID of the user who logged the hours
+     */
+    public TimeLogRequest(String date, String startTime, double hours,
+<span class="nc" id="L37">                          String description, Long taskId, Long userId) {</span>
+<span class="nc" id="L38">        this.date = date;</span>
+<span class="nc" id="L39">        this.startTime = startTime;</span>
+<span class="nc" id="L40">        this.hours = hours;</span>
+<span class="nc" id="L41">        this.description = description;</span>
+<span class="nc" id="L42">        this.taskId = taskId;</span>
+<span class="nc" id="L43">        this.userId = userId;</span>
+<span class="nc" id="L44">    }</span>
+
+    /**
+     * Gets the ISO date string the hours were logged.
+     *
+     * @return The date string
+     */
+<span class="fc" id="L51">    public String getDate() { return date; }</span>
+
+    /**
+     * Sets the ISO date string the hours were logged.
+     *
+     * @param date The date string
+     */
+<span class="fc" id="L58">    public void setDate(String date) { this.date = date; }</span>
+
+    /**
+     * Gets the ISO time string the work session started.
+     *
+     * @return The start time string
+     */
+<span class="fc" id="L65">    public String getStartTime() { return startTime; }</span>
+
+    /**
+     * Sets the ISO time string the work session started.
+     *
+     * @param startTime The start time string
+     */
+<span class="fc" id="L72">    public void setStartTime(String startTime) { this.startTime = startTime; }</span>
+
+    /**
+     * Gets the number of hours logged.
+     *
+     * @return The hours value
+     */
+<span class="fc" id="L79">    public double getHours() { return hours; }</span>
+
+    /**
+     * Sets the number of hours logged.
+     *
+     * @param hours The hours value
+     */
+<span class="fc" id="L86">    public void setHours(double hours) { this.hours = hours; }</span>
+
+    /**
+     * Gets the description of the work done.
+     *
+     * @return The description
+     */
+<span class="fc" id="L93">    public String getDescription() { return description; }</span>
+
+    /**
+     * Sets the description of the work done.
+     *
+     * @param description The description
+     */
+<span class="fc" id="L100">    public void setDescription(String description) { this.description = description; }</span>
+
+    /**
+     * Gets the ID of the task the hours were logged against.
+     *
+     * @return The task ID
+     */
+<span class="fc" id="L107">    public Long getTaskId() { return taskId; }</span>
+
+    /**
+     * Sets the ID of the task the hours were logged against.
+     *
+     * @param taskId The task ID
+     */
+<span class="fc" id="L114">    public void setTaskId(Long taskId) { this.taskId = taskId; }</span>
+
+    /**
+     * Gets the ID of the user who logged the hours.
+     *
+     * @return The user ID
+     */
+<span class="fc" id="L121">    public Long getUserId() { return userId; }</span>
+
+    /**
+     * Sets the ID of the user who logged the hours.
+     *
+     * @param userId The user ID
+     */
+<span class="fc" id="L128">    public void setUserId(Long userId) { this.userId = userId; }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TimeLogService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Symph</a> &gt; <a href="index.source.html" class="el_package">webapplication.service</a> &gt; <span class="el_source">TimeLogService.java</span></div><h1>TimeLogService.java</h1><pre class="source lang-java linenums">package webapplication.service;
+
+import webapplication.dto.BurndownPoint;
+import webapplication.dto.TaskHours;
+import webapplication.dto.TimeLogSummary;
+import webapplication.model.Sprint;
+import webapplication.model.Task;
+import webapplication.model.TimeLog;
+import webapplication.model.User;
+import webapplication.repository.SprintRepository;
+import webapplication.repository.TaskRepository;
+import webapplication.repository.TimeLogRepository;
+import webapplication.repository.UserRepository;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
+/**
+ * Manages time log creation, retrieval, deletion, and reporting calculations.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+@Service
+public class TimeLogService {
+
+    private final TimeLogRepository timeLogRepository;
+    private final TaskRepository taskRepository;
+    private final UserRepository userRepository;
+    private final SprintRepository sprintRepository;
+
+    public TimeLogService(TimeLogRepository timeLogRepository,
+                          TaskRepository taskRepository,
+                          UserRepository userRepository,
+<span class="fc" id="L39">                          SprintRepository sprintRepository) {</span>
+<span class="fc" id="L40">        this.timeLogRepository = timeLogRepository;</span>
+<span class="fc" id="L41">        this.taskRepository = taskRepository;</span>
+<span class="fc" id="L42">        this.userRepository = userRepository;</span>
+<span class="fc" id="L43">        this.sprintRepository = sprintRepository;</span>
+<span class="fc" id="L44">    }</span>
+
+    public List&lt;TimeLog&gt; getAllTimeLogs() {
+<span class="nc" id="L47">        return timeLogRepository.findAll();</span>
+    }
+
+    public TimeLog logHours(String dateStr, String startTimeStr, double hours,
+                            String description, Long taskId, Long userId) {
+
+<span class="pc bpc" id="L53" title="2 of 4 branches missed.">        if (dateStr == null || dateStr.isBlank()) throw new IllegalArgumentException(&quot;Date is required&quot;);</span>
+<span class="fc bfc" id="L54" title="All 2 branches covered.">        if (hours &lt;= 0) throw new IllegalArgumentException(&quot;Hours must be greater than 0&quot;);</span>
+<span class="pc bpc" id="L55" title="1 of 2 branches missed.">        if (taskId == null) throw new IllegalArgumentException(&quot;Task is required&quot;);</span>
+<span class="pc bpc" id="L56" title="1 of 2 branches missed.">        if (userId == null) throw new IllegalArgumentException(&quot;User is required&quot;);</span>
+
+<span class="fc" id="L58">        LocalDate date = LocalDate.parse(dateStr);</span>
+<span class="pc bpc" id="L59" title="2 of 4 branches missed.">        LocalTime startTime = (startTimeStr != null &amp;&amp; !startTimeStr.isBlank())</span>
+<span class="pc bpc" id="L60" title="1 of 2 branches missed.">                ? LocalTime.parse(startTimeStr.length() == 5 ? startTimeStr : startTimeStr + &quot;:00&quot;)</span>
+<span class="pc" id="L61">                : null;</span>
+
+<span class="fc" id="L63">        Task task = taskRepository.findById(taskId)</span>
+<span class="pc" id="L64">                .orElseThrow(() -&gt; new RuntimeException(&quot;Task not found&quot;));</span>
+<span class="fc" id="L65">        User user = userRepository.findById(userId)</span>
+<span class="pc" id="L66">                .orElseThrow(() -&gt; new RuntimeException(&quot;User not found&quot;));</span>
+
+<span class="fc" id="L68">        TimeLog log = new TimeLog();</span>
+<span class="fc" id="L69">        log.setDate(date);</span>
+<span class="fc" id="L70">        log.setStartTime(startTime);</span>
+<span class="fc" id="L71">        log.setHours(hours);</span>
+<span class="fc" id="L72">        log.setDescription(description);</span>
+<span class="fc" id="L73">        log.setTask(task);</span>
+<span class="fc" id="L74">        log.setUser(user);</span>
+
+<span class="fc" id="L76">        return timeLogRepository.save(log);</span>
+    }
+
+    public TimeLog logHours(TimeLog timeLog) {
+<span class="fc" id="L80">        return timeLogRepository.save(timeLog);</span>
+    }
+
+    /**
+     * Deletes a single time log by its ID.
+     *
+     * @param id                The ID of the log to delete
+     * @throws RuntimeException if no log with the given ID exists
+     */
+    public void deleteLog(Long id) {
+<span class="nc bnc" id="L90" title="All 2 branches missed.">        if (!timeLogRepository.existsById(id)) {</span>
+<span class="nc" id="L91">            throw new RuntimeException(&quot;Time log not found&quot;);</span>
+        }
+<span class="nc" id="L93">        timeLogRepository.deleteById(id);</span>
+<span class="nc" id="L94">    }</span>
+
+    public List&lt;TimeLog&gt; getLogsByUser(Long userId) {
+<span class="nc" id="L97">        return timeLogRepository.findByUserId(userId);</span>
+    }
+
+    public List&lt;TimeLog&gt; getLogsByTask(Long taskId) {
+<span class="nc" id="L101">        return timeLogRepository.findByTaskId(taskId);</span>
+    }
+
+    public double getTotalHoursForUserInRange(Long userId, LocalDate start, LocalDate end) {
+<span class="fc" id="L105">        return timeLogRepository.findByUserId(userId).stream()</span>
+<span class="pc bpc" id="L106" title="1 of 2 branches missed.">                .filter(log -&gt; log.getDate() != null)</span>
+<span class="pc bpc" id="L107" title="2 of 4 branches missed.">                .filter(log -&gt; !log.getDate().isBefore(start) &amp;&amp; !log.getDate().isAfter(end))</span>
+<span class="fc" id="L108">                .mapToDouble(TimeLog::getHours)</span>
+<span class="fc" id="L109">                .sum();</span>
+    }
+
+    public double getTotalHoursForSprint(Long sprintId) {
+<span class="fc" id="L113">        return timeLogRepository.findByTaskSprintId(sprintId).stream()</span>
+<span class="fc" id="L114">                .mapToDouble(TimeLog::getHours)</span>
+<span class="fc" id="L115">                .sum();</span>
+    }
+
+    /**
+     * Builds the per-member contribution summary shown on the Reports page.
+     * Only EMPLOYEE users are included — Admins and Product Owners do not log
+     * time themselves (US24), so they must not appear in this table.
+     *
+     * @param from Start of the date range (inclusive)
+     * @param to   End of the date range (inclusive)
+     * @return     One row per employee, sorted by total hours descending
+     */
+    public List&lt;TimeLogSummary&gt; getSummaryByRange(LocalDate from, LocalDate to) {
+<span class="fc" id="L128">        List&lt;TimeLog&gt; logs = timeLogRepository.findByDateBetween(from, to);</span>
+
+<span class="fc" id="L130">        Map&lt;Long, List&lt;TimeLog&gt;&gt; byUser = logs.stream()</span>
+<span class="pc bpc" id="L131" title="1 of 2 branches missed.">                .filter(l -&gt; l.getUser() != null)</span>
+<span class="fc" id="L132">                .collect(Collectors.groupingBy(l -&gt; l.getUser().getId()));</span>
+
+        // Only include EMPLOYEE users in the contribution table.
+        // Admins and Product Owners do not log time themselves (US24),
+        // so they should not appear in the team contribution report.
+<span class="fc" id="L137">        List&lt;User&gt; allUsers = userRepository.findAll().stream()</span>
+<span class="fc" id="L138">                .filter(u -&gt; &quot;EMPLOYEE&quot;.equals(u.getRole()))</span>
+<span class="fc" id="L139">                .collect(Collectors.toList());</span>
+
+<span class="fc" id="L141">        List&lt;TimeLogSummary&gt; rows = new ArrayList&lt;&gt;();</span>
+
+<span class="fc bfc" id="L143" title="All 2 branches covered.">        for (User u : allUsers) {</span>
+<span class="fc" id="L144">            List&lt;TimeLog&gt; mine = byUser.getOrDefault(u.getId(), Collections.emptyList());</span>
+<span class="fc" id="L145">            double total = mine.stream().mapToDouble(TimeLog::getHours).sum();</span>
+<span class="fc" id="L146">            long daysWorked = mine.stream().map(TimeLog::getDate).filter(Objects::nonNull).distinct().count();</span>
+<span class="pc bpc" id="L147" title="1 of 2 branches missed.">            double avg = daysWorked &gt; 0 ? total / daysWorked : 0.0;</span>
+
+<span class="pc bpc" id="L149" title="1 of 2 branches missed.">            String teamName = (u.getTeam() != null) ? u.getTeam().getName() : &quot;Unassigned&quot;;</span>
+<span class="fc" id="L150">            rows.add(new TimeLogSummary(u.getId(), u.getName(), teamName, total, (int) daysWorked, avg));</span>
+<span class="fc" id="L151">        }</span>
+
+<span class="pc" id="L153">        rows.sort((a, b) -&gt; Double.compare(b.getTotalHours(), a.getTotalHours()));</span>
+<span class="fc" id="L154">        return rows;</span>
+    }
+
+    public List&lt;TimeLog&gt; getLogsForUserInRange(Long userId, LocalDate from, LocalDate to) {
+<span class="fc" id="L158">        return timeLogRepository.findByUserId(userId).stream()</span>
+<span class="pc bpc" id="L159" title="1 of 2 branches missed.">                .filter(l -&gt; l.getDate() != null)</span>
+<span class="pc bpc" id="L160" title="2 of 4 branches missed.">                .filter(l -&gt; !l.getDate().isBefore(from) &amp;&amp; !l.getDate().isAfter(to))</span>
+<span class="fc" id="L161">                .sorted((a, b) -&gt; b.getDate().compareTo(a.getDate()))</span>
+<span class="fc" id="L162">                .collect(Collectors.toList());</span>
+    }
+
+    public List&lt;TaskHours&gt; getHoursPerTask(LocalDate from, LocalDate to) {
+<span class="fc" id="L166">        List&lt;TimeLog&gt; logs = timeLogRepository.findByDateBetween(from, to);</span>
+
+<span class="fc" id="L168">        Map&lt;Long, Double&gt; hoursByTaskId = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L169">        Map&lt;Long, String&gt; nameByTaskId = new HashMap&lt;&gt;();</span>
+
+<span class="fc bfc" id="L171" title="All 2 branches covered.">        for (TimeLog log : logs) {</span>
+<span class="pc bpc" id="L172" title="2 of 4 branches missed.">            if (log.getTask() == null || log.getTask().getId() == null) continue;</span>
+<span class="fc" id="L173">            Long tid = log.getTask().getId();</span>
+<span class="fc" id="L174">            nameByTaskId.put(tid, log.getTask().getName());</span>
+<span class="fc" id="L175">            hoursByTaskId.merge(tid, log.getHours(), Double::sum);</span>
+<span class="fc" id="L176">        }</span>
+
+<span class="fc" id="L178">        List&lt;TaskHours&gt; rows = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L179" title="All 2 branches covered.">        for (Map.Entry&lt;Long, Double&gt; e : hoursByTaskId.entrySet()) {</span>
+<span class="fc" id="L180">            rows.add(new TaskHours(e.getKey(), nameByTaskId.get(e.getKey()), e.getValue()));</span>
+<span class="fc" id="L181">        }</span>
+<span class="fc" id="L182">        rows.sort((a, b) -&gt; Double.compare(b.getTotalHours(), a.getTotalHours()));</span>
+<span class="fc" id="L183">        return rows;</span>
+    }
+
+    public List&lt;BurndownPoint&gt; getBurndown(Long sprintId) {
+<span class="nc" id="L187">        Sprint sprint = sprintRepository.findById(sprintId)</span>
+<span class="nc" id="L188">                .orElseThrow(() -&gt; new RuntimeException(&quot;Sprint not found&quot;));</span>
+
+<span class="nc" id="L190">        LocalDate start = sprint.getStartDate();</span>
+<span class="nc" id="L191">        LocalDate end = sprint.getEndDate();</span>
+<span class="nc bnc" id="L192" title="All 6 branches missed.">        if (start == null || end == null || end.isBefore(start)) {</span>
+<span class="nc" id="L193">            return Collections.emptyList();</span>
+        }
+
+<span class="nc" id="L196">        List&lt;Task&gt; tasks = taskRepository.findBySprintId(sprintId);</span>
+<span class="nc" id="L197">        double totalEstimate = tasks.stream()</span>
+<span class="nc" id="L198">                .mapToDouble(Task::getEstimateHours)</span>
+<span class="nc" id="L199">                .sum();</span>
+
+<span class="nc bnc" id="L201" title="All 2 branches missed.">        if (totalEstimate &lt;= 0) {</span>
+<span class="nc" id="L202">            return Collections.emptyList();</span>
+        }
+
+<span class="nc" id="L205">        List&lt;TimeLog&gt; logs = timeLogRepository</span>
+<span class="nc" id="L206">                .findByTaskSprintIdAndDateBetween(sprintId, start, end);</span>
+
+<span class="nc" id="L208">        Map&lt;LocalDate, Double&gt; hoursByDate = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L209" title="All 2 branches missed.">        for (TimeLog log : logs) {</span>
+<span class="nc bnc" id="L210" title="All 2 branches missed.">            if (log.getDate() == null) continue;</span>
+<span class="nc" id="L211">            hoursByDate.merge(log.getDate(), log.getHours(), Double::sum);</span>
+<span class="nc" id="L212">        }</span>
+
+<span class="nc" id="L214">        long totalDays = java.time.temporal.ChronoUnit.DAYS.between(start, end);</span>
+<span class="nc bnc" id="L215" title="All 2 branches missed.">        if (totalDays &lt;= 0) totalDays = 1;</span>
+
+<span class="nc" id="L217">        List&lt;BurndownPoint&gt; points = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L218">        double cumulativeLogged = 0.0;</span>
+
+<span class="nc bnc" id="L220" title="All 2 branches missed.">        for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {</span>
+<span class="nc" id="L221">            double dayIndex = java.time.temporal.ChronoUnit.DAYS.between(start, d);</span>
+<span class="nc" id="L222">            double projected = totalEstimate * (1.0 - (dayIndex / (double) totalDays));</span>
+
+<span class="nc" id="L224">            cumulativeLogged += hoursByDate.getOrDefault(d, 0.0);</span>
+<span class="nc" id="L225">            double actual = Math.max(0.0, totalEstimate - cumulativeLogged);</span>
+
+<span class="nc" id="L227">            points.add(new BurndownPoint(d, projected, actual));</span>
+        }
+
+<span class="nc" id="L230">        return points;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

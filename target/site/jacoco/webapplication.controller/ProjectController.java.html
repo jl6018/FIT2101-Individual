@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProjectController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Symph</a> &gt; <a href="index.source.html" class="el_package">webapplication.controller</a> &gt; <span class="el_source">ProjectController.java</span></div><h1>ProjectController.java</h1><pre class="source lang-java linenums">package webapplication.controller;
+
+import webapplication.model.Project;
+import webapplication.service.ProjectService;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * Exposes REST endpoints for managing projects.
+ * Handles creation, retrieval, update, and deletion of projects.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+@RestController
+@RequestMapping(&quot;/api/projects&quot;)
+@CrossOrigin
+public class ProjectController {
+
+    private final ProjectService projectService;
+
+    /**
+     * Parameterized constructor with the required ProjectService dependency.
+     *
+     * @param projectService The service handling project business logic
+     */
+<span class="fc" id="L29">    public ProjectController(ProjectService projectService) {</span>
+<span class="fc" id="L30">        this.projectService = projectService;</span>
+<span class="fc" id="L31">    }</span>
+
+    /**
+     * Retrieves all projects from the database.
+     *
+     * @return A list of all projects
+     */
+    @GetMapping
+    public List&lt;Project&gt; getAllProjects() {
+<span class="fc" id="L40">        return projectService.getAllProjects();</span>
+    }
+
+    /**
+     * Retrieves a single project by its unique ID.
+     *
+     * @param id The ID of the project to retrieve
+     * @return   The Project object
+     */
+    @GetMapping(&quot;/{id}&quot;)
+    public Project getProject(@PathVariable Long id) {
+<span class="fc" id="L51">        return projectService.getProjectById(id);</span>
+    }
+
+    /**
+     * Creates a new project.
+     *
+     * @param project The Project object to save
+     * @return        The saved Project object with its assigned ID
+     */
+    @PostMapping
+    public Project createProject(@RequestBody Project project) {
+<span class="fc" id="L62">        return projectService.createProject(project);</span>
+    }
+
+    /**
+     * Updates an existing project's name, description, and team.
+     *
+     * @param id      The ID of the project to update
+     * @param project The Project object containing the updated details
+     * @return        The updated Project object
+     */
+    @PutMapping(&quot;/{id}&quot;)
+    public Project updateProject(
+            @PathVariable Long id,
+            @RequestBody Project project) {
+
+<span class="nc" id="L77">        return projectService.updateProject(id, project);</span>
+    }
+
+    /**
+     * Deletes a project from the database by its ID.
+     *
+     * @param id The ID of the project to delete
+     */
+    @DeleteMapping(&quot;/{id}&quot;)
+    public void deleteProject(@PathVariable Long id) {
+<span class="nc" id="L87">        projectService.deleteProject(id);</span>
+<span class="nc" id="L88">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

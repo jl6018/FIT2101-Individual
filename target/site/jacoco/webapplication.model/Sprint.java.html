@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Sprint.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Symph</a> &gt; <a href="index.source.html" class="el_package">webapplication.model</a> &gt; <span class="el_source">Sprint.java</span></div><h1>Sprint.java</h1><pre class="source lang-java linenums">package webapplication.model;
+
+import jakarta.persistence.*;
+
+import java.time.LocalDate;
+
+/**
+ * Represents a sprint within the Symph web application.
+ * A sprint belongs to a project and has a status, date range, and member count.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+@Entity
+@Table(name = &quot;sprints&quot;)
+public class Sprint {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    private LocalDate startDate;
+
+    private LocalDate endDate;
+
+    @Enumerated(EnumType.STRING)
+    private SprintStatus status;
+
+    private int memberCount;
+
+    @ManyToOne
+    @JoinColumn(name = &quot;project_id&quot;, nullable = true)
+    private Project project;
+
+    /**
+     * Default constructor.
+     */
+<span class="fc" id="L41">    public Sprint() {</span>
+<span class="fc" id="L42">    }</span>
+
+    /**
+     * Parameterized constructor with the sprint's details.
+     *
+     * @param name        The sprint name
+     * @param startDate   The sprint start date
+     * @param endDate     The sprint end date
+     * @param status      The sprint status
+     * @param project     The project the sprint belongs to
+     */
+    public Sprint(String name, LocalDate startDate, LocalDate endDate,
+<span class="nc" id="L54">                  SprintStatus status, Project project) {</span>
+<span class="nc" id="L55">        this.name = name;</span>
+<span class="nc" id="L56">        this.startDate = startDate;</span>
+<span class="nc" id="L57">        this.endDate = endDate;</span>
+<span class="nc" id="L58">        this.status = status;</span>
+<span class="nc" id="L59">        this.project = project;</span>
+<span class="nc" id="L60">    }</span>
+
+    /**
+     * Gets the sprint's unique ID.
+     *
+     * @return The sprint ID
+     */
+<span class="fc" id="L67">    public Long getId() { return id; }</span>
+
+    /**
+     * Sets the sprint's unique ID.
+     *
+     * @param id The sprint ID
+     */
+<span class="fc" id="L74">    public void setId(Long id) { this.id = id; }</span>
+
+    /**
+     * Gets the sprint's name.
+     *
+     * @return The sprint name
+     */
+<span class="fc" id="L81">    public String getName() { return name; }</span>
+
+    /**
+     * Sets the sprint's name.
+     *
+     * @param name The sprint name
+     */
+<span class="fc" id="L88">    public void setName(String name) { this.name = name; }</span>
+
+    /**
+     * Gets the sprint's start date.
+     *
+     * @return The start date
+     */
+<span class="fc" id="L95">    public LocalDate getStartDate() { return startDate; }</span>
+
+    /**
+     * Sets the sprint's start date.
+     *
+     * @param startDate The start date
+     */
+<span class="fc" id="L102">    public void setStartDate(LocalDate startDate) { this.startDate = startDate; }</span>
+
+    /**
+     * Gets the sprint's end date.
+     *
+     * @return The end date
+     */
+<span class="fc" id="L109">    public LocalDate getEndDate() { return endDate; }</span>
+
+    /**
+     * Sets the sprint's end date.
+     *
+     * @param endDate The end date
+     */
+<span class="fc" id="L116">    public void setEndDate(LocalDate endDate) { this.endDate = endDate; }</span>
+
+    /**
+     * Gets the sprint's status.
+     *
+     * @return The SprintStatus
+     */
+<span class="fc" id="L123">    public SprintStatus getStatus() { return status; }</span>
+
+    /**
+     * Sets the sprint's status.
+     *
+     * @param status The SprintStatus
+     */
+<span class="fc" id="L130">    public void setStatus(SprintStatus status) { this.status = status; }</span>
+
+    /**
+     * Gets the number of members involved in the sprint.
+     *
+     * @return The member count
+     */
+<span class="fc" id="L137">    public int getMemberCount() { return memberCount; }</span>
+
+    /**
+     * Sets the number of members involved in the sprint.
+     *
+     * @param memberCount The member count
+     */
+<span class="fc" id="L144">    public void setMemberCount(int memberCount) { this.memberCount = memberCount; }</span>
+
+    /**
+     * Gets the project the sprint belongs to.
+     *
+     * @return The Project object
+     */
+<span class="fc" id="L151">    public Project getProject() { return project; }</span>
+
+    /**
+     * Sets the project the sprint belongs to.
+     *
+     * @param project The Project object
+     */
+<span class="fc" id="L158">    public void setProject(Project project) { this.project = project; }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

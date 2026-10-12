@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Project.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Symph</a> &gt; <a href="index.source.html" class="el_package">webapplication.model</a> &gt; <span class="el_source">Project.java</span></div><h1>Project.java</h1><pre class="source lang-java linenums">package webapplication.model;
+
+import jakarta.persistence.*;
+
+/**
+ * Represents a project within the Symph web application.
+ * A project belongs to a team and contains sprints and tasks.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+@Entity
+@Table(name = &quot;projects&quot;)
+public class Project {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    @Column(length = 1000)
+    private String description;
+
+    @ManyToOne
+    @JoinColumn(name = &quot;team_id&quot;)
+    private Team team;
+
+    /**
+     * Default constructor.
+     */
+<span class="fc" id="L33">    public Project() {</span>
+<span class="fc" id="L34">    }</span>
+
+    /**
+     * Parameterized constructor with the project's name, description, and team.
+     *
+     * @param name        The project name
+     * @param description The project description
+     * @param team        The team assigned to the project
+     */
+<span class="nc" id="L43">    public Project(String name, String description, Team team) {</span>
+<span class="nc" id="L44">        this.name = name;</span>
+<span class="nc" id="L45">        this.description = description;</span>
+<span class="nc" id="L46">        this.team = team;</span>
+<span class="nc" id="L47">    }</span>
+
+    /**
+     * Gets the project's unique ID.
+     *
+     * @return The project ID
+     */
+    public Long getId() {
+<span class="fc" id="L55">        return id;</span>
+    }
+
+    /**
+     * Sets the project's unique ID.
+     *
+     * @param id The project ID
+     */
+    public void setId(Long id) {
+<span class="fc" id="L64">        this.id = id;</span>
+<span class="fc" id="L65">    }</span>
+
+    /**
+     * Gets the project's name.
+     *
+     * @return The project name
+     */
+    public String getName() {
+<span class="fc" id="L73">        return name;</span>
+    }
+
+    /**
+     * Sets the project's name.
+     *
+     * @param name The project name
+     */
+    public void setName(String name) {
+<span class="fc" id="L82">        this.name = name;</span>
+<span class="fc" id="L83">    }</span>
+
+    /**
+     * Gets the project's description.
+     *
+     * @return The project description
+     */
+    public String getDescription() {
+<span class="fc" id="L91">        return description;</span>
+    }
+
+    /**
+     * Sets the project's description.
+     *
+     * @param description The project description
+     */
+    public void setDescription(String description) {
+<span class="fc" id="L100">        this.description = description;</span>
+<span class="fc" id="L101">    }</span>
+
+    /**
+     * Gets the team assigned to the project.
+     *
+     * @return The Team object
+     */
+    public Team getTeam() {
+<span class="fc" id="L109">        return team;</span>
+    }
+
+    /**
+     * Sets the team assigned to the project.
+     *
+     * @param team The Team object
+     */
+    public void setTeam(Team team) {
+<span class="fc" id="L118">        this.team = team;</span>
+<span class="fc" id="L119">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProductOwnerInviteService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Symph</a> &gt; <a href="index.source.html" class="el_package">webapplication.service</a> &gt; <span class="el_source">ProductOwnerInviteService.java</span></div><h1>ProductOwnerInviteService.java</h1><pre class="source lang-java linenums">package webapplication.service;
+
+import webapplication.model.ProductOwnerInvite;
+import webapplication.repository.ProductOwnerInviteRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+/**
+ * Manages Product Owner invitation validation, creation, retrieval,
+ * deletion, and invitation checks.
+ * Emails are normalized to lowercase and trimmed before being stored or
+ * compared, so XX@x.com and xx@x.com are treated as the same address.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+@Service
+public class ProductOwnerInviteService {
+
+    private final ProductOwnerInviteRepository inviteRepository;
+
+<span class="fc" id="L24">    public ProductOwnerInviteService(ProductOwnerInviteRepository inviteRepository) {</span>
+<span class="fc" id="L25">        this.inviteRepository = inviteRepository;</span>
+<span class="fc" id="L26">    }</span>
+
+    /**
+     * Validates and saves a Product Owner invite.
+     * The email is trimmed and lowercased before saving so duplicates
+     * differing only by case are prevented. Only emails with a recognized
+     * TLD are accepted.
+     *
+     * @param invite                The invite to validate and save
+     * @return                      The saved invite object
+     * @throws IllegalArgumentException if the email is missing or invalid
+     * @throws RuntimeException         if the email has already been invited
+     */
+    public ProductOwnerInvite inviteProductOwner(ProductOwnerInvite invite) {
+<span class="pc bpc" id="L40" title="2 of 6 branches missed.">        if (invite == null || invite.getEmail() == null || invite.getEmail().isBlank()) {</span>
+<span class="fc" id="L41">            throw new IllegalArgumentException(&quot;Email is required&quot;);</span>
+        }
+
+<span class="fc" id="L44">        String email = invite.getEmail().trim().toLowerCase();</span>
+<span class="fc" id="L45">        invite.setEmail(email);</span>
+
+<span class="fc bfc" id="L47" title="All 2 branches covered.">        if (!email.matches(&quot;^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.(com|org|net|edu|gov|mil|io|co|my|sg|uk|us|info|biz|dev|app)$&quot;)) {</span>
+<span class="fc" id="L48">            throw new IllegalArgumentException(&quot;Invalid email format. Please use a recognized domain (e.g. user@gmail.com)&quot;);</span>
+        }
+
+<span class="fc bfc" id="L51" title="All 2 branches covered.">        if (inviteRepository.findByEmail(email).isPresent()) {</span>
+<span class="fc" id="L52">            throw new RuntimeException(&quot;Email already invited&quot;);</span>
+        }
+
+<span class="fc" id="L55">        return inviteRepository.save(invite);</span>
+    }
+
+    public List&lt;ProductOwnerInvite&gt; getAllInvites() {
+<span class="fc" id="L59">        return inviteRepository.findAll();</span>
+    }
+
+    public ProductOwnerInvite getInviteById(Long id) {
+<span class="fc" id="L63">        return inviteRepository.findById(id)</span>
+<span class="fc" id="L64">                .orElseThrow(() -&gt; new RuntimeException(&quot;Invite not found&quot;));</span>
+    }
+
+    public void deleteInvite(Long id) {
+<span class="pc bpc" id="L68" title="1 of 2 branches missed.">        if (!inviteRepository.existsById(id)) {</span>
+<span class="nc" id="L69">            throw new RuntimeException(&quot;Invite not found&quot;);</span>
+        }
+<span class="fc" id="L71">        inviteRepository.deleteById(id);</span>
+<span class="fc" id="L72">    }</span>
+
+    public boolean isInvited(String email) {
+<span class="nc bnc" id="L75" title="All 4 branches missed.">        if (email == null || email.isBlank()) return false;</span>
+<span class="nc" id="L76">        return inviteRepository.findByEmail(email.trim().toLowerCase()).isPresent();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

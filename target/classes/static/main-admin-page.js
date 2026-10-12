@@ -174,13 +174,13 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     });
 
     // ===================== CONFIG =====================
-    const API_BASE = "http://localhost:8080/api/tasks";
-    const USERS_API = "http://localhost:8080/api/users";
-    const SPRINTS_API = "http://localhost:8080/api/sprints";
-    const TAGS_API = "http://localhost:8080/api/tags";
-    const TIMELOGS_API = "http://localhost:8080/api/timelogs";
-    const RECENT_COMMENTS_API = "http://localhost:8080/api/tasks/comments/recent?limit=20";
-    const INVITES_API = "http://localhost:8080/api/invites";
+const API_BASE = "/api/tasks";
+const USERS_API = "/api/users";
+const SPRINTS_API = "/api/sprints";
+const TAGS_API = "/api/tags";
+const TIMELOGS_API = "/api/timelogs";
+const RECENT_COMMENTS_API = "/api/tasks/comments/recent?limit=20";
+const INVITES_API = "/api/invites";
 
     const TAG_FILTER_ALL = "all";
 

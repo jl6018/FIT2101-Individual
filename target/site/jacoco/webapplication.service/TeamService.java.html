@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TeamService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Symph</a> &gt; <a href="index.source.html" class="el_package">webapplication.service</a> &gt; <span class="el_source">TeamService.java</span></div><h1>TeamService.java</h1><pre class="source lang-java linenums">package webapplication.service;
+
+import webapplication.model.Team;
+import webapplication.model.User;
+import webapplication.repository.TeamRepository;
+import webapplication.repository.UserRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+/**
+ * Manages team Create, Read, Update, member management, and Delete operations.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+@Service
+public class TeamService {
+
+    private final TeamRepository teamRepository;
+    private final UserRepository userRepository;
+
+    /**
+     * Parameterized constructor with the required repository dependencies.
+     *
+     * @param teamRepository The repository handling team database operations
+     * @param userRepository The repository handling user database operations
+     */
+    public TeamService(
+            TeamRepository teamRepository,
+<span class="fc" id="L32">            UserRepository userRepository) {</span>
+<span class="fc" id="L33">        this.teamRepository = teamRepository;</span>
+<span class="fc" id="L34">        this.userRepository = userRepository;</span>
+<span class="fc" id="L35">    }</span>
+
+    /**
+     * Retrieves all teams from the database.
+     *
+     * @return A list of all teams
+     */
+    public List&lt;Team&gt; getAllTeams() {
+<span class="fc" id="L43">        return teamRepository.findAll();</span>
+    }
+
+    /**
+     * Retrieves a single team by its unique ID.
+     *
+     * @param id                The ID of the team to retrieve
+     * @return                  The Team object
+     * @throws RuntimeException if no team with the given ID exists
+     */
+    public Team getTeamById(Long id) {
+<span class="fc" id="L54">        return teamRepository.findById(id)</span>
+<span class="fc" id="L55">                .orElseThrow(() -&gt; new RuntimeException(&quot;Team not found&quot;));</span>
+    }
+
+    /**
+     * Creates a new team.
+     *
+     * @param team The Team object to save
+     * @return     The saved Team object with its assigned ID
+     */
+    public Team createTeam(Team team) {
+<span class="fc" id="L65">        return teamRepository.save(team);</span>
+    }
+
+    /**
+     * Updates an existing team's name.
+     *
+     * @param id                The ID of the team to update
+     * @param teamDetails       The Team object containing the updated details
+     * @return                  The updated Team object
+     * @throws RuntimeException if the team does not exist
+     */
+    public Team updateTeam(Long id, Team teamDetails) {
+<span class="fc" id="L77">        Team team = getTeamById(id);</span>
+<span class="fc" id="L78">        team.setName(teamDetails.getName());</span>
+<span class="fc" id="L79">        return teamRepository.save(team);</span>
+    }
+
+    /**
+     * Adds a member to a team by team ID and user ID.
+     *
+     * @param teamId            The ID of the team
+     * @param userId            The ID of the user to add
+     * @return                  The updated Team object
+     * @throws RuntimeException if the team or user does not exist
+     */
+    public Team addMember(Long teamId, Long userId) {
+<span class="nc" id="L91">        Team team = getTeamById(teamId);</span>
+<span class="nc" id="L92">        User user = userRepository.findById(userId)</span>
+<span class="nc" id="L93">                .orElseThrow(() -&gt; new RuntimeException(&quot;User not found&quot;));</span>
+
+<span class="nc bnc" id="L95" title="All 2 branches missed.">        if (!team.getMembers().contains(user)) {</span>
+<span class="nc" id="L96">            team.getMembers().add(user);</span>
+        }
+<span class="nc" id="L98">        user.setTeam(team);</span>
+<span class="nc" id="L99">        userRepository.save(user);</span>
+
+<span class="nc" id="L101">        return teamRepository.save(team);</span>
+    }
+
+    /**
+     * Adds a member to a team by team name and user ID, creating the team if it does not exist.
+     *
+     * @param teamName          The name of the team
+     * @param userId            The ID of the user to add
+     * @param jobTitle          The user's job title
+     * @return                  The updated or newly created Team object
+     * @throws RuntimeException if the user does not exist
+     */
+    public Team addMemberByName(String teamName, Long userId, String jobTitle) {
+<span class="nc" id="L114">        Team team = teamRepository.findByName(teamName)</span>
+<span class="nc" id="L115">                .orElseGet(() -&gt; {</span>
+<span class="nc" id="L116">                    Team t = new Team();</span>
+<span class="nc" id="L117">                    t.setName(teamName);</span>
+<span class="nc" id="L118">                    return teamRepository.save(t);</span>
+                });
+
+<span class="nc" id="L121">        User user = userRepository.findById(userId)</span>
+<span class="nc" id="L122">                .orElseThrow(() -&gt; new RuntimeException(&quot;User not found&quot;));</span>
+
+<span class="nc bnc" id="L124" title="All 4 branches missed.">        if (jobTitle != null &amp;&amp; !jobTitle.isBlank()) {</span>
+<span class="nc" id="L125">            user.setJobTitle(jobTitle);</span>
+        }
+
+<span class="nc bnc" id="L128" title="All 2 branches missed.">        if (!team.getMembers().contains(user)) {</span>
+<span class="nc" id="L129">            team.getMembers().add(user);</span>
+        }
+<span class="nc" id="L131">        user.setTeam(team);</span>
+<span class="nc" id="L132">        userRepository.save(user);</span>
+
+<span class="nc" id="L134">        return teamRepository.save(team);</span>
+    }
+
+    /**
+     * Removes a member from a team and clears the user's team assignment.
+     *
+     * @param teamId            The ID of the team
+     * @param userId            The ID of the user to remove
+     * @return                  The updated Team object
+     * @throws RuntimeException if the team or user does not exist
+     */
+    public Team removeMember(Long teamId, Long userId) {
+<span class="nc" id="L146">        Team team = getTeamById(teamId);</span>
+<span class="nc" id="L147">        User user = userRepository.findById(userId)</span>
+<span class="nc" id="L148">                .orElseThrow(() -&gt; new RuntimeException(&quot;User not found&quot;));</span>
+
+<span class="nc" id="L150">        team.getMembers().remove(user);</span>
+<span class="nc" id="L151">        user.setTeam(null);</span>
+<span class="nc" id="L152">        userRepository.save(user);</span>
+
+<span class="nc" id="L154">        return teamRepository.save(team);</span>
+    }
+
+    /**
+     * Deletes a team from the database by its ID.
+     *
+     * @param id The ID of the team to delete
+     */
+    public void deleteTeam(Long id) {
+<span class="fc" id="L163">        teamRepository.deleteById(id);</span>
+<span class="fc" id="L164">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

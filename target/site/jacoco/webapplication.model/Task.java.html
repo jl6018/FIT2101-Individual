@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Task.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Symph</a> &gt; <a href="index.source.html" class="el_package">webapplication.model</a> &gt; <span class="el_source">Task.java</span></div><h1>Task.java</h1><pre class="source lang-java linenums">package webapplication.model;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.persistence.*;
+
+import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
+
+/**
+ * Represents a task within the Symph web application.
+ * A task belongs to a sprint and may be assigned to a user and/or team.
+ * Includes a position field for Trello-style drag-and-drop ordering.
+ * Comments on a task are stored in the {@link TaskComment} entity.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+@Entity
+@Table(name = &quot;tasks&quot;)
+public class Task {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    @Column(length = 2000)
+    private String description;
+
+    @Enumerated(EnumType.STRING)
+    private TaskStatus status;
+
+    @Enumerated(EnumType.STRING)
+    private Priority priority;
+
+    private int progress;
+
+    private LocalDate dueDate;
+
+    @Column(name = &quot;estimate_hours&quot;)
+    private double estimateHours;
+
+    @Column(name = &quot;assigned_teams&quot;, length = 255)
+    private String assignedTeams;
+
+    @Column(name = &quot;assigned_employee_ids&quot;, length = 500)
+    private String assignedEmployeeIds;
+
+    @Column(name = &quot;task_position&quot;)
+    private Integer position;
+
+    @ManyToOne
+    @JoinColumn(name = &quot;sprint_id&quot;)
+    private Sprint sprint;
+
+    @ManyToOne
+    @JoinColumn(name = &quot;assigned_user_id&quot;)
+    private User assignedUser;
+
+<span class="pc" id="L63">    @ManyToMany(fetch = FetchType.EAGER)</span>
+    @JoinTable(
+            name = &quot;task_tags&quot;,
+            joinColumns = @JoinColumn(name = &quot;task_id&quot;),
+            inverseJoinColumns = @JoinColumn(name = &quot;tag_id&quot;)
+    )
+    @JsonIgnoreProperties(&quot;hibernateLazyInitializer&quot;)
+    private Set&lt;Tag&gt; tags = new HashSet&lt;&gt;();
+
+    /**
+     * Default constructor.
+     */
+<span class="fc" id="L75">    public Task() {</span>
+<span class="fc" id="L76">    }</span>
+
+    /**
+     * Parameterized constructor with the task's core details.
+     *
+     * @param name        The task name
+     * @param description The task description
+     * @param status      The task status
+     * @param priority    The task priority
+     * @param progress    The progress percentage
+     * @param dueDate     The task due date
+     * @param sprint      The sprint the task belongs to
+     * @param assignedUser The user assigned to the task
+     */
+    public Task(
+            String name,
+            String description,
+            TaskStatus status,
+            Priority priority,
+            int progress,
+            LocalDate dueDate,
+            Sprint sprint,
+<span class="nc" id="L98">            User assignedUser) {</span>
+
+<span class="nc" id="L100">        this.name = name;</span>
+<span class="nc" id="L101">        this.description = description;</span>
+<span class="nc" id="L102">        this.status = status;</span>
+<span class="nc" id="L103">        this.priority = priority;</span>
+<span class="nc" id="L104">        this.progress = progress;</span>
+<span class="nc" id="L105">        this.dueDate = dueDate;</span>
+<span class="nc" id="L106">        this.sprint = sprint;</span>
+<span class="nc" id="L107">        this.assignedUser = assignedUser;</span>
+<span class="nc" id="L108">    }</span>
+
+<span class="fc" id="L110">    public Long getId() { return id; }</span>
+<span class="fc" id="L111">    public void setId(Long id) { this.id = id; }</span>
+
+<span class="fc" id="L113">    public String getName() { return name; }</span>
+<span class="fc" id="L114">    public void setName(String name) { this.name = name; }</span>
+
+<span class="fc" id="L116">    public String getDescription() { return description; }</span>
+<span class="fc" id="L117">    public void setDescription(String description) { this.description = description; }</span>
+
+<span class="fc" id="L119">    public TaskStatus getStatus() { return status; }</span>
+<span class="fc" id="L120">    public void setStatus(TaskStatus status) { this.status = status; }</span>
+
+<span class="fc" id="L122">    public Priority getPriority() { return priority; }</span>
+<span class="fc" id="L123">    public void setPriority(Priority priority) { this.priority = priority; }</span>
+
+<span class="fc" id="L125">    public int getProgress() { return progress; }</span>
+<span class="fc" id="L126">    public void setProgress(int progress) { this.progress = progress; }</span>
+
+<span class="fc" id="L128">    public LocalDate getDueDate() { return dueDate; }</span>
+<span class="fc" id="L129">    public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }</span>
+
+<span class="fc" id="L131">    public double getEstimateHours() { return estimateHours; }</span>
+<span class="fc" id="L132">    public void setEstimateHours(double estimateHours) { this.estimateHours = estimateHours; }</span>
+
+<span class="fc" id="L134">    public String getAssignedTeams() { return assignedTeams; }</span>
+<span class="fc" id="L135">    public void setAssignedTeams(String assignedTeams) { this.assignedTeams = assignedTeams; }</span>
+
+<span class="fc" id="L137">    public String getAssignedEmployeeIds() { return assignedEmployeeIds; }</span>
+<span class="fc" id="L138">    public void setAssignedEmployeeIds(String assignedEmployeeIds) { this.assignedEmployeeIds = assignedEmployeeIds; }</span>
+
+<span class="fc" id="L140">    public Integer getPosition() { return position; }</span>
+<span class="fc" id="L141">    public void setPosition(Integer position) { this.position = position; }</span>
+
+<span class="fc" id="L143">    public Sprint getSprint() { return sprint; }</span>
+<span class="fc" id="L144">    public void setSprint(Sprint sprint) { this.sprint = sprint; }</span>
+
+<span class="fc" id="L146">    public User getAssignedUser() { return assignedUser; }</span>
+<span class="fc" id="L147">    public void setAssignedUser(User assignedUser) { this.assignedUser = assignedUser; }</span>
+
+<span class="fc" id="L149">    public Set&lt;Tag&gt; getTags() { return tags; }</span>
+<span class="fc" id="L150">    public void setTags(Set&lt;Tag&gt; tags) { this.tags = tags; }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

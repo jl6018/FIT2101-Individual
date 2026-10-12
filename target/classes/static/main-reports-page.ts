@@ -58,8 +58,8 @@ if (nameEl) {
 }
 
 // ===================== CONFIG =====================
-const TIMELOGS_API = "http://localhost:8080/api/timelogs";
-const SPRINTS_API = "http://localhost:8080/api/sprints";
+const TIMELOGS_API = "/api/timelogs";
+const SPRINTS_API = "/api/sprints";
 const SPRINT_KEY = "symph.currentSprint";
 const SPRINT_TAB_NAMES: Record<string, string> = { "1": "Sprint 1", "2": "Sprint 2", "3": "Sprint 3" };
 

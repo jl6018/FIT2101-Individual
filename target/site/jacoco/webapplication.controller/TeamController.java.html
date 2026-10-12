@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TeamController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Symph</a> &gt; <a href="index.source.html" class="el_package">webapplication.controller</a> &gt; <span class="el_source">TeamController.java</span></div><h1>TeamController.java</h1><pre class="source lang-java linenums">package webapplication.controller;
+
+import webapplication.model.Team;
+import webapplication.service.TeamService;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Exposes REST endpoints for managing teams and their members.
+ * Handles creation, retrieval, member addition/removal, and deletion of teams.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+@RestController
+@RequestMapping(&quot;/api/teams&quot;)
+@CrossOrigin
+public class TeamController {
+
+    private final TeamService teamService;
+
+    /**
+     * Parameterized constructor with the required TeamService dependency.
+     *
+     * @param teamService The service handling team business logic
+     */
+<span class="fc" id="L30">    public TeamController(TeamService teamService) {</span>
+<span class="fc" id="L31">        this.teamService = teamService;</span>
+<span class="fc" id="L32">    }</span>
+
+    /**
+     * Retrieves all teams from the database.
+     *
+     * @return A list of all teams
+     */
+    @GetMapping
+    public List&lt;Team&gt; getAllTeams() {
+<span class="fc" id="L41">        return teamService.getAllTeams();</span>
+    }
+
+    /**
+     * Retrieves a single team by its unique ID.
+     *
+     * @param id The ID of the team to retrieve
+     * @return   The Team object
+     */
+    @GetMapping(&quot;/{id}&quot;)
+    public Team getTeam(@PathVariable Long id) {
+<span class="fc" id="L52">        return teamService.getTeamById(id);</span>
+    }
+
+    /**
+     * Creates a new team.
+     *
+     * @param team The Team object to save
+     * @return     The saved Team object with its assigned ID
+     */
+    @PostMapping
+    public Team createTeam(@RequestBody Team team) {
+<span class="fc" id="L63">        return teamService.createTeam(team);</span>
+    }
+
+    /**
+     * Adds a member to a team by team ID and user ID.
+     *
+     * @param teamId The ID of the team
+     * @param userId The ID of the user to add
+     * @return       The updated Team object
+     */
+    @PostMapping(&quot;/{teamId}/members/{userId}&quot;)
+    public Team addMember(
+            @PathVariable Long teamId,
+            @PathVariable Long userId) {
+<span class="nc" id="L77">        return teamService.addMember(teamId, userId);</span>
+    }
+
+    /**
+     * Adds a member to a team by team name and user ID, with an optional job title.
+     *
+     * @param teamName The name of the team
+     * @param userId   The ID of the user to add
+     * @param body     An optional map containing the user's job title
+     * @return         The updated Team object
+     */
+    @PostMapping(&quot;/by-name/{teamName}/members/{userId}&quot;)
+    public Team addMemberByName(
+            @PathVariable String teamName,
+            @PathVariable Long userId,
+            @RequestBody(required = false) Map&lt;String, String&gt; body) {
+
+<span class="nc bnc" id="L94" title="All 2 branches missed.">        String jobTitle = (body != null) ? body.get(&quot;jobTitle&quot;) : null;</span>
+<span class="nc" id="L95">        return teamService.addMemberByName(teamName, userId, jobTitle);</span>
+    }
+
+    /**
+     * Removes a member from a team.
+     *
+     * @param teamId The ID of the team
+     * @param userId The ID of the user to remove
+     * @return       The updated Team object
+     */
+    @DeleteMapping(&quot;/{teamId}/members/{userId}&quot;)
+    public Team removeMember(
+            @PathVariable Long teamId,
+            @PathVariable Long userId) {
+<span class="nc" id="L109">        return teamService.removeMember(teamId, userId);</span>
+    }
+
+    /**
+     * Deletes a team from the database by its ID.
+     *
+     * @param id The ID of the team to delete
+     */
+    @DeleteMapping(&quot;/{id}&quot;)
+    public void deleteTeam(@PathVariable Long id) {
+<span class="nc" id="L119">        teamService.deleteTeam(id);</span>
+<span class="nc" id="L120">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

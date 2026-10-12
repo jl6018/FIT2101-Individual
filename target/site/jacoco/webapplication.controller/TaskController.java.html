@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TaskController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Symph</a> &gt; <a href="index.source.html" class="el_package">webapplication.controller</a> &gt; <span class="el_source">TaskController.java</span></div><h1>TaskController.java</h1><pre class="source lang-java linenums">package webapplication.controller;
+
+import webapplication.model.Task;
+import webapplication.model.TaskStatus;
+import webapplication.service.TaskService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Exposes REST endpoints for managing tasks.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+@RestController
+@RequestMapping(&quot;/api/tasks&quot;)
+@CrossOrigin
+public class TaskController {
+
+    private final TaskService taskService;
+
+<span class="fc" id="L26">    public TaskController(TaskService taskService) {</span>
+<span class="fc" id="L27">        this.taskService = taskService;</span>
+<span class="fc" id="L28">    }</span>
+
+    @GetMapping
+    public List&lt;Task&gt; getAllTasks() {
+<span class="fc" id="L32">        return taskService.getAllTasks();</span>
+    }
+
+    @GetMapping(&quot;/{id}&quot;)
+    public ResponseEntity&lt;?&gt; getTask(@PathVariable Long id) {
+        try {
+<span class="fc" id="L38">            return ResponseEntity.ok(taskService.getTaskById(id));</span>
+<span class="nc" id="L39">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L40">            return ResponseEntity.status(404).body(e.getMessage());</span>
+        }
+    }
+
+    @PostMapping
+    public Task createTask(@RequestBody Task task) {
+<span class="fc" id="L46">        return taskService.createTask(task);</span>
+    }
+
+    @PutMapping(&quot;/{id}&quot;)
+    public ResponseEntity&lt;?&gt; updateTask(
+            @PathVariable Long id,
+            @RequestBody Task task) {
+        try {
+<span class="nc" id="L54">            return ResponseEntity.ok(taskService.updateTask(id, task));</span>
+<span class="nc" id="L55">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L56">            return ResponseEntity.status(404).body(e.getMessage());</span>
+        }
+    }
+
+    @PutMapping(&quot;/{id}/progress&quot;)
+    public ResponseEntity&lt;?&gt; updateProgress(
+            @PathVariable Long id,
+            @RequestParam int progress) {
+        try {
+<span class="nc" id="L65">            return ResponseEntity.ok(taskService.updateProgress(id, progress));</span>
+<span class="nc" id="L66">        } catch (IllegalArgumentException e) {</span>
+<span class="nc" id="L67">            return ResponseEntity.badRequest().body(e.getMessage());</span>
+<span class="nc" id="L68">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L69">            return ResponseEntity.status(404).body(e.getMessage());</span>
+        }
+    }
+
+    @GetMapping(&quot;/status/{status}&quot;)
+    public List&lt;Task&gt; getTasksByStatus(@PathVariable TaskStatus status) {
+<span class="nc" id="L75">        return taskService.getTasksByStatus(status);</span>
+    }
+
+    @GetMapping(&quot;/sprint/{sprintId}&quot;)
+    public List&lt;Task&gt; getTasksBySprint(@PathVariable Long sprintId) {
+<span class="nc" id="L80">        return taskService.getTasksBySprint(sprintId);</span>
+    }
+
+    @DeleteMapping(&quot;/{id}&quot;)
+    public ResponseEntity&lt;?&gt; deleteTask(
+            @PathVariable Long id,
+            @RequestHeader(value = &quot;X-Role&quot;, required = false) String role) {
+
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        if (!&quot;ADMIN&quot;.equalsIgnoreCase(role)) {</span>
+<span class="nc" id="L89">            return ResponseEntity.status(403).body(&quot;Only admins can delete tasks&quot;);</span>
+        }
+
+        try {
+<span class="nc" id="L93">            taskService.deleteTask(id);</span>
+<span class="nc" id="L94">            return ResponseEntity.noContent().build();</span>
+<span class="nc" id="L95">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L96">            return ResponseEntity.status(409).body(e.getMessage());</span>
+        }
+    }
+
+    @GetMapping(&quot;/board&quot;)
+    public Map&lt;TaskStatus, List&lt;Task&gt;&gt; getBoard() {
+<span class="nc" id="L102">        return taskService.getBoardView();</span>
+    }
+
+    @PutMapping(&quot;/{id}/assign&quot;)
+    public ResponseEntity&lt;?&gt; assignTask(
+            @PathVariable Long id,
+            @RequestParam Long userId) {
+        try {
+<span class="nc" id="L110">            return ResponseEntity.ok(taskService.assignTask(id, userId));</span>
+<span class="nc" id="L111">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L112">            return ResponseEntity.status(404).body(e.getMessage());</span>
+        }
+    }
+
+    @PutMapping(&quot;/{id}/status&quot;)
+    public ResponseEntity&lt;?&gt; updateStatus(
+            @PathVariable Long id,
+            @RequestParam TaskStatus status) {
+        try {
+<span class="nc" id="L121">            return ResponseEntity.ok(taskService.updateStatus(id, status));</span>
+<span class="nc" id="L122">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L123">            return ResponseEntity.status(404).body(e.getMessage());</span>
+        }
+    }
+
+    @GetMapping(&quot;/team/{teamName}&quot;)
+    public List&lt;Task&gt; getTasksByTeam(@PathVariable String teamName) {
+<span class="nc" id="L129">        return taskService.getTasksByTeam(teamName);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

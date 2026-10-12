@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProductOwnerInvite.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Symph</a> &gt; <a href="index.source.html" class="el_package">webapplication.model</a> &gt; <span class="el_source">ProductOwnerInvite.java</span></div><h1>ProductOwnerInvite.java</h1><pre class="source lang-java linenums">package webapplication.model;
+
+import jakarta.persistence.*;
+
+/**
+ * Represents an invitation sent to a potential Product Owner.
+ * Stores the invitee's email address as a unique record.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+@Entity
+@Table(name = &quot;product_owner_invites&quot;)
+public class ProductOwnerInvite {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(unique = true, nullable = false)
+    private String email;
+
+    /**
+     * Default constructor.
+     */
+<span class="fc" id="L27">    public ProductOwnerInvite() {</span>
+<span class="fc" id="L28">    }</span>
+
+    /**
+     * Parameterized constructor with the invitee's email.
+     *
+     * @param email The email address of the invited Product Owner
+     */
+<span class="nc" id="L35">    public ProductOwnerInvite(String email) {</span>
+<span class="nc" id="L36">        this.email = email;</span>
+<span class="nc" id="L37">    }</span>
+
+    /**
+     * Gets the invite's unique ID.
+     *
+     * @return The invite ID
+     */
+<span class="fc" id="L44">    public Long getId() { return id; }</span>
+
+    /**
+     * Sets the invite's unique ID.
+     *
+     * @param id The invite ID
+     */
+<span class="fc" id="L51">    public void setId(Long id) { this.id = id; }</span>
+
+    /**
+     * Gets the invitee's email address.
+     *
+     * @return The email address
+     */
+<span class="fc" id="L58">    public String getEmail() { return email; }</span>
+
+    /**
+     * Sets the invitee's email address.
+     *
+     * @param email The email address
+     */
+<span class="fc" id="L65">    public void setEmail(String email) { this.email = email; }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TaskCommentService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Symph</a> &gt; <a href="index.source.html" class="el_package">webapplication.service</a> &gt; <span class="el_source">TaskCommentService.java</span></div><h1>TaskCommentService.java</h1><pre class="source lang-java linenums">package webapplication.service;
+
+import webapplication.dto.TaskCommentResponse;
+import webapplication.model.Task;
+import webapplication.model.TaskComment;
+import webapplication.model.User;
+import webapplication.repository.TaskCommentRepository;
+import webapplication.repository.TaskRepository;
+import webapplication.repository.UserRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * Manages creation, retrieval, and deletion of task comments.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+@Service
+public class TaskCommentService {
+
+    private final TaskCommentRepository commentRepository;
+    private final TaskRepository taskRepository;
+    private final UserRepository userRepository;
+
+    public TaskCommentService(TaskCommentRepository commentRepository,
+                              TaskRepository taskRepository,
+<span class="fc" id="L31">                              UserRepository userRepository) {</span>
+<span class="fc" id="L32">        this.commentRepository = commentRepository;</span>
+<span class="fc" id="L33">        this.taskRepository = taskRepository;</span>
+<span class="fc" id="L34">        this.userRepository = userRepository;</span>
+<span class="fc" id="L35">    }</span>
+
+    public List&lt;TaskCommentResponse&gt; getCommentsByTask(Long taskId) {
+<span class="fc bfc" id="L38" title="All 2 branches covered.">        if (!taskRepository.existsById(taskId)) {</span>
+<span class="fc" id="L39">            throw new RuntimeException(&quot;Task not found&quot;);</span>
+        }
+<span class="fc" id="L41">        return commentRepository.findByTaskIdOrderByCreatedAtAsc(taskId)</span>
+<span class="fc" id="L42">                .stream()</span>
+<span class="fc" id="L43">                .map(this::toDto)</span>
+<span class="fc" id="L44">                .collect(Collectors.toList());</span>
+    }
+
+    /**
+     * Returns the N most recent comments across all tasks,
+     * newest first. Used by the admin notification bell.
+     *
+     * @param limit  How many to return (defaults to 20 if ≤ 0)
+     * @return       A list of TaskCommentResponse DTOs
+     */
+    public List&lt;TaskCommentResponse&gt; getRecentComments(int limit) {
+<span class="fc" id="L55">        List&lt;TaskComment&gt; comments = commentRepository.findTop20ByOrderByCreatedAtDesc();</span>
+<span class="pc bpc" id="L56" title="1 of 2 branches missed.">        int effectiveLimit = (limit &gt; 0) ? Math.min(limit, 50) : 20;</span>
+<span class="fc" id="L57">        return comments.stream()</span>
+<span class="fc" id="L58">                .limit(effectiveLimit)</span>
+<span class="fc" id="L59">                .map(this::toDto)</span>
+<span class="fc" id="L60">                .collect(Collectors.toList());</span>
+    }
+
+    public TaskCommentResponse addComment(Long taskId, Long authorId, String body) {
+<span class="pc bpc" id="L64" title="1 of 4 branches missed.">        if (body == null || body.isBlank()) {</span>
+<span class="fc" id="L65">            throw new IllegalArgumentException(&quot;Comment body is required&quot;);</span>
+        }
+<span class="fc" id="L67">        String trimmed = body.trim();</span>
+<span class="pc bpc" id="L68" title="1 of 2 branches missed.">        if (trimmed.length() &gt; 2000) {</span>
+<span class="nc" id="L69">            trimmed = trimmed.substring(0, 2000);</span>
+        }
+
+<span class="fc" id="L72">        Task task = taskRepository.findById(taskId)</span>
+<span class="fc" id="L73">                .orElseThrow(() -&gt; new RuntimeException(&quot;Task not found&quot;));</span>
+<span class="fc" id="L74">        User author = userRepository.findById(authorId)</span>
+<span class="fc" id="L75">                .orElseThrow(() -&gt; new RuntimeException(&quot;User not found&quot;));</span>
+
+<span class="fc" id="L77">        TaskComment comment = new TaskComment(task, author, trimmed);</span>
+<span class="fc" id="L78">        TaskComment saved = commentRepository.save(comment);</span>
+<span class="fc" id="L79">        return toDto(saved);</span>
+    }
+
+    public void deleteComment(Long commentId) {
+<span class="fc bfc" id="L83" title="All 2 branches covered.">        if (!commentRepository.existsById(commentId)) {</span>
+<span class="fc" id="L84">            throw new RuntimeException(&quot;Comment not found&quot;);</span>
+        }
+<span class="fc" id="L86">        commentRepository.deleteById(commentId);</span>
+<span class="fc" id="L87">    }</span>
+
+    private TaskCommentResponse toDto(TaskComment c) {
+<span class="pc bpc" id="L90" title="1 of 2 branches missed.">        Long taskId = (c.getTask() != null) ? c.getTask().getId() : null;</span>
+<span class="pc bpc" id="L91" title="1 of 2 branches missed.">        String taskName = (c.getTask() != null) ? c.getTask().getName() : &quot;&quot;;</span>
+
+<span class="fc" id="L93">        return new TaskCommentResponse(</span>
+<span class="fc" id="L94">                c.getId(),</span>
+<span class="fc" id="L95">                c.getBody(),</span>
+<span class="fc" id="L96">                c.getCreatedAt(),</span>
+<span class="pc bpc" id="L97" title="1 of 2 branches missed.">                c.getAuthor() != null ? c.getAuthor().getId() : null,</span>
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">                c.getAuthor() != null ? c.getAuthor().getName() : &quot;Unknown&quot;,</span>
+<span class="pc bpc" id="L99" title="1 of 2 branches missed.">                c.getAuthor() != null ? c.getAuthor().getRole() : &quot;&quot;,</span>
+                taskId,
+                taskName
+        );
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

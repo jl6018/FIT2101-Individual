@@ -29,11 +29,11 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
 (() => {
     // ===================== CONFIG =====================
-    const API_BASE = "http://localhost:8080/api/tasks";
-    const SPRINTS_API = "http://localhost:8080/api/sprints";
-    const TIMELOGS_API = "http://localhost:8080/api/timelogs";
-    const USERS_API = "http://localhost:8080/api/users";
-    const RECENT_COMMENTS_API = "http://localhost:8080/api/tasks/comments/recent?limit=20";
+    const API_BASE = "/api/tasks";
+    const SPRINTS_API = "/api/sprints";
+    const TIMELOGS_API = "/api/timelogs";
+    const USERS_API = "/api/users";
+    const RECENT_COMMENTS_API = "/api/tasks/comments/recent?limit=20";
 
     type ColumnId = "PRODUCT_BACKLOG" | "TO_DO" | "IN_PROGRESS" | "IN_REVIEW" | "COMPLETED";
     type Task = {

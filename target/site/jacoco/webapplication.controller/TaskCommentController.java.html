@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TaskCommentController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Symph</a> &gt; <a href="index.source.html" class="el_package">webapplication.controller</a> &gt; <span class="el_source">TaskCommentController.java</span></div><h1>TaskCommentController.java</h1><pre class="source lang-java linenums">package webapplication.controller;
+
+import webapplication.dto.TaskCommentResponse;
+import webapplication.service.TaskCommentService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * REST endpoints for task comments.
+ *
+ * @author Lim Jia Li
+ * @version 17.0.16
+ */
+
+@RestController
+@RequestMapping(&quot;/api/tasks&quot;)
+@CrossOrigin
+public class TaskCommentController {
+
+    private final TaskCommentService commentService;
+
+<span class="fc" id="L25">    public TaskCommentController(TaskCommentService commentService) {</span>
+<span class="fc" id="L26">        this.commentService = commentService;</span>
+<span class="fc" id="L27">    }</span>
+
+    /**
+     * Returns the N most recent comments across all tasks.
+     * Used by the admin notification bell.
+     *
+     * @param limit  How many to return (default 20)
+     * @return       200 with the list
+     */
+    @GetMapping(&quot;/comments/recent&quot;)
+    public List&lt;TaskCommentResponse&gt; getRecentComments(
+            @RequestParam(name = &quot;limit&quot;, required = false, defaultValue = &quot;20&quot;) int limit) {
+<span class="fc" id="L39">        return commentService.getRecentComments(limit);</span>
+    }
+
+    @GetMapping(&quot;/{taskId}/comments&quot;)
+    public ResponseEntity&lt;?&gt; getComments(@PathVariable Long taskId) {
+        try {
+<span class="fc" id="L45">            List&lt;TaskCommentResponse&gt; list = commentService.getCommentsByTask(taskId);</span>
+<span class="fc" id="L46">            return ResponseEntity.ok(list);</span>
+<span class="nc" id="L47">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L48">            return ResponseEntity.status(404).body(e.getMessage());</span>
+        }
+    }
+
+    @PostMapping(&quot;/{taskId}/comments&quot;)
+    public ResponseEntity&lt;?&gt; addComment(@PathVariable Long taskId,
+                                        @RequestBody Map&lt;String, Object&gt; body) {
+        try {
+<span class="fc" id="L56">            Object authorObj = body.get(&quot;authorId&quot;);</span>
+<span class="fc" id="L57">            String text = (String) body.get(&quot;body&quot;);</span>
+
+<span class="fc bfc" id="L59" title="All 2 branches covered.">            if (authorObj == null) {</span>
+<span class="fc" id="L60">                return ResponseEntity.badRequest().body(&quot;authorId is required&quot;);</span>
+            }
+            Long authorId;
+            try {
+<span class="fc" id="L64">                authorId = Long.valueOf(String.valueOf(authorObj));</span>
+<span class="nc" id="L65">            } catch (NumberFormatException e) {</span>
+<span class="nc" id="L66">                return ResponseEntity.badRequest().body(&quot;authorId must be a number&quot;);</span>
+<span class="fc" id="L67">            }</span>
+
+<span class="fc" id="L69">            TaskCommentResponse saved = commentService.addComment(taskId, authorId, text);</span>
+<span class="fc" id="L70">            return ResponseEntity.ok(saved);</span>
+<span class="fc" id="L71">        } catch (IllegalArgumentException e) {</span>
+<span class="fc" id="L72">            return ResponseEntity.badRequest().body(e.getMessage());</span>
+<span class="nc" id="L73">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L74">            return ResponseEntity.status(404).body(e.getMessage());</span>
+        }
+    }
+
+    @DeleteMapping(&quot;/{taskId}/comments/{commentId}&quot;)
+    public ResponseEntity&lt;?&gt; deleteComment(
+            @PathVariable Long taskId,
+            @PathVariable Long commentId,
+            @RequestHeader(value = &quot;X-Role&quot;, required = false) String role) {
+
+<span class="fc bfc" id="L84" title="All 2 branches covered.">        if (!&quot;ADMIN&quot;.equalsIgnoreCase(role)</span>
+<span class="pc bpc" id="L85" title="1 of 2 branches missed.">                &amp;&amp; !&quot;PRODUCT_OWNER&quot;.equalsIgnoreCase(role)</span>
+<span class="pc bpc" id="L86" title="1 of 2 branches missed.">                &amp;&amp; !&quot;EMPLOYEE&quot;.equalsIgnoreCase(role)) {</span>
+<span class="fc" id="L87">            return ResponseEntity.status(403).body(&quot;Not allowed&quot;);</span>
+        }
+
+        try {
+<span class="fc" id="L91">            commentService.deleteComment(commentId);</span>
+<span class="fc" id="L92">            return ResponseEntity.noContent().build();</span>
+<span class="nc" id="L93">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L94">            return ResponseEntity.status(404).body(e.getMessage());</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
