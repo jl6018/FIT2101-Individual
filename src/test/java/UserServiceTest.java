@@ -2,6 +2,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.TestPropertySource;
 
 import webapplication.Application;
@@ -15,7 +16,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Unit tests for UserService.
- * Tests user creation, retrieval, update, deletion, and email lookup.
+ * Tests user creation, retrieval, update, deletion, email lookup,
+ * BCrypt password hashing, and login verification.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -37,6 +39,9 @@ class UserServiceTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     private User testUser;
 
     /**
@@ -54,7 +59,8 @@ class UserServiceTest {
     }
 
     /**
-     * Tests that creating a user saves it with the correct details.
+     * Tests that creating a user saves it with the correct details,
+     * and that the stored password is a BCrypt hash — not the raw value.
      */
     @Test
     void testCreateUser_Success() {
@@ -64,6 +70,29 @@ class UserServiceTest {
         assertEquals("Test User", created.getName());
         assertEquals("test@example.com", created.getEmail());
         assertEquals("EMPLOYEE", created.getRole());
+
+        // Password must be hashed with BCrypt, not stored in plaintext
+        assertNotEquals("password123", created.getPassword());
+        assertTrue(created.getPassword().startsWith("$2"),
+                "Password should be a BCrypt hash starting with $2");
+        assertTrue(passwordEncoder.matches("password123", created.getPassword()),
+                "Stored hash should match the original raw password");
+    }
+
+    /**
+     * Tests that creating a user with a duplicate email throws.
+     */
+    @Test
+    void testCreateUser_DuplicateEmail_ThrowsException() {
+        userService.createUser(testUser);
+
+        User duplicate = new User();
+        duplicate.setName("Another User");
+        duplicate.setEmail("test@example.com");
+        duplicate.setPassword("password123");
+        duplicate.setRole("EMPLOYEE");
+
+        assertThrows(RuntimeException.class, () -> userService.createUser(duplicate));
     }
 
     /**
@@ -105,9 +134,7 @@ class UserServiceTest {
      */
     @Test
     void testGetUserById_NotFound_ThrowsException() {
-        assertThrows(RuntimeException.class, () -> {
-            userService.getUserById(999L);
-        });
+        assertThrows(RuntimeException.class, () -> userService.getUserById(999L));
     }
 
     /**
@@ -139,9 +166,7 @@ class UserServiceTest {
 
         userService.deleteUser(saved.getId());
 
-        assertThrows(RuntimeException.class, () -> {
-            userService.getUserById(saved.getId());
-        });
+        assertThrows(RuntimeException.class, () -> userService.getUserById(saved.getId()));
     }
 
     /**
@@ -156,5 +181,53 @@ class UserServiceTest {
         assertNotNull(found);
         assertEquals(saved.getId(), found.getId());
         assertEquals("test@example.com", found.getEmail());
+    }
+
+    /**
+     * Tests that login succeeds with correct credentials.
+     */
+    @Test
+    void testLogin_Success() {
+        userService.createUser(testUser);
+
+        User loggedIn = userService.login("test@example.com", "password123");
+
+        assertNotNull(loggedIn);
+        assertEquals("test@example.com", loggedIn.getEmail());
+    }
+
+    /**
+     * Tests that login is case-insensitive on the email side.
+     */
+    @Test
+    void testLogin_EmailCaseInsensitive_Success() {
+        userService.createUser(testUser);
+
+        User loggedIn = userService.login("TEST@EXAMPLE.COM", "password123");
+
+        assertNotNull(loggedIn);
+        assertEquals("test@example.com", loggedIn.getEmail());
+    }
+
+    /**
+     * Tests that login fails with the wrong password.
+     */
+    @Test
+    void testLogin_WrongPassword_ReturnsNull() {
+        userService.createUser(testUser);
+
+        User loggedIn = userService.login("test@example.com", "WRONGPASSWORD");
+
+        assertNull(loggedIn);
+    }
+
+    /**
+     * Tests that login fails with an unknown email.
+     */
+    @Test
+    void testLogin_UnknownEmail_ReturnsNull() {
+        User loggedIn = userService.login("nobody@example.com", "password123");
+
+        assertNull(loggedIn);
     }
 }
