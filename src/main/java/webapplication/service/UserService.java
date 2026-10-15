@@ -4,14 +4,17 @@ import webapplication.model.Team;
 import webapplication.model.User;
 import webapplication.repository.TeamRepository;
 import webapplication.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Manages user Create, Read, Update, Delete, login validation,
- * team assignment, and job title operations.
+ * team assignment, job title operations, and the password-reset flow.
  * Emails are normalized to lowercase and trimmed before being stored or
  * compared, so XX@x.com and xx@x.com are treated as the same address.
  * Passwords are hashed with BCrypt before being stored; login compares
@@ -26,21 +29,38 @@ public class UserService {
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
     /**
-     * Parameterized constructor with the required repository dependencies
-     * and the password encoder.
+     * Base URL of the frontend, used to build the reset link in the email.
+     * Defaults to the local dev server. Override with the APP_BASE_URL
+     * environment variable in production.
+     */
+    @Value("${app.frontend.base-url:http://localhost:8081}")
+    private String frontendBaseUrl;
+
+    /**
+     * How long a reset link remains valid, in minutes.
+     */
+    private static final int RESET_TOKEN_TTL_MINUTES = 30;
+
+    /**
+     * Parameterized constructor with the required repository dependencies,
+     * the password encoder, and the email service.
      *
      * @param userRepository  The repository handling user database operations
      * @param teamRepository  The repository handling team database operations
      * @param passwordEncoder The BCrypt password encoder
+     * @param emailService    The service that sends password-reset emails
      */
     public UserService(UserRepository userRepository,
                        TeamRepository teamRepository,
-                       PasswordEncoder passwordEncoder) {
+                       PasswordEncoder passwordEncoder,
+                       EmailService emailService) {
         this.userRepository = userRepository;
         this.teamRepository = teamRepository;
         this.passwordEncoder = passwordEncoder;
+        this.emailService = emailService;
     }
 
     /**
@@ -88,8 +108,7 @@ public class UserService {
 
     /**
      * Updates an existing user's name, email, and role.
-     * Password is not updated here — use a dedicated password-change
-     * endpoint if that becomes a requirement.
+     * Password is not updated here — use the reset-password flow for that.
      *
      * @param id                The ID of the user to update
      * @param updatedUser       The User object containing the updated details
@@ -161,5 +180,115 @@ public class UserService {
         User user = getUserById(id);
         user.setJobTitle(jobTitle);
         return userRepository.save(user);
+    }
+
+    // ===================== PASSWORD RESET =====================
+
+    /**
+     * Directly replaces a user's password given their email, without an
+     * email-token round-trip. Intended for demo/offline environments where
+     * SMTP is not available. In production, prefer requestPasswordReset +
+     * resetPassword so the caller must prove ownership of the email.
+     *
+     * @param email       The email of the account to update
+     * @param newPassword The new plain-text password
+     * @throws IllegalArgumentException if the new password fails the policy
+     * @throws RuntimeException         if no user with the given email exists
+     */
+    public void resetPasswordByEmail(String email, String newPassword) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Email is required");
+        }
+        if (newPassword == null || newPassword.length() < 8) {
+            throw new IllegalArgumentException("Password must be at least 8 characters");
+        }
+        if (!newPassword.matches("^(?=.*[A-Za-z])(?=.*\\d).+$")) {
+            throw new IllegalArgumentException("Password must contain at least one letter and one number");
+        }
+
+        String normalized = email.trim().toLowerCase();
+        User user = userRepository.findByEmail(normalized)
+                .orElseThrow(() -> new RuntimeException("No account found with that email"));
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setResetToken(null);
+        user.setResetTokenExpiry(null);
+        userRepository.save(user);
+    }
+
+    /**
+     * Issues a password-reset token for the given email, if the account exists.
+     * The token is stored on the User row with a short expiry, and a reset
+     * link is emailed to the address. Kept for the email-based flow.
+     *
+     * @param email The email address entered on the "forgot password" form
+     */
+    public void requestPasswordReset(String email) {
+        if (email == null || email.isBlank()) {
+            return;
+        }
+
+        String normalized = email.trim().toLowerCase();
+
+        userRepository.findByEmail(normalized).ifPresent(user -> {
+            String token = UUID.randomUUID().toString().replace("-", "");
+            user.setResetToken(token);
+            user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(RESET_TOKEN_TTL_MINUTES));
+            userRepository.save(user);
+
+            String link = frontendBaseUrl + "/index-reset-password-page.html?token=" + token;
+            emailService.sendPasswordResetEmail(user.getEmail(), user.getName(), link);
+        });
+    }
+
+    /**
+     * Validates a reset token and, if valid, replaces the user's password
+     * with a freshly hashed one. The token is cleared so it cannot be reused.
+     *
+     * @param token         The one-time reset token from the email link
+     * @param newPassword   The new plain-text password to hash and store
+     * @throws IllegalArgumentException if the new password fails the policy
+     * @throws RuntimeException         if the token is unknown or expired
+     */
+    public void resetPassword(String token, String newPassword) {
+        if (token == null || token.isBlank()) {
+            throw new RuntimeException("Invalid or expired reset link");
+        }
+        if (newPassword == null || newPassword.length() < 8) {
+            throw new IllegalArgumentException("Password must be at least 8 characters");
+        }
+        if (!newPassword.matches("^(?=.*[A-Za-z])(?=.*\\d).+$")) {
+            throw new IllegalArgumentException("Password must contain at least one letter and one number");
+        }
+
+        User user = userRepository.findByResetToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid or expired reset link"));
+
+        if (user.getResetTokenExpiry() == null
+                || user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            user.setResetToken(null);
+            user.setResetTokenExpiry(null);
+            userRepository.save(user);
+            throw new RuntimeException("Reset link has expired. Please request a new one.");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setResetToken(null);
+        user.setResetTokenExpiry(null);
+        userRepository.save(user);
+    }
+
+    /**
+     * Checks whether a reset token is still valid, without changing anything.
+     *
+     * @param token The token to validate
+     * @return      True if the token exists and has not expired
+     */
+    public boolean isResetTokenValid(String token) {
+        if (token == null || token.isBlank()) return false;
+        return userRepository.findByResetToken(token)
+                .filter(u -> u.getResetTokenExpiry() != null
+                        && u.getResetTokenExpiry().isAfter(LocalDateTime.now()))
+                .isPresent();
     }
 }
