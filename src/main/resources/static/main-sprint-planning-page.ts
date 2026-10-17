@@ -216,6 +216,37 @@ async function loadMembers(preCheckedIds: number[]): Promise<void> {
     }
 }
 
+// ===================== LOAD MEMBERS FOR EDIT =====================
+// Pre-ticks exactly `existingCount` employees, matching the saved memberCount.
+// This prevents an edit from silently resetting the count to "everyone".
+async function loadMembersForEdit(existingCount: number): Promise<void> {
+    try {
+        const res = await fetch(USERS_API);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const users = (await res.json()) as BackendUser[];
+
+        const teamMembers = users.filter(
+            (u) => u.role === 'EMPLOYEE' && u.team
+        );
+
+        let ticked = 0;
+        membersList.innerHTML = teamMembers.length === 0
+            ? `<p class="muted">No team-assigned employees available.</p>`
+            : teamMembers.map((u) => {
+                const checked = ticked < existingCount;
+                if (checked) ticked++;
+                return `
+                <label class="member-row">
+                    <input type="checkbox" name="member" value="${u.id}" ${checked ? 'checked' : ''}>
+                    <span>${escapeHtml(u.name)} — ${escapeHtml(u.team!.name)}</span>
+                </label>`;
+            }).join('');
+    } catch (err) {
+        console.error('Failed to load members:', err);
+        membersList.innerHTML = `<p class="muted">Could not load members.</p>`;
+    }
+}
+
 // ===================== POPULATE DROPDOWNS =====================
 function populateSprintNameOptions(): void {
     const usedNames = new Set(allSprints.map((s) => s.name));
@@ -293,9 +324,9 @@ async function loadSprints(): Promise<void> {
 async function openEditModal(sprint: Sprint): Promise<void> {
     editingSprintId = sprint.id;
 
-    // Figure out which employees to tick.
-    // We don't store the member list, so we tick all team members by default.
-    await loadMembers([]);
+    // Pre-tick only the first N employees to match the saved member count,
+    // so an edit doesn't silently reset the count to "everyone".
+    await loadMembersForEdit(sprint.memberCount ?? 0);
 
     populateDurationOptions();
 
