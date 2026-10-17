@@ -16,8 +16,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Unit tests for UserService.
- * Tests user creation, retrieval, update, deletion, email lookup,
- * BCrypt password hashing, login verification, and the direct password-reset flow.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -29,7 +27,8 @@ import static org.junit.jupiter.api.Assertions.*;
         "spring.datasource.username=sa",
         "spring.datasource.password=",
         "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
-        "spring.jpa.hibernate.ddl-auto=create-drop"
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "app.demo.reset-enabled=true"
 })
 class UserServiceTest {
 
@@ -44,9 +43,6 @@ class UserServiceTest {
 
     private User testUser;
 
-    /**
-     * Sets up fresh test data before each test.
-     */
     @BeforeEach
     void setUp() {
         userRepository.deleteAll();
@@ -205,7 +201,7 @@ class UserServiceTest {
         assertNull(loggedIn);
     }
 
-    // ===================== DIRECT PASSWORD RESET (demo flow) =====================
+    // ===================== DIRECT PASSWORD RESET (DEMO FLOW) =====================
 
     @Test
     void testResetPasswordByEmail_Success() {
@@ -245,5 +241,14 @@ class UserServiceTest {
 
         User reloaded = userRepository.findByEmail("test@example.com").orElseThrow();
         assertTrue(passwordEncoder.matches("brandnew123", reloaded.getPassword()));
+    }
+
+    @Test
+    void testResetPasswordByEmail_EnabledInCurrentContext() {
+        // Verifies the demo flag was read correctly (true in this context),
+        // so the flow is allowed.
+        userService.createUser(testUser);
+        assertDoesNotThrow(() ->
+                userService.resetPasswordByEmail("test@example.com", "brandnew123"));
     }
 }
