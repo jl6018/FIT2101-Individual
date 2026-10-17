@@ -91,3 +91,45 @@ For open source projects, say how it is licensed.
 
 ## Project status
 If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+
+# Symph — Agile Project Management Platform
+
+**FIT2101 S2 2026 - Assignment 4 (Sprint 3 Final Release)**
+**Team:** MA_Wednesday10am_Team5
+
+Symph is a web-based Agile project management tool designed to help small development teams plan sprints, manage tasks (Kanban board), log hours, and view time-tracking reports without the overhead of enterprise tools like Jira.
+
+---
+
+## Live Deployment
+*The final product is deployed and accessible here:*
+[https://your-app-name.onrender.com](https://your-app-name.onrender.com) *(Replace with your actual Render/Railway URL before submitting)*
+
+---
+
+## Team Members & Roles
+- Lim Jia Li — Frontend Developer / Backend Developer
+
+---
+
+## Key Features
+- Sprint Planning: Create sprints, set dates, and start/end sprint lifecycles.
+- Kanban Board: Drag-and-drop tasks across columns (Product Backlog, To Do, In Progress, In Review, Completed).
+- Task Management: Assign tasks to teams or specific employees, set priorities, estimates, and tags.
+- Time Tracking: Employees can log hours against specific tasks.
+- Reporting: Automated team contribution reports, hours per task, and sprint burndown charts.
+- Role-Based Access Control: Separate views for Admins/POs and Employees.
+
+---
+
+## Local Setup & Run Instructions
+
+### Prerequisites
+- Java 17 (JDK)
+- MySQL Server (running locally)
+- Node.js (optional, if you need to recompile TypeScript files)
+
+### 1. Database Setup
+Create a database in MySQL named `symph`:
+```sql
+CREATE DATABASE symph;
