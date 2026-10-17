@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: TimeLogServiceTest
 -------------------------------------------------------------------------------
-Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.826 s -- in TimeLogServiceTest
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.802 s -- in TimeLogServiceTest

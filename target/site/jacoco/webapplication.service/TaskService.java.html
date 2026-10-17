@@ -102,132 +102,143 @@ public class TaskService {
     }
 
     /**
-     * Updates an existing task's details. Only non-null fields are overwritten.
+     * Updates an existing task's details.
+     * &lt;p&gt;
+     * Primitive fields ({@code progress}, {@code estimateHours}) are always
+     * assigned from the incoming payload so they can be explicitly reset to 0
+     * by the UI's &quot;Reset to 0%&quot; / &quot;Clear estimate&quot; buttons. Reference fields
+     * are only overwritten when non-null, so callers can do partial updates.
      */
     public Task updateTask(Long id, Task taskDetails) {
-<span class="fc" id="L108">        Task task = getTaskById(id);</span>
+<span class="fc" id="L113">        Task task = getTaskById(id);</span>
 
-<span class="pc bpc" id="L110" title="1 of 2 branches missed.">        if (taskDetails.getName() != null) task.setName(taskDetails.getName());</span>
-<span class="pc bpc" id="L111" title="1 of 2 branches missed.">        if (taskDetails.getDescription() != null) task.setDescription(taskDetails.getDescription());</span>
-<span class="pc bpc" id="L112" title="1 of 2 branches missed.">        if (taskDetails.getStatus() != null) task.setStatus(taskDetails.getStatus());</span>
-<span class="pc bpc" id="L113" title="1 of 2 branches missed.">        if (taskDetails.getPriority() != null) task.setPriority(taskDetails.getPriority());</span>
-<span class="pc bpc" id="L114" title="1 of 2 branches missed.">        if (taskDetails.getProgress() != 0) task.setProgress(taskDetails.getProgress());</span>
-<span class="pc bpc" id="L115" title="1 of 2 branches missed.">        if (taskDetails.getDueDate() != null) task.setDueDate(taskDetails.getDueDate());</span>
+<span class="pc bpc" id="L115" title="1 of 2 branches missed.">        if (taskDetails.getName() != null) task.setName(taskDetails.getName());</span>
+<span class="pc bpc" id="L116" title="1 of 2 branches missed.">        if (taskDetails.getDescription() != null) task.setDescription(taskDetails.getDescription());</span>
+<span class="pc bpc" id="L117" title="1 of 2 branches missed.">        if (taskDetails.getStatus() != null) task.setStatus(taskDetails.getStatus());</span>
+<span class="pc bpc" id="L118" title="1 of 2 branches missed.">        if (taskDetails.getPriority() != null) task.setPriority(taskDetails.getPriority());</span>
+<span class="pc bpc" id="L119" title="1 of 2 branches missed.">        if (taskDetails.getDueDate() != null) task.setDueDate(taskDetails.getDueDate());</span>
 
-<span class="pc bpc" id="L117" title="2 of 4 branches missed.">        if (taskDetails.getSprint() != null &amp;&amp; taskDetails.getSprint().getId() != null) {</span>
-<span class="fc" id="L118">            Sprint sprint = sprintRepository.findById(taskDetails.getSprint().getId())</span>
-<span class="fc" id="L119">                    .orElse(null);</span>
-<span class="fc" id="L120">            task.setSprint(sprint);</span>
+        // Always assign primitives so 0 is a meaningful value (reset).
+<span class="fc" id="L122">        task.setProgress(clampProgress(taskDetails.getProgress()));</span>
+<span class="fc" id="L123">        task.setEstimateHours(Math.max(0, taskDetails.getEstimateHours()));</span>
+
+<span class="pc bpc" id="L125" title="2 of 4 branches missed.">        if (taskDetails.getSprint() != null &amp;&amp; taskDetails.getSprint().getId() != null) {</span>
+<span class="fc" id="L126">            Sprint sprint = sprintRepository.findById(taskDetails.getSprint().getId())</span>
+<span class="fc" id="L127">                    .orElse(null);</span>
+<span class="fc" id="L128">            task.setSprint(sprint);</span>
         }
 
-<span class="pc bpc" id="L123" title="1 of 2 branches missed.">        if (taskDetails.getAssignedUser() != null) task.setAssignedUser(taskDetails.getAssignedUser());</span>
-<span class="pc bpc" id="L124" title="1 of 2 branches missed.">        if (taskDetails.getAssignedTeams() != null) task.setAssignedTeams(taskDetails.getAssignedTeams());</span>
-<span class="pc bpc" id="L125" title="1 of 2 branches missed.">        if (taskDetails.getAssignedEmployeeIds() != null) task.setAssignedEmployeeIds(taskDetails.getAssignedEmployeeIds());</span>
-<span class="pc bpc" id="L126" title="1 of 2 branches missed.">        if (taskDetails.getEstimateHours() != 0) task.setEstimateHours(taskDetails.getEstimateHours());</span>
+<span class="pc bpc" id="L131" title="1 of 2 branches missed.">        if (taskDetails.getAssignedUser() != null) task.setAssignedUser(taskDetails.getAssignedUser());</span>
+<span class="pc bpc" id="L132" title="1 of 2 branches missed.">        if (taskDetails.getAssignedTeams() != null) task.setAssignedTeams(taskDetails.getAssignedTeams());</span>
+<span class="pc bpc" id="L133" title="1 of 2 branches missed.">        if (taskDetails.getAssignedEmployeeIds() != null) task.setAssignedEmployeeIds(taskDetails.getAssignedEmployeeIds());</span>
+<span class="pc bpc" id="L134" title="1 of 2 branches missed.">        if (taskDetails.getPosition() != null) task.setPosition(taskDetails.getPosition());</span>
 
-<span class="pc bpc" id="L128" title="1 of 2 branches missed.">        if (taskDetails.getPosition() != null) task.setPosition(taskDetails.getPosition());</span>
+<span class="fc" id="L136">        return taskRepository.save(task);</span>
+    }
 
-<span class="fc" id="L130">        return taskRepository.save(task);</span>
+    /** Clamps a progress value to 0-100 so bad payloads can't corrupt the DB. */
+    private int clampProgress(int progress) {
+<span class="pc bpc" id="L141" title="1 of 2 branches missed.">        if (progress &lt; 0) return 0;</span>
+<span class="pc bpc" id="L142" title="1 of 2 branches missed.">        if (progress &gt; 100) return 100;</span>
+<span class="fc" id="L143">        return progress;</span>
     }
 
     /**
      * Updates the progress percentage of a task.
      */
     public Task updateProgress(Long id, int progress) {
-<span class="fc bfc" id="L137" title="All 4 branches covered.">        if (progress &lt; 0 || progress &gt; 100) {</span>
-<span class="fc" id="L138">            throw new IllegalArgumentException(&quot;Progress must be between 0 and 100&quot;);</span>
+<span class="fc bfc" id="L150" title="All 4 branches covered.">        if (progress &lt; 0 || progress &gt; 100) {</span>
+<span class="fc" id="L151">            throw new IllegalArgumentException(&quot;Progress must be between 0 and 100&quot;);</span>
         }
-<span class="fc" id="L140">        Task task = getTaskById(id);</span>
-<span class="fc" id="L141">        task.setProgress(progress);</span>
-<span class="fc" id="L142">        return taskRepository.save(task);</span>
+<span class="fc" id="L153">        Task task = getTaskById(id);</span>
+<span class="fc" id="L154">        task.setProgress(progress);</span>
+<span class="fc" id="L155">        return taskRepository.save(task);</span>
     }
 
     /**
      * Retrieves all tasks with a specific status ordered by board position.
      */
     public List&lt;Task&gt; getTasksByStatus(TaskStatus status) {
-<span class="fc" id="L149">        return taskRepository.findByStatusOrderByPositionAscIdAsc(status);</span>
+<span class="fc" id="L162">        return taskRepository.findByStatusOrderByPositionAscIdAsc(status);</span>
     }
 
     /**
      * Retrieves all tasks belonging to a specific sprint ordered by board position.
      */
     public List&lt;Task&gt; getTasksBySprint(Long sprintId) {
-<span class="fc" id="L156">        return taskRepository.findBySprintIdOrderByPositionAscIdAsc(sprintId);</span>
+<span class="fc" id="L169">        return taskRepository.findBySprintIdOrderByPositionAscIdAsc(sprintId);</span>
     }
 
     /**
      * Deletes a task along with its dependent time logs and comments.
-     * Time logs and comments are removed first so the DB does not raise a
-     * foreign key constraint violation on task_id.
      */
     public void deleteTask(Long id) {
-<span class="fc" id="L165">        List&lt;TimeLog&gt; logs = timeLogRepository.findByTaskId(id);</span>
-<span class="pc bpc" id="L166" title="1 of 2 branches missed.">        if (!logs.isEmpty()) {</span>
-<span class="nc" id="L167">            timeLogRepository.deleteAll(logs);</span>
+<span class="fc" id="L176">        List&lt;TimeLog&gt; logs = timeLogRepository.findByTaskId(id);</span>
+<span class="pc bpc" id="L177" title="1 of 2 branches missed.">        if (!logs.isEmpty()) {</span>
+<span class="nc" id="L178">            timeLogRepository.deleteAll(logs);</span>
         }
-<span class="fc" id="L169">        taskCommentRepository.deleteByTaskId(id);</span>
-<span class="fc" id="L170">        taskRepository.deleteById(id);</span>
-<span class="fc" id="L171">    }</span>
+<span class="fc" id="L180">        taskCommentRepository.deleteByTaskId(id);</span>
+<span class="fc" id="L181">        taskRepository.deleteById(id);</span>
+<span class="fc" id="L182">    }</span>
 
     /**
      * Assigns a task to a specific user.
      */
     public Task assignTask(Long taskId, Long userId) {
-<span class="nc" id="L177">        Task task = getTaskById(taskId);</span>
-<span class="nc" id="L178">        User user = userRepository.findById(userId)</span>
-<span class="nc" id="L179">                .orElseThrow(() -&gt; new RuntimeException(&quot;User not found&quot;));</span>
-<span class="nc" id="L180">        task.setAssignedUser(user);</span>
-<span class="nc" id="L181">        return taskRepository.save(task);</span>
+<span class="nc" id="L188">        Task task = getTaskById(taskId);</span>
+<span class="nc" id="L189">        User user = userRepository.findById(userId)</span>
+<span class="nc" id="L190">                .orElseThrow(() -&gt; new RuntimeException(&quot;User not found&quot;));</span>
+<span class="nc" id="L191">        task.setAssignedUser(user);</span>
+<span class="nc" id="L192">        return taskRepository.save(task);</span>
     }
 
     /**
      * Updates the status of a task.
      */
     public Task updateStatus(Long taskId, TaskStatus status) {
-<span class="nc" id="L188">        Task task = getTaskById(taskId);</span>
-<span class="nc" id="L189">        task.setStatus(status);</span>
-<span class="nc" id="L190">        return taskRepository.save(task);</span>
+<span class="nc" id="L199">        Task task = getTaskById(taskId);</span>
+<span class="nc" id="L200">        task.setStatus(status);</span>
+<span class="nc" id="L201">        return taskRepository.save(task);</span>
     }
 
     /**
      * Retrieves the board view grouping tasks by their status.
      */
     public Map&lt;TaskStatus, List&lt;Task&gt;&gt; getBoardView() {
-<span class="nc" id="L197">        Map&lt;TaskStatus, List&lt;Task&gt;&gt; board = new LinkedHashMap&lt;&gt;();</span>
-<span class="nc bnc" id="L198" title="All 2 branches missed.">        for (TaskStatus status : TaskStatus.values()) {</span>
-<span class="nc" id="L199">            board.put(status, taskRepository.findByStatusOrderByPositionAscIdAsc(status));</span>
+<span class="nc" id="L208">        Map&lt;TaskStatus, List&lt;Task&gt;&gt; board = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L209" title="All 2 branches missed.">        for (TaskStatus status : TaskStatus.values()) {</span>
+<span class="nc" id="L210">            board.put(status, taskRepository.findByStatusOrderByPositionAscIdAsc(status));</span>
         }
-<span class="nc" id="L201">        return board;</span>
+<span class="nc" id="L212">        return board;</span>
     }
 
     /**
      * Retrieves all tasks belonging to a specific team.
      */
     public List&lt;Task&gt; getTasksByTeam(String teamName) {
-<span class="nc" id="L208">        List&lt;Long&gt; teamMemberIds = userRepository.findAll().stream()</span>
-<span class="nc bnc" id="L209" title="All 4 branches missed.">                .filter(u -&gt; u.getTeam() != null &amp;&amp; teamName.equals(u.getTeam().getName()))</span>
-<span class="nc" id="L210">                .map(User::getId)</span>
-<span class="nc" id="L211">                .collect(Collectors.toList());</span>
+<span class="nc" id="L219">        List&lt;Long&gt; teamMemberIds = userRepository.findAll().stream()</span>
+<span class="nc bnc" id="L220" title="All 4 branches missed.">                .filter(u -&gt; u.getTeam() != null &amp;&amp; teamName.equals(u.getTeam().getName()))</span>
+<span class="nc" id="L221">                .map(User::getId)</span>
+<span class="nc" id="L222">                .collect(Collectors.toList());</span>
 
-<span class="nc" id="L213">        return taskRepository.findAllByOrderByPositionAscIdAsc().stream()</span>
-<span class="nc" id="L214">                .filter(t -&gt; {</span>
-<span class="nc bnc" id="L215" title="All 2 branches missed.">                    if (t.getAssignedTeams() != null) {</span>
-<span class="nc" id="L216">                        boolean direct = java.util.Arrays.stream(t.getAssignedTeams().split(&quot;,&quot;))</span>
-<span class="nc" id="L217">                                .map(String::trim)</span>
-<span class="nc" id="L218">                                .anyMatch(name -&gt; name.equals(teamName));</span>
-<span class="nc bnc" id="L219" title="All 2 branches missed.">                        if (direct) return true;</span>
+<span class="nc" id="L224">        return taskRepository.findAllByOrderByPositionAscIdAsc().stream()</span>
+<span class="nc" id="L225">                .filter(t -&gt; {</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">                    if (t.getAssignedTeams() != null) {</span>
+<span class="nc" id="L227">                        boolean direct = java.util.Arrays.stream(t.getAssignedTeams().split(&quot;,&quot;))</span>
+<span class="nc" id="L228">                                .map(String::trim)</span>
+<span class="nc" id="L229">                                .anyMatch(name -&gt; name.equals(teamName));</span>
+<span class="nc bnc" id="L230" title="All 2 branches missed.">                        if (direct) return true;</span>
                     }
-<span class="nc bnc" id="L221" title="All 2 branches missed.">                    if (t.getAssignedEmployeeIds() != null) {</span>
-<span class="nc" id="L222">                        return java.util.Arrays.stream(t.getAssignedEmployeeIds().split(&quot;,&quot;))</span>
-<span class="nc" id="L223">                                .map(String::trim)</span>
-<span class="nc bnc" id="L224" title="All 2 branches missed.">                                .filter(s -&gt; !s.isEmpty())</span>
-<span class="nc" id="L225">                                .map(Long::parseLong)</span>
-<span class="nc" id="L226">                                .anyMatch(teamMemberIds::contains);</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">                    if (t.getAssignedEmployeeIds() != null) {</span>
+<span class="nc" id="L233">                        return java.util.Arrays.stream(t.getAssignedEmployeeIds().split(&quot;,&quot;))</span>
+<span class="nc" id="L234">                                .map(String::trim)</span>
+<span class="nc bnc" id="L235" title="All 2 branches missed.">                                .filter(s -&gt; !s.isEmpty())</span>
+<span class="nc" id="L236">                                .map(Long::parseLong)</span>
+<span class="nc" id="L237">                                .anyMatch(teamMemberIds::contains);</span>
                     }
-<span class="nc" id="L228">                    return false;</span>
+<span class="nc" id="L239">                    return false;</span>
                 })
-<span class="nc" id="L230">                .collect(Collectors.toList());</span>
+<span class="nc" id="L241">                .collect(Collectors.toList());</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

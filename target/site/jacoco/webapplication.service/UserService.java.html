@@ -4,18 +4,15 @@ import webapplication.model.Team;
 import webapplication.model.User;
 import webapplication.repository.TeamRepository;
 import webapplication.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 /**
- * Manages user Create, Read, Update, Delete, login validation,
- * team assignment, and job title operations.
- * Emails are normalized to lowercase and trimmed before being stored or
- * compared, so XX@x.com and xx@x.com are treated as the same address.
- * Passwords are hashed with BCrypt before being stored; login compares
- * the raw password against the stored hash.
+ * Manages user CRUD, login validation, team assignment, job title operations,
+ * and password resets.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -28,139 +25,112 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     /**
-     * Parameterized constructor with the required repository dependencies
-     * and the password encoder.
-     *
-     * @param userRepository  The repository handling user database operations
-     * @param teamRepository  The repository handling team database operations
-     * @param passwordEncoder The BCrypt password encoder
+     * Demo-only flag: when true, the direct password-reset endpoint is allowed.
+     * Disabled by default so a deployed instance is not open to account takeover.
      */
+    @Value(&quot;${app.demo.reset-enabled:false}&quot;)
+    private boolean demoResetEnabled;
+
     public UserService(UserRepository userRepository,
                        TeamRepository teamRepository,
-<span class="fc" id="L40">                       PasswordEncoder passwordEncoder) {</span>
-<span class="fc" id="L41">        this.userRepository = userRepository;</span>
-<span class="fc" id="L42">        this.teamRepository = teamRepository;</span>
-<span class="fc" id="L43">        this.passwordEncoder = passwordEncoder;</span>
-<span class="fc" id="L44">    }</span>
+<span class="fc" id="L36">                       PasswordEncoder passwordEncoder) {</span>
+<span class="fc" id="L37">        this.userRepository = userRepository;</span>
+<span class="fc" id="L38">        this.teamRepository = teamRepository;</span>
+<span class="fc" id="L39">        this.passwordEncoder = passwordEncoder;</span>
+<span class="fc" id="L40">    }</span>
 
-    /**
-     * Retrieves all users from the database.
-     *
-     * @return A list of all users
-     */
     public List&lt;User&gt; getAllUsers() {
-<span class="fc" id="L52">        return userRepository.findAll();</span>
+<span class="fc" id="L43">        return userRepository.findAll();</span>
     }
 
-    /**
-     * Retrieves a single user by their unique ID.
-     *
-     * @param id                The ID of the user to retrieve
-     * @return                  The User object
-     * @throws RuntimeException if no user with the given ID exists
-     */
     public User getUserById(Long id) {
-<span class="fc" id="L63">        return userRepository.findById(id)</span>
-<span class="fc" id="L64">                .orElseThrow(() -&gt; new RuntimeException(&quot;User not found&quot;));</span>
+<span class="fc" id="L47">        return userRepository.findById(id)</span>
+<span class="fc" id="L48">                .orElseThrow(() -&gt; new RuntimeException(&quot;User not found&quot;));</span>
     }
 
-    /**
-     * Creates a new user. The email is normalized to lowercase and trimmed
-     * before the duplicate check, so XX@x.com and xx@x.com are treated as
-     * the same email address. The password is hashed with BCrypt before
-     * being persisted.
-     *
-     * @param user              The User object to save
-     * @return                  The saved User object with its assigned ID
-     * @throws RuntimeException if the email is already registered
-     */
     public User createUser(User user) {
-<span class="fc" id="L78">        String normalizedEmail = user.getEmail().trim().toLowerCase();</span>
-<span class="fc" id="L79">        user.setEmail(normalizedEmail);</span>
+<span class="fc" id="L52">        String normalizedEmail = user.getEmail().trim().toLowerCase();</span>
+<span class="fc" id="L53">        user.setEmail(normalizedEmail);</span>
 
-<span class="pc bpc" id="L81" title="1 of 2 branches missed.">        if (userRepository.findByEmail(normalizedEmail).isPresent()) {</span>
-<span class="nc" id="L82">            throw new RuntimeException(&quot;Email already registered&quot;);</span>
+<span class="fc bfc" id="L55" title="All 2 branches covered.">        if (userRepository.findByEmail(normalizedEmail).isPresent()) {</span>
+<span class="fc" id="L56">            throw new RuntimeException(&quot;Email already registered&quot;);</span>
         }
 
-<span class="fc" id="L85">        user.setPassword(passwordEncoder.encode(user.getPassword()));</span>
-<span class="fc" id="L86">        return userRepository.save(user);</span>
+<span class="fc" id="L59">        user.setPassword(passwordEncoder.encode(user.getPassword()));</span>
+<span class="fc" id="L60">        return userRepository.save(user);</span>
     }
 
-    /**
-     * Updates an existing user's name, email, and role.
-     * Password is not updated here — use a dedicated password-change
-     * endpoint if that becomes a requirement.
-     *
-     * @param id                The ID of the user to update
-     * @param updatedUser       The User object containing the updated details
-     * @return                  The updated User object
-     * @throws RuntimeException if the user does not exist
-     */
     public User updateUser(Long id, User updatedUser) {
-<span class="fc" id="L100">        User user = getUserById(id);</span>
-<span class="fc" id="L101">        user.setName(updatedUser.getName());</span>
-<span class="fc" id="L102">        user.setEmail(updatedUser.getEmail().trim().toLowerCase());</span>
-<span class="fc" id="L103">        user.setRole(updatedUser.getRole());</span>
-<span class="fc" id="L104">        return userRepository.save(user);</span>
+<span class="fc" id="L64">        User user = getUserById(id);</span>
+<span class="fc" id="L65">        user.setName(updatedUser.getName());</span>
+<span class="fc" id="L66">        user.setEmail(updatedUser.getEmail().trim().toLowerCase());</span>
+<span class="fc" id="L67">        user.setRole(updatedUser.getRole());</span>
+<span class="fc" id="L68">        return userRepository.save(user);</span>
     }
 
-    /**
-     * Deletes a user from the database by their ID.
-     *
-     * @param id The ID of the user to delete
-     */
     public void deleteUser(Long id) {
-<span class="fc" id="L113">        userRepository.deleteById(id);</span>
-<span class="fc" id="L114">    }</span>
+<span class="fc" id="L72">        userRepository.deleteById(id);</span>
+<span class="fc" id="L73">    }</span>
 
-    /**
-     * Authenticates a user by email and password. The email is normalized
-     * the same way as at registration, so casing doesn't matter.
-     * The supplied password is compared against the stored BCrypt hash.
-     *
-     * @param email     The email entered by the user
-     * @param password  The raw password entered by the user
-     * @return          The User object if credentials are valid, or null if invalid
-     */
     public User login(String email, String password) {
-<span class="nc bnc" id="L126" title="All 2 branches missed.">        String normalizedEmail = email == null ? &quot;&quot; : email.trim().toLowerCase();</span>
-<span class="nc" id="L127">        return userRepository.findByEmail(normalizedEmail)</span>
-<span class="nc" id="L128">                .filter(u -&gt; passwordEncoder.matches(password, u.getPassword()))</span>
-<span class="nc" id="L129">                .orElse(null);</span>
+<span class="pc bpc" id="L76" title="1 of 2 branches missed.">        String normalizedEmail = email == null ? &quot;&quot; : email.trim().toLowerCase();</span>
+<span class="fc" id="L77">        return userRepository.findByEmail(normalizedEmail)</span>
+<span class="fc" id="L78">                .filter(u -&gt; passwordEncoder.matches(password, u.getPassword()))</span>
+<span class="fc" id="L79">                .orElse(null);</span>
     }
 
-    /**
-     * Updates a user's team assignment. Passing a blank team name clears the team.
-     *
-     * @param id                The ID of the user to update
-     * @param teamName          The name of the team to assign
-     * @return                  The updated User object
-     * @throws RuntimeException if the user or team does not exist
-     */
     public User updateTeam(Long id, String teamName) {
-<span class="nc" id="L141">        User user = getUserById(id);</span>
-<span class="nc bnc" id="L142" title="All 4 branches missed.">        if (teamName == null || teamName.isBlank()) {</span>
-<span class="nc" id="L143">            user.setTeam(null);</span>
+<span class="nc" id="L83">        User user = getUserById(id);</span>
+<span class="nc bnc" id="L84" title="All 4 branches missed.">        if (teamName == null || teamName.isBlank()) {</span>
+<span class="nc" id="L85">            user.setTeam(null);</span>
         } else {
-<span class="nc" id="L145">            Team team = teamRepository.findByName(teamName)</span>
-<span class="nc" id="L146">                    .orElseThrow(() -&gt; new RuntimeException(&quot;Team not found: &quot; + teamName));</span>
-<span class="nc" id="L147">            user.setTeam(team);</span>
+<span class="nc" id="L87">            Team team = teamRepository.findByName(teamName)</span>
+<span class="nc" id="L88">                    .orElseThrow(() -&gt; new RuntimeException(&quot;Team not found: &quot; + teamName));</span>
+<span class="nc" id="L89">            user.setTeam(team);</span>
         }
-<span class="nc" id="L149">        return userRepository.save(user);</span>
+<span class="nc" id="L91">        return userRepository.save(user);</span>
     }
 
-    /**
-     * Updates a user's job title.
-     *
-     * @param id                The ID of the user to update
-     * @param jobTitle          The new job title
-     * @return                  The updated User object
-     * @throws RuntimeException if the user does not exist
-     */
     public User updateJobTitle(Long id, String jobTitle) {
-<span class="nc" id="L161">        User user = getUserById(id);</span>
-<span class="nc" id="L162">        user.setJobTitle(jobTitle);</span>
-<span class="nc" id="L163">        return userRepository.save(user);</span>
+<span class="nc" id="L95">        User user = getUserById(id);</span>
+<span class="nc" id="L96">        user.setJobTitle(jobTitle);</span>
+<span class="nc" id="L97">        return userRepository.save(user);</span>
     }
+
+    // ===================== DIRECT PASSWORD RESET (DEMO ONLY) =====================
+
+    /**
+     * Directly replaces a user's password given their email.
+     * &lt;p&gt;
+     * &lt;b&gt;This is only intended for offline / demo environments where email
+     * delivery is unavailable.&lt;/b&gt; It is gated behind the
+     * {@code app.demo.reset-enabled} property which MUST be false (the default)
+     * in any real deployment — otherwise this is an account-takeover endpoint.
+     *
+     * @param email       The email of the account to update
+     * @param newPassword The new plain-text password
+     */
+    public void resetPasswordByEmail(String email, String newPassword) {
+<span class="pc bpc" id="L114" title="1 of 2 branches missed.">        if (!demoResetEnabled) {</span>
+<span class="nc" id="L115">            throw new IllegalStateException(</span>
+                    &quot;Direct password reset is disabled. Use the token-based reset flow.&quot;);
+        }
+<span class="pc bpc" id="L118" title="1 of 4 branches missed.">        if (email == null || email.isBlank()) {</span>
+<span class="fc" id="L119">            throw new IllegalArgumentException(&quot;Email is required&quot;);</span>
+        }
+<span class="pc bpc" id="L121" title="1 of 4 branches missed.">        if (newPassword == null || newPassword.length() &lt; 8) {</span>
+<span class="fc" id="L122">            throw new IllegalArgumentException(&quot;Password must be at least 8 characters&quot;);</span>
+        }
+<span class="pc bpc" id="L124" title="1 of 2 branches missed.">        if (!newPassword.matches(&quot;^(?=.*[A-Za-z])(?=.*\\d).+$&quot;)) {</span>
+<span class="nc" id="L125">            throw new IllegalArgumentException(&quot;Password must contain at least one letter and one number&quot;);</span>
+        }
+
+<span class="fc" id="L128">        String normalized = email.trim().toLowerCase();</span>
+<span class="fc" id="L129">        User user = userRepository.findByEmail(normalized)</span>
+<span class="fc" id="L130">                .orElseThrow(() -&gt; new RuntimeException(&quot;No account found with that email&quot;));</span>
+
+<span class="fc" id="L132">        user.setPassword(passwordEncoder.encode(newPassword));</span>
+<span class="fc" id="L133">        userRepository.save(user);</span>
+<span class="fc" id="L134">    }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

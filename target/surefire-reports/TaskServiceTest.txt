@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: TaskServiceTest
 -------------------------------------------------------------------------------
-Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.011 s -- in TaskServiceTest
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.870 s -- in TaskServiceTest

@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: ProductOwnerInviteServiceTest
 -------------------------------------------------------------------------------
-Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 7.390 s -- in ProductOwnerInviteServiceTest
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 8.796 s -- in ProductOwnerInviteServiceTest

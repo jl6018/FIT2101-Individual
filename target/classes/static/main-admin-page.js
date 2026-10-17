@@ -1583,7 +1583,7 @@ const INVITES_API = "/api/invites";
     }
 
     // ===================== NOTIFICATION BELL =====================
-    const NOTIF_SEEN_KEY = "symph.lastSeenCommentId";
+    const NOTIF_SEEN_KEY = "symph.lastSeenCommentId_" + (sessionStorage.getItem("userId") || "0");
     const notifBadge = document.getElementById("notifBadge");
     const notifMenuList = document.getElementById("notifMenuList");
 

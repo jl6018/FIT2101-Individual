@@ -168,7 +168,7 @@ sprintDurationSelect.addEventListener('change', recalculateEndDate);
 
 // ===================== LOAD MEMBERS =====================
 // Only employees who HAVE a team are offered as "Members involved".
-// preCheckedIds: array of user IDs to tick. Empty array = tick everyone.
+// `preCheckedIds` controls which are ticked; empty array = all ticked.
 async function loadMembers(preCheckedIds) {
     try {
         const res = await fetch(USERS_API);
@@ -184,6 +184,37 @@ async function loadMembers(preCheckedIds) {
             : teamMembers.map((u) => {
                 const checked =
                     preCheckedIds.length === 0 || preCheckedIds.includes(u.id);
+                return `
+                <label class="member-row">
+                    <input type="checkbox" name="member" value="${u.id}" ${checked ? 'checked' : ''}>
+                    <span>${escapeHtml(u.name)} — ${escapeHtml(u.team.name)}</span>
+                </label>`;
+            }).join('');
+    } catch (err) {
+        console.error('Failed to load members:', err);
+        membersList.innerHTML = `<p class="muted">Could not load members.</p>`;
+    }
+}
+
+// ===================== LOAD MEMBERS FOR EDIT =====================
+// Pre-ticks exactly `existingCount` employees, matching the saved memberCount.
+// This prevents an edit from silently resetting the count to "everyone".
+async function loadMembersForEdit(existingCount) {
+    try {
+        const res = await fetch(USERS_API);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const users = await res.json();
+
+        const teamMembers = users.filter(
+            (u) => u.role === 'EMPLOYEE' && u.team
+        );
+
+        let ticked = 0;
+        membersList.innerHTML = teamMembers.length === 0
+            ? `<p class="muted">No team-assigned employees available.</p>`
+            : teamMembers.map((u) => {
+                const checked = ticked < existingCount;
+                if (checked) ticked++;
                 return `
                 <label class="member-row">
                     <input type="checkbox" name="member" value="${u.id}" ${checked ? 'checked' : ''}>
@@ -273,8 +304,10 @@ async function loadSprints() {
 async function openEditModal(sprint) {
     editingSprintId = sprint.id;
 
-    // We don't persist a member list, so tick everyone by default.
-    await loadMembers([]);
+    // Pre-tick only the first N employees to match the saved member count,
+    // so an edit doesn't silently reset the count to "everyone".
+    await loadMembersForEdit(sprint.memberCount ?? 0);
+
     populateDurationOptions();
 
     sprintNameInput.innerHTML = `<option value="${sprint.name}">${sprint.name}</option>`;
@@ -283,7 +316,6 @@ async function openEditModal(sprint) {
     sprintStartDateInput.value = sprint.startDate;
     sprintEndDateInput.value = sprint.endDate;
 
-    // Derive duration in weeks from the stored dates.
     const start = new Date(sprint.startDate + 'T00:00:00');
     const end = new Date(sprint.endDate + 'T00:00:00');
     const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));

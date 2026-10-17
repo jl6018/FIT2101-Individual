@@ -3,9 +3,12 @@
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 
+import java.time.LocalDateTime;
+
 /**
  * Represents a user of the Symph web application.
- * Stores credentials, role, job title, and team assignment.
+ * Stores credentials, role, job title, team assignment, and the
+ * password-reset token used by the &quot;forgot password&quot; flow.
  * Includes validation constraints for name, email, password, and role.
  *
  * @author Lim Jia Li
@@ -53,42 +56,170 @@ public class User {
     @JoinColumn(name = &quot;team_id&quot;)
     private Team team;
 
-<span class="fc" id="L56">    public User() {</span>
-<span class="fc" id="L57">    }</span>
+    /**
+     * One-time token issued when the user requests a password reset.
+     * Cleared after a successful reset, on expiry, or when a new token
+     * is issued.
+     */
+    @Column(name = &quot;reset_token&quot;, length = 100)
+    private String resetToken;
 
-<span class="nc" id="L59">    public User(String name, String email, String password, String role) {</span>
-<span class="nc" id="L60">        this.name = name;</span>
-<span class="nc" id="L61">        this.email = email;</span>
-<span class="nc" id="L62">        this.password = password;</span>
-<span class="nc" id="L63">        this.role = role;</span>
-<span class="nc" id="L64">    }</span>
+    /**
+     * The moment the reset token stops being valid.
+     */
+    @Column(name = &quot;reset_token_expiry&quot;)
+    private LocalDateTime resetTokenExpiry;
 
-<span class="fc" id="L66">    public Long getId() { return id; }</span>
-<span class="fc" id="L67">    public void setId(Long id) { this.id = id; }</span>
+    /**
+     * Default constructor.
+     */
+<span class="fc" id="L76">    public User() {</span>
+<span class="fc" id="L77">    }</span>
 
-<span class="fc" id="L69">    public String getName() { return name; }</span>
-<span class="fc" id="L70">    public void setName(String name) { this.name = name; }</span>
+    /**
+     * Parameterized constructor with the user's core details.
+     *
+     * @param name     The user's full name
+     * @param email    The user's email address
+     * @param password The user's password (hashed before being stored)
+     * @param role     The user's role
+     */
+<span class="nc" id="L87">    public User(String name, String email, String password, String role) {</span>
+<span class="nc" id="L88">        this.name = name;</span>
+<span class="nc" id="L89">        this.email = email;</span>
+<span class="nc" id="L90">        this.password = password;</span>
+<span class="nc" id="L91">        this.role = role;</span>
+<span class="nc" id="L92">    }</span>
 
-<span class="fc" id="L72">    public String getEmail() { return email; }</span>
+    /**
+     * Gets the user's unique ID.
+     *
+     * @return The user ID
+     */
+<span class="fc" id="L99">    public Long getId() { return id; }</span>
+
+    /**
+     * Sets the user's unique ID.
+     *
+     * @param id The user ID
+     */
+<span class="fc" id="L106">    public void setId(Long id) { this.id = id; }</span>
+
+    /**
+     * Gets the user's full name.
+     *
+     * @return The user name
+     */
+<span class="fc" id="L113">    public String getName() { return name; }</span>
+
+    /**
+     * Sets the user's full name.
+     *
+     * @param name The user name
+     */
+<span class="fc" id="L120">    public void setName(String name) { this.name = name; }</span>
+
+    /**
+     * Gets the user's email address.
+     *
+     * @return The email address
+     */
+<span class="fc" id="L127">    public String getEmail() { return email; }</span>
 
     /**
      * Normalizes the email by trimming whitespace and lowercasing it
      * before validation runs, so &quot;  XX@GMAIL.COM  &quot; becomes &quot;xx@gmail.com&quot;.
+     *
+     * @param email The email address
      */
     public void setEmail(String email) {
-<span class="pc bpc" id="L79" title="1 of 2 branches missed.">        this.email = (email == null) ? null : email.trim().toLowerCase();</span>
-<span class="fc" id="L80">    }</span>
+<span class="pc bpc" id="L136" title="1 of 2 branches missed.">        this.email = (email == null) ? null : email.trim().toLowerCase();</span>
+<span class="fc" id="L137">    }</span>
 
-<span class="fc" id="L82">    public String getPassword() { return password; }</span>
-<span class="fc" id="L83">    public void setPassword(String password) { this.password = password; }</span>
+    /**
+     * Gets the stored (hashed) password.
+     *
+     * @return The hashed password
+     */
+<span class="fc" id="L144">    public String getPassword() { return password; }</span>
 
-<span class="fc" id="L85">    public String getRole() { return role; }</span>
-<span class="fc" id="L86">    public void setRole(String role) { this.role = role; }</span>
+    /**
+     * Sets the stored (hashed) password.
+     *
+     * @param password The hashed password
+     */
+<span class="fc" id="L151">    public void setPassword(String password) { this.password = password; }</span>
 
-<span class="fc" id="L88">    public String getJobTitle() { return jobTitle; }</span>
-<span class="fc" id="L89">    public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }</span>
+    /**
+     * Gets the user's role.
+     *
+     * @return The role (ADMIN, EMPLOYEE, or PRODUCT_OWNER)
+     */
+<span class="fc" id="L158">    public String getRole() { return role; }</span>
 
-<span class="fc" id="L91">    public Team getTeam() { return team; }</span>
-<span class="fc" id="L92">    public void setTeam(Team team) { this.team = team; }</span>
+    /**
+     * Sets the user's role.
+     *
+     * @param role The role
+     */
+<span class="fc" id="L165">    public void setRole(String role) { this.role = role; }</span>
+
+    /**
+     * Gets the user's job title.
+     *
+     * @return The job title, or null if not set
+     */
+<span class="fc" id="L172">    public String getJobTitle() { return jobTitle; }</span>
+
+    /**
+     * Sets the user's job title.
+     *
+     * @param jobTitle The job title
+     */
+<span class="fc" id="L179">    public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }</span>
+
+    /**
+     * Gets the team the user belongs to.
+     *
+     * @return The Team object, or null if unassigned
+     */
+<span class="fc" id="L186">    public Team getTeam() { return team; }</span>
+
+    /**
+     * Sets the team the user belongs to.
+     *
+     * @param team The Team object
+     */
+<span class="fc" id="L193">    public void setTeam(Team team) { this.team = team; }</span>
+
+    /**
+     * Gets the current password-reset token.
+     *
+     * @return The reset token, or null if none is active
+     */
+<span class="fc" id="L200">    public String getResetToken() { return resetToken; }</span>
+
+    /**
+     * Sets the current password-reset token.
+     *
+     * @param resetToken The reset token
+     */
+<span class="fc" id="L207">    public void setResetToken(String resetToken) { this.resetToken = resetToken; }</span>
+
+    /**
+     * Gets the expiry moment of the reset token.
+     *
+     * @return The expiry moment, or null if none is active
+     */
+<span class="fc" id="L214">    public LocalDateTime getResetTokenExpiry() { return resetTokenExpiry; }</span>
+
+    /**
+     * Sets the expiry moment of the reset token.
+     *
+     * @param resetTokenExpiry The expiry moment
+     */
+    public void setResetTokenExpiry(LocalDateTime resetTokenExpiry) {
+<span class="fc" id="L222">        this.resetTokenExpiry = resetTokenExpiry;</span>
+<span class="fc" id="L223">    }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

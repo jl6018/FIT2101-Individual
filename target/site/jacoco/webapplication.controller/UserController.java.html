@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Symph</a> &gt; <a href="index.source.html" class="el_package">webapplication.controller</a> &gt; <span class="el_source">UserController.java</span></div><h1>UserController.java</h1><pre class="source lang-java linenums">package webapplication.controller;
 
 import jakarta.validation.Valid;
+import webapplication.dto.DirectResetRequest;
 import webapplication.dto.LoginRequest;
 import webapplication.dto.LoginResponse;
 import webapplication.model.User;
@@ -14,12 +15,10 @@ import java.util.Map;
 
 /**
  * Exposes REST endpoints for managing users and authentication.
- * Handles user CRUD operations, login, team assignment, and job title updates.
  *
  * @author Lim Jia Li
  * @version 17.0.16
  */
-
 @RestController
 @RequestMapping(&quot;/api/users&quot;)
 @CrossOrigin
@@ -27,147 +26,103 @@ public class UserController {
 
     private final UserService userService;
 
-    /**
-     * Parameterized constructor with the required UserService dependency.
-     *
-     * @param userService The service handling user business logic
-     */
-<span class="fc" id="L35">    public UserController(UserService userService) {</span>
-<span class="fc" id="L36">        this.userService = userService;</span>
-<span class="fc" id="L37">    }</span>
+<span class="fc" id="L29">    public UserController(UserService userService) {</span>
+<span class="fc" id="L30">        this.userService = userService;</span>
+<span class="fc" id="L31">    }</span>
 
-    /**
-     * Retrieves all users from the database.
-     *
-     * @return A list of all users
-     */
     @GetMapping
     public List&lt;User&gt; getAllUsers() {
-<span class="fc" id="L46">        return userService.getAllUsers();</span>
+<span class="fc" id="L35">        return userService.getAllUsers();</span>
     }
 
-    /**
-     * Retrieves a single user by their unique ID.
-     *
-     * @param id The ID of the user to retrieve
-     * @return   The User object
-     */
     @GetMapping(&quot;/{id}&quot;)
     public User getUser(@PathVariable Long id) {
-<span class="fc" id="L57">        return userService.getUserById(id);</span>
+<span class="fc" id="L40">        return userService.getUserById(id);</span>
     }
 
-    /**
-     * Creates a new user if the email is not already registered.
-     *
-     * @param user              The User object to save
-     * @return                  A ResponseEntity with the saved user, or an error message on failure
-     */
     @PostMapping
     public ResponseEntity&lt;?&gt; createUser(@Valid @RequestBody User user) {
         try {
-<span class="fc" id="L69">            return ResponseEntity.ok(userService.createUser(user));</span>
-<span class="nc" id="L70">        } catch (RuntimeException e) {</span>
-<span class="nc" id="L71">            return ResponseEntity.status(400).body(e.getMessage());</span>
+<span class="fc" id="L46">            return ResponseEntity.ok(userService.createUser(user));</span>
+<span class="nc" id="L47">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L48">            return ResponseEntity.status(400).body(e.getMessage());</span>
         }
     }
 
-    /**
-     * Updates an existing user's name, email, and role.
-     *
-     * @param id   The ID of the user to update
-     * @param user The User object containing the updated details
-     * @return     The updated User object
-     */
     @PutMapping(&quot;/{id}&quot;)
-    public User updateUser(
-            @PathVariable Long id,
-            @Valid @RequestBody User user) {
-<span class="nc" id="L86">        return userService.updateUser(id, user);</span>
+    public User updateUser(@PathVariable Long id, @Valid @RequestBody User user) {
+<span class="nc" id="L54">        return userService.updateUser(id, user);</span>
     }
 
-    /**
-     * Deletes a user from the database by their ID.
-     *
-     * @param id The ID of the user to delete
-     */
     @DeleteMapping(&quot;/{id}&quot;)
     public void deleteUser(@PathVariable Long id) {
-<span class="nc" id="L96">        userService.deleteUser(id);</span>
-<span class="nc" id="L97">    }</span>
+<span class="nc" id="L59">        userService.deleteUser(id);</span>
+<span class="nc" id="L60">    }</span>
 
-    /**
-     * Authenticates a user and returns their profile with team information.
-     *
-     * @param loginRequest      The login credentials containing email and password
-     * @return                  A ResponseEntity with the login response on success, or an error message on failure
-     */
     @PostMapping(&quot;/login&quot;)
     public ResponseEntity&lt;?&gt; login(@RequestBody LoginRequest loginRequest) {
-<span class="nc" id="L107">        User user = userService.login(loginRequest.getEmail(), loginRequest.getPassword());</span>
-<span class="nc bnc" id="L108" title="All 2 branches missed.">        if (user == null) {</span>
-<span class="nc" id="L109">            return ResponseEntity.status(401).body(&quot;Invalid email or password&quot;);</span>
+<span class="fc" id="L64">        User user = userService.login(loginRequest.getEmail(), loginRequest.getPassword());</span>
+<span class="fc bfc" id="L65" title="All 2 branches covered.">        if (user == null) {</span>
+<span class="fc" id="L66">            return ResponseEntity.status(401).body(&quot;Invalid email or password&quot;);</span>
         }
-<span class="nc bnc" id="L111" title="All 2 branches missed.">        String teamName = user.getTeam() != null ? user.getTeam().getName() : null;</span>
-<span class="nc" id="L112">        LoginResponse response = new LoginResponse(</span>
-<span class="nc" id="L113">                user.getId(),</span>
-<span class="nc" id="L114">                user.getName(),</span>
-<span class="nc" id="L115">                user.getEmail(),</span>
-<span class="nc" id="L116">                user.getRole(),</span>
+<span class="pc bpc" id="L68" title="1 of 2 branches missed.">        String teamName = user.getTeam() != null ? user.getTeam().getName() : null;</span>
+<span class="fc" id="L69">        LoginResponse response = new LoginResponse(</span>
+<span class="fc" id="L70">                user.getId(),</span>
+<span class="fc" id="L71">                user.getName(),</span>
+<span class="fc" id="L72">                user.getEmail(),</span>
+<span class="fc" id="L73">                user.getRole(),</span>
                 teamName
         );
-<span class="nc" id="L119">        return ResponseEntity.ok(response);</span>
+<span class="fc" id="L76">        return ResponseEntity.ok(response);</span>
     }
 
-    /**
-     * Updates a user's team assignment.
-     *
-     * @param id                The ID of the user to update
-     * @param body              A map containing the team name
-     * @return                  A ResponseEntity with the updated user, or an error message on failure
-     */
     @PutMapping(&quot;/{id}/team&quot;)
-    public ResponseEntity&lt;?&gt; updateTeam(@PathVariable Long id,
-                                        @RequestBody Map&lt;String, String&gt; body) {
+    public ResponseEntity&lt;?&gt; updateTeam(@PathVariable Long id, @RequestBody Map&lt;String, String&gt; body) {
         try {
-<span class="nc" id="L133">            return ResponseEntity.ok(userService.updateTeam(id, body.get(&quot;team&quot;)));</span>
-<span class="nc" id="L134">        } catch (RuntimeException e) {</span>
-<span class="nc" id="L135">            return ResponseEntity.status(400).body(e.getMessage());</span>
+<span class="nc" id="L82">            return ResponseEntity.ok(userService.updateTeam(id, body.get(&quot;team&quot;)));</span>
+<span class="nc" id="L83">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L84">            return ResponseEntity.status(400).body(e.getMessage());</span>
         }
     }
 
-    /**
-     * Updates a user's job title.
-     *
-     * @param id                The ID of the user to update
-     * @param body              A map containing the job title
-     * @return                  A ResponseEntity with the updated user, or an error message on failure
-     */
     @PutMapping(&quot;/{id}/job-title&quot;)
-    public ResponseEntity&lt;?&gt; updateJobTitle(@PathVariable Long id,
-                                            @RequestBody Map&lt;String, String&gt; body) {
+    public ResponseEntity&lt;?&gt; updateJobTitle(@PathVariable Long id, @RequestBody Map&lt;String, String&gt; body) {
         try {
-<span class="nc" id="L150">            return ResponseEntity.ok(userService.updateJobTitle(id, body.get(&quot;jobTitle&quot;)));</span>
-<span class="nc" id="L151">        } catch (RuntimeException e) {</span>
-<span class="nc" id="L152">            return ResponseEntity.status(400).body(e.getMessage());</span>
+<span class="nc" id="L91">            return ResponseEntity.ok(userService.updateJobTitle(id, body.get(&quot;jobTitle&quot;)));</span>
+<span class="nc" id="L92">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L93">            return ResponseEntity.status(400).body(e.getMessage());</span>
         }
     }
 
+    // ===================== DIRECT PASSWORD RESET (DEMO ONLY) =====================
+
     /**
-     * Handles validation errors for request bodies.
-     *
-     * @param ex The exception containing field validation errors
-     * @return   A ResponseEntity with the first validation error message
+     * Direct reset endpoint: takes an email and a new password and updates
+     * the password in one shot.
+     * &lt;p&gt;
+     * Only available when {@code app.demo.reset-enabled=true} (off by default).
+     * Returns 403 otherwise so a deployed instance is not open to account takeover.
      */
+    @PostMapping(&quot;/reset-password-direct&quot;)
+    public ResponseEntity&lt;?&gt; resetPasswordDirect(@RequestBody DirectResetRequest req) {
+        try {
+<span class="fc" id="L109">            userService.resetPasswordByEmail(req.getEmail(), req.getNewPassword());</span>
+<span class="fc" id="L110">            return ResponseEntity.ok(&quot;Password updated successfully&quot;);</span>
+<span class="nc" id="L111">        } catch (IllegalStateException e) {</span>
+            // Demo reset disabled — this is a security guard, not a validation error.
+<span class="nc" id="L113">            return ResponseEntity.status(403).body(e.getMessage());</span>
+<span class="fc" id="L114">        } catch (IllegalArgumentException e) {</span>
+<span class="fc" id="L115">            return ResponseEntity.badRequest().body(e.getMessage());</span>
+<span class="fc" id="L116">        } catch (RuntimeException e) {</span>
+<span class="fc" id="L117">            return ResponseEntity.status(404).body(e.getMessage());</span>
+        }
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity&lt;String&gt; handleValidation(MethodArgumentNotValidException ex) {
-<span class="nc" id="L164">        String message = ex.getBindingResult()</span>
-<span class="nc" id="L165">                .getFieldErrors()</span>
-<span class="nc" id="L166">                .stream()</span>
-<span class="nc" id="L167">                .map(err -&gt; err.getDefaultMessage())</span>
-<span class="nc" id="L168">                .findFirst()</span>
-<span class="nc" id="L169">                .orElse(&quot;Invalid request&quot;);</span>
-<span class="nc" id="L170">        return ResponseEntity.status(400).body(message);</span>
+<span class="nc" id="L123">        String message = ex.getBindingResult().getFieldErrors().stream()</span>
+<span class="nc" id="L124">                .map(err -&gt; err.getDefaultMessage()).findFirst().orElse(&quot;Invalid request&quot;);</span>
+<span class="nc" id="L125">        return ResponseEntity.status(400).body(message);</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

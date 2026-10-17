@@ -1077,7 +1077,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     });
 
     // ===================== NOTIFICATION BELL =====================
-    const NOTIF_SEEN_KEY = "symph.lastSeenCommentId";
+    const NOTIF_SEEN_KEY = "symph.lastSeenCommentId_" + (sessionStorage.getItem("userId") || "0");
     const notifBadge = document.getElementById("notifBadge") as HTMLSpanElement | null;
     const notifMenuList = document.getElementById("notifMenuList") as HTMLDivElement | null;
 

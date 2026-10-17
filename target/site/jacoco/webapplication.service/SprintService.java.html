@@ -85,44 +85,46 @@ public class SprintService {
 <span class="nc bnc" id="L85" title="All 2 branches missed.">        if (updatedSprint.getEndDate() != null) {</span>
 <span class="nc" id="L86">            sprint.setEndDate(updatedSprint.getEndDate());</span>
         }
-<span class="nc bnc" id="L88" title="All 2 branches missed.">        if (updatedSprint.getMemberCount() &gt; 0) {</span>
-<span class="nc" id="L89">            sprint.setMemberCount(updatedSprint.getMemberCount());</span>
+        // Preserve the existing count if the caller sent 0 (the UI sends 0
+        // when it has no members selected, which we treat as &quot;no change&quot;).
+<span class="nc bnc" id="L90" title="All 2 branches missed.">        if (updatedSprint.getMemberCount() &gt; 0) {</span>
+<span class="nc" id="L91">            sprint.setMemberCount(updatedSprint.getMemberCount());</span>
         }
 
-<span class="nc" id="L92">        return sprintRepository.save(sprint);</span>
+<span class="nc" id="L94">        return sprintRepository.save(sprint);</span>
     }
 
     public Sprint startSprint(Long id) {
-<span class="fc" id="L96">        Sprint sprint = getSprintById(id);</span>
-<span class="fc" id="L97">        sprint.setStatus(SprintStatus.ACTIVE);</span>
-<span class="fc" id="L98">        return sprintRepository.save(sprint);</span>
+<span class="fc" id="L98">        Sprint sprint = getSprintById(id);</span>
+<span class="fc" id="L99">        sprint.setStatus(SprintStatus.ACTIVE);</span>
+<span class="fc" id="L100">        return sprintRepository.save(sprint);</span>
     }
 
     public Sprint completeSprint(Long id) {
-<span class="fc" id="L102">        Sprint sprint = getSprintById(id);</span>
-<span class="fc" id="L103">        sprint.setStatus(SprintStatus.COMPLETED);</span>
-<span class="fc" id="L104">        return sprintRepository.save(sprint);</span>
+<span class="fc" id="L104">        Sprint sprint = getSprintById(id);</span>
+<span class="fc" id="L105">        sprint.setStatus(SprintStatus.COMPLETED);</span>
+<span class="fc" id="L106">        return sprintRepository.save(sprint);</span>
     }
 
     @Transactional
     public void deleteSprint(Long id) {
-<span class="fc" id="L109">        List&lt;Task&gt; tasks = taskRepository.findBySprintId(id);</span>
+<span class="fc" id="L111">        List&lt;Task&gt; tasks = taskRepository.findBySprintId(id);</span>
 
-<span class="pc bpc" id="L111" title="1 of 2 branches missed.">        for (Task task : tasks) {</span>
-<span class="nc" id="L112">            List&lt;TimeLog&gt; logs = timeLogRepository.findByTaskId(task.getId());</span>
-<span class="nc bnc" id="L113" title="All 2 branches missed.">            if (!logs.isEmpty()) {</span>
-<span class="nc" id="L114">                timeLogRepository.deleteAll(logs);</span>
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">        for (Task task : tasks) {</span>
+<span class="nc" id="L114">            List&lt;TimeLog&gt; logs = timeLogRepository.findByTaskId(task.getId());</span>
+<span class="nc bnc" id="L115" title="All 2 branches missed.">            if (!logs.isEmpty()) {</span>
+<span class="nc" id="L116">                timeLogRepository.deleteAll(logs);</span>
             }
-<span class="nc" id="L116">            taskCommentRepository.deleteByTaskId(task.getId());</span>
-<span class="nc" id="L117">            task.getTags().clear();</span>
-<span class="nc" id="L118">            taskRepository.save(task);</span>
-<span class="nc" id="L119">        }</span>
+<span class="nc" id="L118">            taskCommentRepository.deleteByTaskId(task.getId());</span>
+<span class="nc" id="L119">            task.getTags().clear();</span>
+<span class="nc" id="L120">            taskRepository.save(task);</span>
+<span class="nc" id="L121">        }</span>
 
-<span class="pc bpc" id="L121" title="1 of 2 branches missed.">        if (!tasks.isEmpty()) {</span>
-<span class="nc" id="L122">            taskRepository.deleteAll(tasks);</span>
+<span class="pc bpc" id="L123" title="1 of 2 branches missed.">        if (!tasks.isEmpty()) {</span>
+<span class="nc" id="L124">            taskRepository.deleteAll(tasks);</span>
         }
 
-<span class="fc" id="L125">        sprintRepository.deleteById(id);</span>
-<span class="fc" id="L126">    }</span>
+<span class="fc" id="L127">        sprintRepository.deleteById(id);</span>
+<span class="fc" id="L128">    }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

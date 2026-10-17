@@ -11,8 +11,11 @@ C:\Users\jllim\IdeaProjects\jlim0263\src\main\java\webapplication\controller\Tea
 C:\Users\jllim\IdeaProjects\jlim0263\src\main\java\webapplication\controller\TimeLogController.java
 C:\Users\jllim\IdeaProjects\jlim0263\src\main\java\webapplication\controller\UserController.java
 C:\Users\jllim\IdeaProjects\jlim0263\src\main\java\webapplication\dto\BurndownPoint.java
+C:\Users\jllim\IdeaProjects\jlim0263\src\main\java\webapplication\dto\DirectResetRequest.java
+C:\Users\jllim\IdeaProjects\jlim0263\src\main\java\webapplication\dto\ForgotPasswordRequest.java
 C:\Users\jllim\IdeaProjects\jlim0263\src\main\java\webapplication\dto\LoginRequest.java
 C:\Users\jllim\IdeaProjects\jlim0263\src\main\java\webapplication\dto\LoginResponse.java
+C:\Users\jllim\IdeaProjects\jlim0263\src\main\java\webapplication\dto\ResetPasswordRequest.java
 C:\Users\jllim\IdeaProjects\jlim0263\src\main\java\webapplication\dto\TaskCommentResponse.java
 C:\Users\jllim\IdeaProjects\jlim0263\src\main\java\webapplication\dto\TaskHours.java
 C:\Users\jllim\IdeaProjects\jlim0263\src\main\java\webapplication\dto\TimeLogRequest.java
