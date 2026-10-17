@@ -85,6 +85,8 @@ public class SprintService {
         if (updatedSprint.getEndDate() != null) {
             sprint.setEndDate(updatedSprint.getEndDate());
         }
+        // Preserve the existing count if the caller sent 0 (the UI sends 0
+        // when it has no members selected, which we treat as "no change").
         if (updatedSprint.getMemberCount() > 0) {
             sprint.setMemberCount(updatedSprint.getMemberCount());
         }

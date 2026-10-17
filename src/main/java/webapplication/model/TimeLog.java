@@ -2,17 +2,11 @@ package webapplication.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 /**
  * Represents a record of hours logged against a task by a user.
  * Used for reporting and tracking time spent on work.
- *
- * Supports a running stopwatch: when running = true, the timer is
- * in progress and startTimestamp holds the moment it began. When the
- * user presses Stop, running is set to false and hours is computed
- * from startTimestamp to now.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -34,14 +28,6 @@ public class TimeLog {
     private double hours;
 
     private String description;
-
-    /** True while a stopwatch is running for this log. */
-    @Column(name = "running")
-    private Boolean running = false;
-
-    /** Wall-clock instant the stopwatch started. */
-    @Column(name = "start_timestamp")
-    private LocalDateTime startTimestamp;
 
     @ManyToOne
     @JoinColumn(name = "task_id")
@@ -146,34 +132,6 @@ public class TimeLog {
      * @param description The description
      */
     public void setDescription(String description) { this.description = description; }
-
-    /**
-     * Gets whether the stopwatch is currently running.
-     *
-     * @return True if running, false otherwise
-     */
-    public Boolean getRunning() { return running; }
-
-    /**
-     * Sets whether the stopwatch is currently running.
-     *
-     * @param running True if running, false otherwise
-     */
-    public void setRunning(Boolean running) { this.running = running; }
-
-    /**
-     * Gets the wall-clock instant the stopwatch started.
-     *
-     * @return The start timestamp
-     */
-    public LocalDateTime getStartTimestamp() { return startTimestamp; }
-
-    /**
-     * Sets the wall-clock instant the stopwatch started.
-     *
-     * @param startTimestamp The start timestamp
-     */
-    public void setStartTimestamp(LocalDateTime startTimestamp) { this.startTimestamp = startTimestamp; }
 
     /**
      * Gets the task the hours were logged against.

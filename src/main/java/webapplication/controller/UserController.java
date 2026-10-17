@@ -94,17 +94,23 @@ public class UserController {
         }
     }
 
-    // ===================== DIRECT PASSWORD RESET =====================
+    // ===================== DIRECT PASSWORD RESET (DEMO ONLY) =====================
 
     /**
      * Direct reset endpoint: takes an email and a new password and updates
      * the password in one shot.
+     * <p>
+     * Only available when {@code app.demo.reset-enabled=true} (off by default).
+     * Returns 403 otherwise so a deployed instance is not open to account takeover.
      */
     @PostMapping("/reset-password-direct")
     public ResponseEntity<?> resetPasswordDirect(@RequestBody DirectResetRequest req) {
         try {
             userService.resetPasswordByEmail(req.getEmail(), req.getNewPassword());
             return ResponseEntity.ok("Password updated successfully");
+        } catch (IllegalStateException e) {
+            // Demo reset disabled — this is a security guard, not a validation error.
+            return ResponseEntity.status(403).body(e.getMessage());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (RuntimeException e) {

@@ -102,7 +102,12 @@ public class TaskService {
     }
 
     /**
-     * Updates an existing task's details. Only non-null fields are overwritten.
+     * Updates an existing task's details.
+     * <p>
+     * Primitive fields ({@code progress}, {@code estimateHours}) are always
+     * assigned from the incoming payload so they can be explicitly reset to 0
+     * by the UI's "Reset to 0%" / "Clear estimate" buttons. Reference fields
+     * are only overwritten when non-null, so callers can do partial updates.
      */
     public Task updateTask(Long id, Task taskDetails) {
         Task task = getTaskById(id);
@@ -111,8 +116,11 @@ public class TaskService {
         if (taskDetails.getDescription() != null) task.setDescription(taskDetails.getDescription());
         if (taskDetails.getStatus() != null) task.setStatus(taskDetails.getStatus());
         if (taskDetails.getPriority() != null) task.setPriority(taskDetails.getPriority());
-        if (taskDetails.getProgress() != 0) task.setProgress(taskDetails.getProgress());
         if (taskDetails.getDueDate() != null) task.setDueDate(taskDetails.getDueDate());
+
+        // Always assign primitives so 0 is a meaningful value (reset).
+        task.setProgress(clampProgress(taskDetails.getProgress()));
+        task.setEstimateHours(Math.max(0, taskDetails.getEstimateHours()));
 
         if (taskDetails.getSprint() != null && taskDetails.getSprint().getId() != null) {
             Sprint sprint = sprintRepository.findById(taskDetails.getSprint().getId())
@@ -123,11 +131,16 @@ public class TaskService {
         if (taskDetails.getAssignedUser() != null) task.setAssignedUser(taskDetails.getAssignedUser());
         if (taskDetails.getAssignedTeams() != null) task.setAssignedTeams(taskDetails.getAssignedTeams());
         if (taskDetails.getAssignedEmployeeIds() != null) task.setAssignedEmployeeIds(taskDetails.getAssignedEmployeeIds());
-        if (taskDetails.getEstimateHours() != 0) task.setEstimateHours(taskDetails.getEstimateHours());
-
         if (taskDetails.getPosition() != null) task.setPosition(taskDetails.getPosition());
 
         return taskRepository.save(task);
+    }
+
+    /** Clamps a progress value to 0-100 so bad payloads can't corrupt the DB. */
+    private int clampProgress(int progress) {
+        if (progress < 0) return 0;
+        if (progress > 100) return 100;
+        return progress;
     }
 
     /**
@@ -158,8 +171,6 @@ public class TaskService {
 
     /**
      * Deletes a task along with its dependent time logs and comments.
-     * Time logs and comments are removed first so the DB does not raise a
-     * foreign key constraint violation on task_id.
      */
     public void deleteTask(Long id) {
         List<TimeLog> logs = timeLogRepository.findByTaskId(id);
