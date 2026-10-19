@@ -41,7 +41,7 @@ public class TaskComment {
         this.task = task;
         this.author = author;
         this.body = body;
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now(java.time.ZoneId.of("Asia/Kuala_Lumpur"));
     }
 
     public Long getId() { return id; }
