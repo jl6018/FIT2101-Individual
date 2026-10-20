@@ -13,7 +13,7 @@ import java.util.Set;
 /**
  * Manages tag creation, retrieval, and attachment to tasks.
  *
- * @author Lim Jia Li
+ * @author Symph Team
  * @author Atifah (replaceTags for US13)
  * @version 17.0.16
  */
@@ -23,28 +23,17 @@ public class TagService {
     private final TagRepository tagRepository;
     private final TaskRepository taskRepository;
 
-    /**
-     * Constructor with the required repository dependencies.
-     *
-     * @param tagRepository  The repository handling tag database operations
-     * @param taskRepository The repository handling task database operations
-     */
     public TagService(TagRepository tagRepository, TaskRepository taskRepository) {
         this.tagRepository = tagRepository;
         this.taskRepository = taskRepository;
     }
 
-    /**
-     * Retrieves all tags from the database.
-     *
-     * @return A list of all tags
-     */
     public List<Tag> getAllTags() {
         return tagRepository.findAll();
     }
 
     /**
-     * Adds a tag to a task, creates the tag if it doesn't exist.
+     * Adds a tag to a task ,creates the tag if it doesn't  exist
      *
      * @param taskId  The ID of the task to tag
      * @param tagName The name of the tag
@@ -73,7 +62,7 @@ public class TagService {
     }
 
     /**
-     * Removes a tag from a task.
+     * Removes a tag from a task
      *
      * @param taskId The ID of the task
      * @param tagId  The ID of the tag to remove
@@ -89,10 +78,10 @@ public class TagService {
     }
 
     /**
-     * Replaces all the tags on a task with the given tag names (US13).
+     * Replaces all the tags on a task with the given tag names us13
      *
      * @param taskId   The ID of the task
-     * @param tagNames The names of the tags to assign
+     * @param tagNames The names of the tags the task
      * @return         The updated task
      * @throws RuntimeException if the task does not exist
      */
