@@ -166,7 +166,10 @@ public class TeamService {
     }
 
     /** Teams that exist from the first start so the Members button has something to show. */
-    public static final List<String> DEFAULT_TEAMS = List.of("Team Alpha", "Team Beta", "Team Gamma");
+    public static final List<String> DEFAULT_TEAMS = List.of(
+            "Team One", "Team Two", "Team Three", "Team Four", "Team Five",
+            "Team Six", "Team Seven", "Team Eight", "Team Nine", "Team Ten"
+    );
 
     /**
      * Creates the default teams if they are missing
