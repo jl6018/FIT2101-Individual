@@ -689,7 +689,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             };
             const res = await fetch(`${API_BASE}/${numericId}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "X-Role": sessionStorage.getItem("role") || "" },
                 body: JSON.stringify(body),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);

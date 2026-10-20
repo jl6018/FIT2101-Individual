@@ -250,4 +250,3 @@ confirmRemoveBtn.addEventListener('click', async () => {
 // INIT
 void loadMembers();
 void loadTeamMemberships();
-//# sourceMappingURL=main-team-management-page.js.map

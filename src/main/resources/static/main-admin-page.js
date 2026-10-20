@@ -180,7 +180,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         "3": "Sprint 3",
     };
     // REFERENCE DATA
-    // REFERENCE DATA
     const TEAMS = [
         { id: "Team One", name: "Team One" },
         { id: "Team Two", name: "Team Two" },
@@ -618,7 +617,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             };
             const res = await fetch(`${API_BASE}/${numericId}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "X-Role": sessionStorage.getItem("role") || "" },
                 body: JSON.stringify(body),
             });
             if (!res.ok)
@@ -2000,4 +1999,3 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     }
     void init();
 })();
-//# sourceMappingURL=main-admin-page.js.map

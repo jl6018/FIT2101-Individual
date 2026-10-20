@@ -523,4 +523,3 @@ function renderBurndown(points, sprint) {
 void reloadAll();
 // Refresh when the tab regains focus
 window.addEventListener("focus", () => { void reloadAll(); });
-//# sourceMappingURL=main-reports-page.js.map

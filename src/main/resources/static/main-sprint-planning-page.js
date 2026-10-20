@@ -384,4 +384,3 @@ sprintPlanningForm.addEventListener('submit', async (e) => {
 populateSprintNameOptions();
 populateDurationOptions();
 void loadSprints();
-//# sourceMappingURL=main-sprint-planning-page.js.map
