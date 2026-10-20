@@ -180,10 +180,18 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         "3": "Sprint 3",
     };
     // REFERENCE DATA
+    // REFERENCE DATA
     const TEAMS = [
-        { id: "Team Alpha", name: "Team Alpha" },
-        { id: "Team Beta", name: "Team Beta" },
-        { id: "Team Gamma", name: "Team Gamma" },
+        { id: "Team One", name: "Team One" },
+        { id: "Team Two", name: "Team Two" },
+        { id: "Team Three", name: "Team Three" },
+        { id: "Team Four", name: "Team Four" },
+        { id: "Team Five", name: "Team Five" },
+        { id: "Team Six", name: "Team Six" },
+        { id: "Team Seven", name: "Team Seven" },
+        { id: "Team Eight", name: "Team Eight" },
+        { id: "Team Nine", name: "Team Nine" },
+        { id: "Team Ten", name: "Team Ten" },
     ];
     let EMPLOYEES = [];
     async function loadEmployeesFromBackend() {
