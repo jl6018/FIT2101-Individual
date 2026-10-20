@@ -14,7 +14,7 @@ FIT2101 S2 2026 group repository — Sprint 3 Final Release.
 
 ## About Symph
 Symph is an all-in-one Agile project management tool.
-It allows Admins to plan sprints, assign tasks, and track progress using a drag-and-drop Kanban board. 
+It allows Admins to plan sprints, assign tasks, and track progress using a drag-and-drop Kanban board.
 Employees can log their hours directly against tasks, and the system automatically generates team contribution reports and sprint burndown charts.
 
 ## 🛠Technology Stack
