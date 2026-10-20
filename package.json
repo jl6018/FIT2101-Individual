@@ -18,5 +18,8 @@
   "type": "commonjs",
   "devDependencies": {
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "Typescript": "npm:typescript@^7.0.2"
   }
 }
