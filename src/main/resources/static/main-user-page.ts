@@ -4,14 +4,14 @@
 
 /**
  * User Board Page — Symph Web Application
- * Employee board with read-only task modal, Comments modal, Log Time
+ * Employee board with task modal (status dropdown + progress slider), Comments modal, Log Time
  * modal, My Logs modal, notification bell, and Logout confirmation.
  *
  * @author Lim Jia Li
  * @version 17.0.16
  */
 
-// ===================== EMPLOYEE GUARD =====================
+// EMPLOYEE GUARD
 window.addEventListener("pageshow", (event) => {
     if ((event as PageTransitionEvent).persisted && sessionStorage.getItem("loggedIn") !== "true") {
         window.location.href = "index-login-page.html";
@@ -28,12 +28,12 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 }
 
 (() => {
-    // ===================== CONFIG =====================
-    const API_BASE = "/api/tasks";
-    const SPRINTS_API = "/api/sprints";
-    const TIMELOGS_API = "/api/timelogs";
-    const USERS_API = "/api/users";
-    const RECENT_COMMENTS_API = "/api/tasks/comments/recent?limit=20";
+    // CONFIGURATIONS
+    const API_BASE = "http://localhost:8080/api/tasks";
+    const SPRINTS_API = "http://localhost:8080/api/sprints";
+    const TIMELOGS_API = "http://localhost:8080/api/timelogs";
+    const USERS_API = "http://localhost:8080/api/users";
+    const RECENT_COMMENTS_API = "http://localhost:8080/api/tasks/comments/recent?limit=20";
 
     type ColumnId = "PRODUCT_BACKLOG" | "TO_DO" | "IN_PROGRESS" | "IN_REVIEW" | "COMPLETED";
     type Task = {
@@ -48,6 +48,8 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         tags: { id: number; name: string }[];
         assignedTeams: string | null;
         assignedEmployeeIds: string | null;
+        position: number;
+        sprintId: number | null;
     };
     type BackendTask = {
         id: number;
@@ -58,6 +60,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         estimateHours?: number | null;
         priority?: string | null;
         progress?: number | null;
+        position?: number | null;
         tags?: { id: number; name: string }[] | null;
         sprint?: { id: number } | null;
         assignedTeams?: string | null;
@@ -105,7 +108,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     };
     const TAG_FILTER_ALL = "all";
 
-    // ===================== HELPERS =====================
+    // HELPERS
     function requireElement<T extends HTMLElement>(id: string): T {
         const el = document.getElementById(id);
         if (!el) throw new Error(`Missing element: ${id}`);
@@ -128,6 +131,14 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         const d = new Date(`${iso}T00:00:00`);
         return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
     }
+
+    // Today as "yyyy-MM-dd" in the user's own time zone
+    // (toISOString() is UTC which is yesterday in Malaysia between midnight and 8am).
+    function todayLocalIso(): string {
+        const n = new Date();
+        return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
+    }
+
     function initials(name: string): string {
         return String(name).split(/\s+/).filter(Boolean).slice(0, 2)
             .map((part) => part.charAt(0).toUpperCase()).join("");
@@ -146,7 +157,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         { id: "COMPLETED", name: "Completed" },
     ];
 
-    // ===================== STATE =====================
+    // STATE
     let tasks: Task[] = [];
     let searchTerm = "";
     let currentTagName: string = TAG_FILTER_ALL;
@@ -163,7 +174,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     const searchInput = document.getElementById("searchInput") as HTMLInputElement | null;
     const emptyState = document.getElementById("boardEmptyState") as HTMLParagraphElement | null;
 
-    // ===================== TOAST + CONFIRM =====================
+    // TOAST + CONFIRM
     const toastEl = document.getElementById("toast");
     let toastTimeoutId: number | undefined;
     function showToast(message: string): void {
@@ -204,7 +215,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (e.target === confirmOverlay) closeConfirmModal(false);
     });
 
-    // ===================== SHOW CURRENT USER =====================
+    // SHOW CURRENT USER
     const avatarEl = document.getElementById("userAvatar");
     const profileMenuName = document.getElementById("profileMenuName");
     const profileMenuSub = document.getElementById("profileMenuSub");
@@ -224,7 +235,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     const roleBadgeEl = document.getElementById("roleBadge");
     if (roleBadgeEl) roleBadgeEl.textContent = storedTeam || "Employee";
 
-    // ===================== MENUS =====================
+    // MENUS
     const profileMenuBtn = document.getElementById("profileMenuBtn") as HTMLButtonElement | null;
     const profileMenu = document.getElementById("profileMenu") as HTMLDivElement | null;
     const headerMenuBtn = document.getElementById("headerMenuBtn") as HTMLButtonElement | null;
@@ -309,7 +320,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (event.key === "Escape") closeAllMenus();
     });
 
-    // ===================== LOGOUT =====================
+    // LOGOUT
     const logoutBtn = document.getElementById("logoutBtn") as HTMLButtonElement | null;
     const logoutOverlay = document.getElementById("logoutOverlay") as HTMLDivElement | null;
     const cancelLogoutBtn = document.getElementById("cancelLogoutBtn") as HTMLButtonElement | null;
@@ -328,7 +339,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (e.target === logoutOverlay) logoutOverlay.classList.remove("visible");
     });
 
-    // ===================== SPRINT RESOLUTION =====================
+    // SPRINT RESOLUTION
     async function resolveCurrentSprintId(): Promise<number | null> {
         const name = SPRINT_TAB_NAMES[currentSprintId];
         if (!name) return null;
@@ -345,7 +356,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         }
     }
 
-    // ===================== TEAMMATES =====================
+    // TEAMMATES
     async function loadTeammates(): Promise<void> {
         teammateIds = new Set<string>();
         userIdToName = new Map<string, string>();
@@ -368,7 +379,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         }
     }
 
-    // ===================== PERMISSION HELPERS =====================
+    // PERMISSION HELPERS
     function taskVisibleToCurrentEmployee(task: BackendTask): boolean {
         const myTeam = sessionStorage.getItem("team") || "";
         const myId = sessionStorage.getItem("userId") || "";
@@ -411,7 +422,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         return "Unassigned";
     }
 
-    // ===================== BACKEND SYNC =====================
+    // BACKEND SYNC
     async function fetchTasks(): Promise<Task[]> {
         try {
             currentSprintNumericId = await resolveCurrentSprintId();
@@ -465,10 +476,12 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             tags: Array.isArray(t.tags) ? t.tags : [],
             assignedTeams: t.assignedTeams ?? null,
             assignedEmployeeIds: t.assignedEmployeeIds ?? null,
+            position: typeof t.position === "number" ? t.position : 0,
+            sprintId: t.sprint?.id ?? currentSprintNumericId,
         };
     }
 
-    // ===================== RENDER =====================
+    // RENDER
     const CLOCK_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>`;
     function renderPriorityBadge(task: Task): string {
         if (!task.priority) return "";
@@ -563,7 +576,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         }
     }
 
-    // ===================== SEARCH =====================
+    // SEARCH
     searchInput?.addEventListener("input", (event) => {
         searchTerm = (event.target as HTMLInputElement).value.trim();
         renderBoard();
@@ -576,7 +589,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         }
     });
 
-    // ===================== TAG FILTER =====================
+    // FILTER TAGS
     function availableTagNames(): string[] {
         const names = new Set<string>();
         tasks.forEach((t) => (t.tags ?? []).forEach((tag) => names.add(tag.name)));
@@ -619,7 +632,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         renderBoard();
     });
 
-    // ===================== LOG TIME MODAL =====================
+    // LOG TIME MODAL
     const logTimeOverlay = requireElement<HTMLDivElement>("logTimeOverlay");
     const closeLogTimeBtn = requireElement<HTMLButtonElement>("closeLogTimeBtn");
     const logTimeForm = requireElement<HTMLFormElement>("logTimeForm");
@@ -644,8 +657,8 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
 
         logTimeTaskId = task.id;
         logTimeTaskContext.textContent = `Record your start time, time spent, and date for "${task.title}".`;
-        logDate.max = new Date().toISOString().split("T")[0];
-        logDate.value = new Date().toISOString().split("T")[0];
+        logDate.max = todayLocalIso();
+        logDate.value = todayLocalIso();
         logStartTime.value = "";
         logHours.value = "";
         logDescription.value = "";
@@ -705,7 +718,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         }
     });
 
-    // ===================== MY LOGS MODAL =====================
+    // MY LOGS MODAL
     const myLogsBtn = document.getElementById("myLogsBtn") as HTMLButtonElement | null;
     const myLogsOverlay = document.getElementById("myLogsOverlay") as HTMLDivElement | null;
     const closeMyLogsBtn = document.getElementById("closeMyLogsBtn") as HTMLButtonElement | null;
@@ -804,9 +817,11 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (e.target === myLogsOverlay) closeMyLogs();
     });
 
-    // ===================== TASK MODAL =====================
+    // TASK MODAL
     const overlay = document.getElementById("taskModalOverlay");
     const modalColumn = document.getElementById("modalColumn") as HTMLSelectElement | null;
+    const modalProgressSlider = document.getElementById("modalProgressSlider") as HTMLInputElement | null;
+    const modalProgressValue = document.getElementById("modalProgressValue") as HTMLSpanElement | null;
     const titleInput = document.getElementById("modalTitle") as HTMLInputElement | null;
     const descriptionBox = document.getElementById("modalDescription") as HTMLTextAreaElement | null;
     const summary = document.getElementById("modalSummary") as HTMLDivElement | null;
@@ -834,7 +849,17 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
     function openModal(task: Task): void {
         if (!overlay) return;
         currentOpenTaskId = task.id;
-        if (modalColumn) modalColumn.value = task.column;
+        const locked = task.column === "COMPLETED"; // only an admin can reopen a completed task
+        if (modalColumn) {
+            modalColumn.value = task.column;
+            modalColumn.disabled = locked;
+        }
+        const openPct = Math.max(0, Math.min(100, Number(task.progress) || 0));
+        if (modalProgressSlider) {
+            modalProgressSlider.value = String(openPct);
+            modalProgressSlider.disabled = locked;
+        }
+        if (modalProgressValue) modalProgressValue.textContent = `${openPct}%`;
         if (titleInput) titleInput.value = task.title;
         if (descriptionBox) descriptionBox.value = task.description || "";
         if (summary) {
@@ -844,7 +869,6 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
                 `<span class="summary-chip"><b>Due</b> ${task.dueDate ? formatDateBadge(task.dueDate) : "No due date"}</span>`,
                 `<span class="summary-chip"><b>Estimate</b> ${task.estimateHours > 0 ? `${task.estimateHours}h` : "Not set"}</span>`,
                 `<span class="summary-chip"><b>Priority</b> ${priorityLabel}</span>`,
-                `<span class="summary-chip"><b>Progress</b> ${Math.max(0, Math.min(100, Number(task.progress) || 0))}%</span>`,
             ];
             summary.innerHTML = chips.join("");
         }
@@ -883,7 +907,86 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         });
     }
 
-    // ===================== COMMENTS MODAL =====================
+    // UPDATE STATUS + PROGRESS
+    // Employees may move a task between these columns only.
+    // The Completed status is restricted to admin-only (US17).
+    const EMPLOYEE_MOVABLE: ColumnId[] = ["TO_DO", "IN_PROGRESS", "IN_REVIEW"];
+
+    // Uses the backend's dedicated endpoints (PUT /{id}/status and PUT /{id}/progress),
+    // so only that one field changes. The full PUT /{id} ignores progress = 0.
+    async function saveTaskChanges(task: Task, changes: { status?: ColumnId; progress?: number }): Promise<boolean> {
+        try {
+            const numericId = Number(task.id);
+            if (!Number.isFinite(numericId) || numericId <= 0) return false;
+            let url: string;
+            if (changes.status !== undefined) {
+                url = `${API_BASE}/${numericId}/status?status=${encodeURIComponent(changes.status)}`;
+            } else if (changes.progress !== undefined) {
+                url = `${API_BASE}/${numericId}/progress?progress=${changes.progress}`;
+            } else {
+                return true;
+            }
+            const res = await fetch(url, { method: "PUT" });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return true;
+        } catch (err) {
+            console.error("Task update failed:", err);
+            return false;
+        }
+    }
+
+    async function reloadAndReopen(taskId: string): Promise<void> {
+        tasks = await fetchTasks();
+        renderBoard();
+        renderTagFilter();
+        const fresh = tasks.find((t) => t.id === taskId);
+        if (fresh) openModal(fresh);
+    }
+
+    modalColumn?.addEventListener("change", async () => {
+        const task = tasks.find((t) => t.id === currentOpenTaskId);
+        if (!task || !modalColumn) return;
+        const next = modalColumn.value as ColumnId;
+        const previous = task.column;
+        if (next === previous) return;
+        if (!EMPLOYEE_MOVABLE.includes(next)) {
+            modalColumn.value = previous;
+            showToast("Only an admin can move a task there.");
+            return;
+        }
+        modalColumn.disabled = true;
+        const ok = await saveTaskChanges(task, { status: next });
+        if (!ok) {
+            modalColumn.value = previous;
+            modalColumn.disabled = false;
+            showToast("Couldn't update the status. Please try again.");
+            return;
+        }
+        await reloadAndReopen(task.id);
+        showToast(`Moved to ${COLUMNS.find((c) => c.id === next)?.name ?? next}`);
+    });
+
+    modalProgressSlider?.addEventListener("input", () => {
+        if (modalProgressValue) modalProgressValue.textContent = `${modalProgressSlider.value}%`;
+    });
+    modalProgressSlider?.addEventListener("change", async () => {
+        const task = tasks.find((t) => t.id === currentOpenTaskId);
+        if (!task || !modalProgressSlider) return;
+        const pct = Math.max(0, Math.min(100, Number(modalProgressSlider.value) || 0));
+        if (pct === task.progress) return;
+        const ok = await saveTaskChanges(task, { progress: pct });
+        if (!ok) {
+            const old = Math.max(0, Math.min(100, Number(task.progress) || 0));
+            modalProgressSlider.value = String(old);
+            if (modalProgressValue) modalProgressValue.textContent = `${old}%`;
+            showToast("Couldn't update progress. Please try again.");
+            return;
+        }
+        await reloadAndReopen(task.id);
+        showToast(`Progress set to ${pct}%`);
+    });
+
+    // COMMENTS MODAL
     const commentsOverlay = document.getElementById("commentsOverlay") as HTMLDivElement | null;
     const closeCommentsBtn = document.getElementById("closeCommentsBtn") as HTMLButtonElement | null;
     const commentsTitle = document.getElementById("commentsTitle") as HTMLHeadingElement | null;
@@ -923,8 +1026,8 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
             );
             const roleLabel =
                 c.authorRole === "ADMIN" ? "Admin" :
-                c.authorRole === "PRODUCT_OWNER" ? "Product Owner" :
-                c.authorRole === "EMPLOYEE" ? "Employee" : "";
+                    c.authorRole === "PRODUCT_OWNER" ? "Product Owner" :
+                        c.authorRole === "EMPLOYEE" ? "Employee" : "";
             const isAdmin = c.authorRole === "ADMIN" || c.authorRole === "PRODUCT_OWNER";
             return `
                 <div class="comment-row${isAdmin ? " comment-row-admin" : ""}" data-comment-id="${c.id}">
@@ -1058,7 +1161,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         }
     });
 
-    // ===================== BOARD CLICK =====================
+    // BOARD CLICK
     board.addEventListener("click", (event) => {
         const target = event.target as HTMLElement;
         const logBtn = target.closest<HTMLElement>("[data-logtime]");
@@ -1076,8 +1179,8 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         if (task) openModal(task);
     });
 
-    // ===================== NOTIFICATION BELL =====================
-    const NOTIF_SEEN_KEY = "symph.lastSeenCommentId_" + (sessionStorage.getItem("userId") || "0");
+    // NOTIFICATION BELL
+    const NOTIF_SEEN_KEY = "symph.lastSeenCommentId";
     const notifBadge = document.getElementById("notifBadge") as HTMLSpanElement | null;
     const notifMenuList = document.getElementById("notifMenuList") as HTMLDivElement | null;
 
@@ -1191,8 +1294,9 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
                         const relevant = comments.filter(c =>
                             Number(c.authorId) !== myId && myTaskIds.has(String(c.taskId))
                         );
-                        if (relevant.length > 0) {
-                            setLastSeenCommentId(relevant[0].id);
+                        const newest = relevant[0];
+                        if (newest) {
+                            setLastSeenCommentId(newest.id);
                         }
                         if (notifBadge) notifBadge.hidden = true;
                     }
@@ -1230,7 +1334,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         }, 30000);
     }
 
-    // ===================== SPRINT TABS =====================
+    // SPRINT TABS
     function initSprintTabs(): void {
         const tabs = document.querySelectorAll<HTMLButtonElement>(".sprint-tab");
         tabs.forEach((tab) => {
@@ -1256,7 +1360,7 @@ if (sessionStorage.getItem("role") !== "EMPLOYEE") {
         });
     }
 
-    // ===================== INIT =====================
+    // INIT
     async function init(): Promise<void> {
         currentSprintId = "1";
         initSprintTabs();

@@ -60,6 +60,15 @@ function hideError(): void {
 }
 
 dismissError.addEventListener('click', hideError);
+
+// Show / hide password toggle
+const togglePasswordBtn = requireElement<HTMLButtonElement>('togglePassword');
+togglePasswordBtn.addEventListener('click', () => {
+    const show = passwordInput.type === 'password';
+    passwordInput.type = show ? 'text' : 'password';
+    togglePasswordBtn.textContent = show ? 'Hide password' : 'Show password';
+    togglePasswordBtn.setAttribute('aria-pressed', String(show));
+});
 userIdInput.addEventListener('input', hideError);
 passwordInput.addEventListener('input', hideError);
 

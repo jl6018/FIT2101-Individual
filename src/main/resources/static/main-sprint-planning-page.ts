@@ -11,14 +11,14 @@
  * @version 17.0.16
  */
 
-// ===================== BFCACHE FIX =====================
+// BFCACHE FIX
 window.addEventListener('pageshow', (event) => {
     if ((event as PageTransitionEvent).persisted && sessionStorage.getItem('loggedIn') !== 'true') {
         window.location.href = 'index-login-page.html';
     }
 });
 
-// ===================== AUTH GUARD =====================
+// AUTH GUARD
 if (sessionStorage.getItem('loggedIn') !== 'true') {
     window.location.href = 'index-login-page.html';
     throw new Error('Not logged in');
@@ -30,7 +30,7 @@ if (role !== 'ADMIN' && role !== 'PRODUCT_OWNER') {
     throw new Error('Only admins and product owners can access Sprint Planning');
 }
 
-// ===================== SIDEBAR COLLAPSE =====================
+// SIDEBAR COLLAPSE
 const SIDEBAR_KEY = "symph.sidebarCollapsed";
 const appShell = document.getElementById("appShell");
 const sidebarToggle = document.getElementById("sidebarToggle");
@@ -49,6 +49,7 @@ function setSidebarCollapsed(collapsed: boolean): void {
     sidebarToggle.title = collapsed ? "Expand menu" : "Collapse menu";
 }
 sidebarToggle?.addEventListener("click", () => {
+    if (!appShell) return;
     const collapsed = !appShell.classList.contains("sidebar-collapsed");
     setSidebarCollapsed(collapsed);
     writeSetting(SIDEBAR_KEY, collapsed ? "1" : "0");
@@ -87,11 +88,11 @@ interface BackendUser {
     team?: { name: string } | null;
 }
 
-// ===================== CONFIG =====================
-const SPRINTS_API = "/api/sprints";
-const USERS_API = "/api/users";
+// CONFIG
+const SPRINTS_API = "http://localhost:8080/api/sprints";
+const USERS_API = "http://localhost:8080/api/users";
 
-// ===================== ELEMENTS =====================
+// ELEMENTS
 const startSprintPlanningBtn = requireElement<HTMLButtonElement>('startSprintPlanningBtn');
 const sprintPlanningOverlay = requireElement<HTMLDivElement>('sprintPlanningOverlay');
 const closeSprintPlanningBtn = requireElement<HTMLButtonElement>('closeSprintPlanningBtn');
@@ -112,11 +113,11 @@ const deleteSprintName = requireElement<HTMLElement>('deleteSprintName');
 const cancelDeleteBtn = requireElement<HTMLButtonElement>('cancelDeleteBtn');
 const confirmDeleteBtn = requireElement<HTMLButtonElement>('confirmDeleteBtn');
 
-// ===================== STATE =====================
+// STATE
 let allSprints: Sprint[] = [];
-let editingSprintId: number | null = null;   // non-null → we're in edit mode
+let editingSprintId: number | null = null;   // non-null, we're in edit mode
 
-// ===================== MODAL OPEN/CLOSE =====================
+// MODAL OPEN/CLOSE
 function openModal(overlay: HTMLDivElement): void { overlay.classList.add('visible'); }
 function closeModal(overlay: HTMLDivElement): void { overlay.classList.remove('visible'); }
 
@@ -132,7 +133,7 @@ startSprintPlanningBtn.addEventListener('click', async () => {
     }
     if (sprintSubmitBtn) sprintSubmitBtn.textContent = 'Create sprint';
 
-    sprintStartDateInput.value = new Date().toISOString().split('T')[0];
+    sprintStartDateInput.value = new Date().toISOString().slice(0, 10);
     sprintNameInput.value = '';
     sprintDurationSelect.value = '';
     recalculateEndDate();
@@ -147,7 +148,7 @@ closeSprintPlanningBtn.addEventListener('click', () => closeModal(sprintPlanning
     });
 });
 
-// ===================== TOAST =====================
+// TOAST
 let toastTimeoutId: number | undefined;
 
 function showToast(message: string, type: 'success' | 'error' = 'success'): void {
@@ -159,7 +160,7 @@ function showToast(message: string, type: 'success' | 'error' = 'success'): void
     toastTimeoutId = window.setTimeout(() => toast.classList.remove('visible'), 3000);
 }
 
-// ===================== HELPERS =====================
+// HELPERS
 function statusLabel(status: string): string {
     if (status === 'PLANNED') return 'Planned';
     if (status === 'ACTIVE') return 'In progress';
@@ -180,13 +181,13 @@ function recalculateEndDate(): void {
     const end = new Date(start);
     end.setDate(end.getDate() + weeks * 7);
 
-    sprintEndDateInput.value = end.toISOString().split('T')[0];
+    sprintEndDateInput.value = end.toISOString().slice(0, 10);
 }
 
 sprintStartDateInput.addEventListener('change', recalculateEndDate);
 sprintDurationSelect.addEventListener('change', recalculateEndDate);
 
-// ===================== LOAD MEMBERS =====================
+// LOAD MEMBERS
 // Only employees who HAVE a team are offered as "Members involved".
 // `preCheckedIds` controls which are ticked; empty array = all ticked.
 async function loadMembers(preCheckedIds: number[]): Promise<void> {
@@ -216,38 +217,7 @@ async function loadMembers(preCheckedIds: number[]): Promise<void> {
     }
 }
 
-// ===================== LOAD MEMBERS FOR EDIT =====================
-// Pre-ticks exactly `existingCount` employees, matching the saved memberCount.
-// This prevents an edit from silently resetting the count to "everyone".
-async function loadMembersForEdit(existingCount: number): Promise<void> {
-    try {
-        const res = await fetch(USERS_API);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const users = (await res.json()) as BackendUser[];
-
-        const teamMembers = users.filter(
-            (u) => u.role === 'EMPLOYEE' && u.team
-        );
-
-        let ticked = 0;
-        membersList.innerHTML = teamMembers.length === 0
-            ? `<p class="muted">No team-assigned employees available.</p>`
-            : teamMembers.map((u) => {
-                const checked = ticked < existingCount;
-                if (checked) ticked++;
-                return `
-                <label class="member-row">
-                    <input type="checkbox" name="member" value="${u.id}" ${checked ? 'checked' : ''}>
-                    <span>${escapeHtml(u.name)} — ${escapeHtml(u.team!.name)}</span>
-                </label>`;
-            }).join('');
-    } catch (err) {
-        console.error('Failed to load members:', err);
-        membersList.innerHTML = `<p class="muted">Could not load members.</p>`;
-    }
-}
-
-// ===================== POPULATE DROPDOWNS =====================
+// POPULATE DROPDOWNS
 function populateSprintNameOptions(): void {
     const usedNames = new Set(allSprints.map((s) => s.name));
     const options = ['Sprint 1', 'Sprint 2', 'Sprint 3'];
@@ -267,7 +237,7 @@ function populateDurationOptions(): void {
     `;
 }
 
-// ===================== LOAD SPRINTS =====================
+// LOAD SPRINTS
 async function loadSprints(): Promise<void> {
     try {
         const res = await fetch(SPRINTS_API);
@@ -320,13 +290,13 @@ async function loadSprints(): Promise<void> {
     }
 }
 
-// ===================== EDIT SPRINT =====================
+// EDIT SPRINT
 async function openEditModal(sprint: Sprint): Promise<void> {
     editingSprintId = sprint.id;
 
-    // Pre-tick only the first N employees to match the saved member count,
-    // so an edit doesn't silently reset the count to "everyone".
-    await loadMembersForEdit(sprint.memberCount ?? 0);
+    // Figure out which employees to tick.
+    // Member list isn't stored, so all team members are ticked by default.
+    await loadMembers([]);
 
     populateDurationOptions();
 
@@ -346,14 +316,14 @@ async function openEditModal(sprint: Sprint): Promise<void> {
 
     sprintPlanningTitle.textContent = 'Edit Sprint';
     if (sprintPlanningSubtitle) {
-        sprintPlanningSubtitle.textContent = 'Update the details for this PLANNED sprint';
+        sprintPlanningSubtitle.textContent = 'Update the details for this planned sprint';
     }
     if (sprintSubmitBtn) sprintSubmitBtn.textContent = 'Save changes';
 
     openModal(sprintPlanningOverlay);
 }
 
-// ===================== DELETE SPRINT =====================
+// DELETE SPRINT
 let pendingDeleteId: number | null = null;
 
 function openDeleteModal(sprintId: number, sprintName: string): void {
@@ -395,7 +365,7 @@ confirmDeleteBtn.addEventListener('click', async () => {
     }
 });
 
-// ===================== CREATE / UPDATE SPRINT =====================
+// CREATE/UPDATE SPRINT
 sprintPlanningForm.addEventListener('submit', async (e: SubmitEvent) => {
     e.preventDefault();
 
@@ -422,7 +392,7 @@ sprintPlanningForm.addEventListener('submit', async (e: SubmitEvent) => {
 
     const endDate = sprintEndDateInput.value;
     if (!endDate) {
-        showToast('Could not calculate end date.', 'error');
+        showToast('End date could not be calculated.', 'error');
         return;
     }
 
@@ -457,7 +427,7 @@ sprintPlanningForm.addEventListener('submit', async (e: SubmitEvent) => {
         showToast(
             isEdit
                 ? 'Sprint updated.'
-                : 'Sprint created — add tasks on the Sprint Board.',
+                : 'Sprint created: Add tasks on the Sprint Board.',
             'success'
         );
 
@@ -474,7 +444,7 @@ sprintPlanningForm.addEventListener('submit', async (e: SubmitEvent) => {
     }
 });
 
-// ===================== INIT =====================
+// INIT
 populateSprintNameOptions();
 populateDurationOptions();
 void loadSprints();

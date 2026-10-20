@@ -1,5 +1,5 @@
 /**
- * Reports Page Stylesheet — Symph Web Application
+ * Reports Page Stylesheet for Symph Web Application
  * Sidebar matches the admin board. Main content fills the full width
  * and uses the page's lavender background (no white card wrapper).
  *
@@ -7,7 +7,7 @@
  * @version 17.0.16
  */
 
-/* ===================== DESIGN TOKENS ===================== */
+/* DESIGN COLOUR CODES */
 :root {
     --lavender: #C9CFFA;
     --lavender-dark: #B4BBF5;
@@ -18,7 +18,7 @@
     --danger-dark: #B91C1C;
 }
 
-/* ===================== GLOBAL RESET ===================== */
+/* GLOBAL RESET */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -35,7 +35,7 @@ body {
     color: var(--black);
 }
 
-/* ===================== APP SHELL ===================== */
+/* APP SHELL */
 .app-shell {
     display: flex;
     min-height: 100vh;
@@ -48,7 +48,7 @@ body {
     min-width: 0;
 }
 
-/* ===================== SIDEBAR ===================== */
+/* SIDEBAR */
 .sidebar {
     width: 220px;
     flex-shrink: 0;
@@ -166,7 +166,7 @@ body {
     padding-left: 4px;
 }
 
-/* ===================== MAIN CONTENT ===================== */
+/* MAIN CONTENT */
 .main {
     flex-grow: 1;
     width: 100%;
@@ -205,7 +205,7 @@ h1 {
     margin: 0 0 16px;
 }
 
-/* ===================== TIME RANGE ===================== */
+/* TIME RANGE */
 .time-range-row {
     display: flex;
     gap: 8px;
@@ -227,7 +227,7 @@ h1 {
 .range-btn:hover { background: #F3F4F6; }
 .range-btn.active { background: var(--black); color: #fff; }
 
-/* ===================== CONTRIBUTION TABLE ===================== */
+/* CONTRIBUTION TABLE */
 .contribution-table {
     width: 100%;
     border-collapse: collapse;
@@ -277,7 +277,7 @@ h1 {
     font-weight: 500;
 }
 
-/* ===================== BAR CHART (member modal) ===================== */
+/* BAR CHART (member modal) */
 .bar-chart {
     display: flex;
     align-items: flex-end;
@@ -324,7 +324,7 @@ h1 {
     padding: 24px 0 0;
 }
 
-/* ===================== BURNDOWN WRAPPER ===================== */
+/* BURNDOWN WRAPPER */
 .burndown-wrap {
     width: 100%;
     overflow-x: auto;
@@ -333,7 +333,7 @@ h1 {
     padding: 12px;
 }
 
-/* ===================== CHART WRAPPERS ===================== */
+/* CHART WRAPPERS */
 .line-chart-wrap {
     width: 100%;
     background: #fff;
@@ -342,7 +342,7 @@ h1 {
     overflow-x: auto;
 }
 
-/* ===================== CHART SVGs ===================== *
+/* CHART SVGs
  * width: 100% + height: auto → the SVG grows with the panel.
  * No max-width / no auto-margin → no left/right gap.
  */
@@ -353,7 +353,7 @@ h1 {
     display: block;
 }
 
-/* ===================== LEGEND ===================== */
+/* LEGEND */
 .legend {
     display: flex;
     gap: 20px;
@@ -378,7 +378,7 @@ h1 {
 .legend-swatch.projected { background: #111111; }
 .legend-swatch.actual { background: #4F7FFF; }
 
-/* ===================== MODAL ===================== */
+/* MODAL */
 .modal-overlay {
     display: none;
     position: fixed;
@@ -475,7 +475,7 @@ h1 {
 
 .btn-danger:hover { background: var(--danger-dark); }
 
-/* ===================== US28: MEMBER LOGS TABLE ===================== */
+/* US28: MEMBER LOGS TABLE */
 .member-logs-heading {
     font-size: 14px;
     font-weight: 700;

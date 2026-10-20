@@ -11,20 +11,20 @@
  * @version 17.0.16
  */
 
-// ===================== BFCACHE FIX =====================
+// BFCACHE FIX
 window.addEventListener('pageshow', (event) => {
     if ((event as PageTransitionEvent).persisted && sessionStorage.getItem('loggedIn') !== 'true') {
         window.location.href = 'index-login-page.html';
     }
 });
 
-// ===================== AUTH GUARD =====================
+// AUTH GUARD
 if (sessionStorage.getItem('loggedIn') !== 'true') {
     window.location.href = 'index-login-page.html';
     throw new Error('Not logged in');
 }
 
-// ===================== SIDEBAR COLLAPSE =====================
+// SIDEBAR COLLAPSE
 const SIDEBAR_KEY = "symph.sidebarCollapsed";
 const appShell = document.getElementById("appShell");
 const sidebarToggle = document.getElementById("sidebarToggle");
@@ -43,13 +43,14 @@ function setSidebarCollapsed(collapsed: boolean): void {
     sidebarToggle.title = collapsed ? "Expand menu" : "Collapse menu";
 }
 sidebarToggle?.addEventListener("click", () => {
+    if (!appShell) return;
     const collapsed = !appShell.classList.contains("sidebar-collapsed");
     setSidebarCollapsed(collapsed);
     writeSetting(SIDEBAR_KEY, collapsed ? "1" : "0");
 });
 setSidebarCollapsed(readSetting(SIDEBAR_KEY) === "1");
 
-// ===================== SHOW CURRENT USER =====================
+// SHOW CURRENT USER
 const nameEl = document.getElementById('signedInName');
 if (nameEl) {
     const name = sessionStorage.getItem('name');
@@ -65,7 +66,7 @@ function requireElement<T extends HTMLElement>(id: string): T {
     return el as T;
 }
 
-// ===================== ELEMENTS =====================
+// ELEMENTS
 const addMemberBtn = requireElement<HTMLButtonElement>('addMemberBtn');
 const addMemberOverlay = requireElement<HTMLDivElement>('addMemberOverlay');
 const removeMemberOverlay = requireElement<HTMLDivElement>('removeMemberOverlay');
@@ -84,7 +85,7 @@ const toast = requireElement<HTMLDivElement>('toast');
 let rowPendingRemoval: HTMLTableRowElement | null = null;
 let registeredUsers: { id: number; name: string; email: string; role: string }[] = [];
 
-// ===================== MODAL OPEN/CLOSE =====================
+// MODAL OPEN/CLOSE
 function openModal(overlay: HTMLDivElement): void { overlay.classList.add('visible'); }
 function closeModal(overlay: HTMLDivElement): void { overlay.classList.remove('visible'); }
 
@@ -97,7 +98,7 @@ closeAddMemberBtn.addEventListener('click', () => closeModal(addMemberOverlay));
     });
 });
 
-// ===================== TOAST =====================
+// TOAST
 let toastTimeoutId: number | undefined;
 
 function showToast(message: string, type: 'success' | 'error' = 'success'): void {
@@ -109,7 +110,7 @@ function showToast(message: string, type: 'success' | 'error' = 'success'): void
     toastTimeoutId = window.setTimeout(() => toast.classList.remove('visible'), 3000);
 }
 
-// ===================== LOAD USERS =====================
+// LOAD USERS
 async function loadMembers(): Promise<void> {
     try {
         const res = await fetch('/api/users');
@@ -130,7 +131,7 @@ async function loadMembers(): Promise<void> {
     }
 }
 
-// ===================== LOAD TABLE (ONLY ASSIGNED) =====================
+// LOAD TABLE (ONLY ASSIGNED)
 async function loadTeamMemberships(): Promise<void> {
     try {
         const res = await fetch('/api/users');
@@ -166,7 +167,7 @@ async function loadTeamMemberships(): Promise<void> {
     }
 }
 
-// ===================== ADD MEMBER =====================
+// ADD MEMBER
 addMemberForm.addEventListener('submit', async (e: SubmitEvent) => {
     e.preventDefault();
 
@@ -202,7 +203,7 @@ addMemberForm.addEventListener('submit', async (e: SubmitEvent) => {
     }
 });
 
-// ===================== REMOVE MEMBER =====================
+// REMOVE MEMBER
 membersBody.addEventListener('click', (e: MouseEvent) => {
     const target = e.target as HTMLElement;
     if (!target.classList.contains('remove-btn')) return;
@@ -255,6 +256,6 @@ confirmRemoveBtn.addEventListener('click', async () => {
     }
 });
 
-// ===================== INIT =====================
+// INIT
 void loadMembers();
 void loadTeamMemberships();

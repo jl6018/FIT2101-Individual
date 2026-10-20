@@ -1,5 +1,5 @@
 /**
- * User Board Page Stylesheet — Symph Web Application
+ * User Board Page Stylesheet for Symph Web Application
  * Employee (read-only) board with navbar, account menu, project header,
  * sprint tabs, board columns, task cards, task modal, Comments modal,
  * Log Time modal, My Logs modal, and logout confirmation modal.
@@ -8,7 +8,7 @@
  * @version 17.0.16
  */
 
-/* ===================== GLOBAL RESET ===================== */
+/* GLOBAL RESET */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -31,7 +31,7 @@ body {
     background-color: #e8e9fc;
 }
 
-/* ===================== NAVBAR ===================== */
+/* NAVBAR */
 .navbar {
     display: flex;
     align-items: center;
@@ -183,7 +183,7 @@ body {
     font-size: 0.8rem;
 }
 
-/* ===================== NAVBAR RIGHT ===================== */
+/* NAVBAR RIGHT */
 .navbar-icons {
     display: flex;
     align-items: center;
@@ -275,7 +275,7 @@ body {
     flex-shrink: 0;
 }
 
-/* ===================== AVATARS ===================== */
+/* AVATARS */
 .avatar {
     width: 32px;
     height: 32px;
@@ -297,7 +297,7 @@ body {
 .avatar-dark { background-color: #1a1a1a; }
 .avatar-purple { background-color: #5b3db0; }
 
-/* ===================== PROJECT HEADER ===================== */
+/* PROJECT HEADER */
 .project-header {
     display: flex;
     align-items: center;
@@ -336,7 +336,7 @@ body {
     gap: 16px;
 }
 
-/* ===================== HEADER ⋯ MENU ===================== */
+/* HEADER, MENU*/
 .more-menu-wrap {
     position: relative;
 }
@@ -409,7 +409,7 @@ body {
     flex-shrink: 0;
 }
 
-/* ===================== SPRINT TABS ===================== */
+/* SPRINT TABS */
 .sprint-tabs {
     display: flex;
     gap: 16px;
@@ -432,7 +432,7 @@ body {
     color: white;
 }
 
-/* ===================== BOARD ===================== */
+/* BOARD */
 .board {
     display: flex;
     gap: 24px;
@@ -551,7 +551,7 @@ body {
     white-space: nowrap;
 }
 
-/* ===================== PRIORITY ===================== */
+/* PRIORITY */
 .priority-badge {
     display: inline-flex;
     align-items: center;
@@ -569,7 +569,7 @@ body {
 .priority-high   { background-color: #e07b1c; }
 .priority-urgent { background-color: #d33; }
 
-/* ===================== PROGRESS ===================== */
+/* PROGRESS */
 .progress-wrap {
     display: flex;
     align-items: center;
@@ -599,7 +599,7 @@ body {
     flex-shrink: 0;
 }
 
-/* ===================== TASK MODAL (READ-ONLY) ===================== */
+/* TASK MODAL (READ-ONLY) */
 .modal-overlay {
     display: none;
     position: fixed;
@@ -842,7 +842,7 @@ body {
     background-color: #cfd2e6;
 }
 
-/* ===================== GENERIC MODAL TITLES ===================== */
+/* GENERIC MODAL TITLES */
 .modal-title {
     font-family: Georgia, "Times New Roman", serif;
     font-size: 22px;
@@ -857,7 +857,7 @@ body {
     margin: 0 0 20px;
 }
 
-/* ===================== EMPTY STATE ===================== */
+/* EMPTY STATE */
 .board-empty {
     text-align: center;
     padding: 40px 20px;
@@ -866,7 +866,7 @@ body {
     margin: 0 32px;
 }
 
-/* ===================== LOG-TIME MODAL ===================== */
+/* LOG-TIME MODAL */
 .logtime-icon {
     background: none;
     border: none;
@@ -977,7 +977,7 @@ body {
     display: none;
 }
 
-/* ===================== MY LOGS MODAL ===================== */
+/* MY LOGS MODAL */
 #myLogsOverlay .modal {
     max-width: 620px;
     background: #ffffff;
@@ -1083,7 +1083,7 @@ body {
     color: #fff;
 }
 
-/* ===================== LOGOUT MODAL ===================== */
+/* LOGOUT MODAL */
 #logoutOverlay .modal-narrow {
     max-width: 420px;
     padding: 32px 32px 28px;
@@ -1168,7 +1168,7 @@ body {
     transform: scale(0.98);
 }
 
-/* ===================== CONFIRM MODAL ===================== */
+/* CONFIRM MODAL */
 #confirmOverlay .modal-narrow {
     max-width: 420px;
     padding: 32px 32px 28px;
@@ -1255,7 +1255,7 @@ body {
     background: #B91C1C;
 }
 
-/* ===================== MODAL ⋯ MENU ===================== */
+/* MODAL, MENU */
 .modal-more-wrap { position: relative; }
 
 .modal-more-btn {
@@ -1315,7 +1315,7 @@ body {
     flex-shrink: 0;
 }
 
-/* ===================== COMMENTS MODAL ===================== */
+/* COMMENTS MODAL */
 .comments-modal {
     background: #ffffff;
     max-width: 640px;
@@ -1491,7 +1491,7 @@ body {
 .comments-composer .btn-primary:hover { background: #2a2a2a; }
 .comments-composer .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
-/* ===================== TOAST ===================== */
+/* TOAST */
 .toast {
     position: fixed;
     bottom: 28px;
@@ -1514,7 +1514,7 @@ body {
     transform: translate(-50%, 0);
 }
 
-/* ===================== COMMENT DELETE ===================== */
+/* COMMENT DELETE */
 .comment-row {
     position: relative;
 }
@@ -1548,7 +1548,7 @@ body {
     border-color: #DC2626;
 }
 
-/* ===================== EMPTY SPRINT STATE ===================== */
+/* EMPTY SPRINT STATE */
 .board-empty-sprint {
     grid-column: 1 / -1;
     text-align: center;
@@ -1566,7 +1566,7 @@ body {
     font-weight: 600;
 }
 
-/* ===================== NOTIFICATION BELL ===================== */
+/* NOTIFICATION BELL */
 .notif-wrap {
     position: relative;
 }

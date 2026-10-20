@@ -1,7 +1,9 @@
 <!--
     Register Page — Symph Web Application
     Provides the account creation form for new users. Includes fields for
-    name, email, password, and role (Employee, Product Owner, or Admin),
+    name, email, password, and role (Employee or Admin). Product Owners
+    cannot sign up here: they register through the one-time link in their invite email
+    (index-register-page.html?invite=TOKEN), which locks the email and role,
     plus an error banner and a link back to the login page.
 
     @author Lim Jia Li
@@ -19,7 +21,7 @@
 
 <div class="login-wrap">
     <div class="logo"><img src="images/symph-logo.png" alt="Symph" /></div>
-    <h1>Create your account</h1>
+    <h1 id="pageTitle">Create your account</h1>
 
     <div class="card">
         <div class="error-banner" id="errorBanner">
@@ -43,13 +45,13 @@
             <div class="field">
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" placeholder="Minimum 8 characters" required>
+                <button type="button" class="toggle-password" id="togglePassword" aria-pressed="false">Show password</button>
             </div>
 
-            <div class="field">
+            <div class="field" id="roleField">
                 <label for="role">Role</label>
                 <select id="role" name="role" style="width:100%;padding:12px 14px;border-radius:10px;border:none;">
                     <option value="EMPLOYEE">Employee</option>
-                    <option value="PRODUCT_OWNER">Product Owner</option>
                     <option value="ADMIN">Admin</option>
                 </select>
             </div>
@@ -58,7 +60,7 @@
         </form>
 
         <p style="text-align:center;margin-top:16px;font-size:14px;">
-            Already have an account? <a href="index-login-page.html">Log in</a>
+            Already have an account? <a href="../../../../../../../../IdeaProjects/jlim0263/src/main/resources/static/index-login-page.html">Log in</a>
         </p>
     </div>
 </div>

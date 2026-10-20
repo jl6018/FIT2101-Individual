@@ -2,7 +2,7 @@
     Login Page — Symph Web Application
     Provides the sign-in form for existing users. Includes an error banner
     for invalid credentials, a "no invitation" modal for uninvited Product
-    Owners, a "Forgot password?" link, and a link to the registration page.
+    Owners, and a link to the registration page.
 
     @author Lim Jia Li
     @version 17.0.16
@@ -40,11 +40,8 @@
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" placeholder="Please enter your password"
                        autocomplete="current-password">
+                <button type="button" class="toggle-password" id="togglePassword" aria-pressed="false">Show password</button>
             </div>
-
-            <p class="forgot-link-row">
-                <a href="index-forgot-password-page.html">Forgot password?</a>
-            </p>
 
             <button type="submit" class="submit" id="submitBtn">Log in</button>
         </form>
@@ -55,7 +52,7 @@
     </div>
 </div>
 
-<!-- ===================== MODAL: No Invitation ===================== -->
+<!-- MODAL: No Invitation -->
 <div class="modal-overlay" id="noInviteOverlay">
     <div class="modal modal-narrow" role="dialog" aria-modal="true">
         <h2 class="modal-title">No invitation found</h2>

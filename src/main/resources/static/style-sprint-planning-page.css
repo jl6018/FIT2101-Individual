@@ -1,5 +1,5 @@
 /**
- * Sprint Planning Page Stylesheet — Symph Web Application
+ * Sprint Planning Page Stylesheet for Symph Web Application
  * Sidebar matches the admin board. Main content fills the full width
  * and uses the page's lavender background (no white card wrapper).
  *
@@ -7,7 +7,7 @@
  * @version 17.0.16
  */
 
-/* ===================== DESIGN TOKENS ===================== */
+/* DESIGN COLOUR CODES */
 :root {
     --lavender: #C9CFFA;
     --lavender-dark: #B4BBF5;
@@ -18,7 +18,7 @@
     --error-text: #C0392B;
 }
 
-/* ===================== GLOBAL RESET ===================== */
+/* GLOBAL RESET */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -31,7 +31,7 @@ body {
     color: var(--black);
 }
 
-/* ===================== APP SHELL ===================== */
+/* APP SHELL */
 .app-shell {
     display: flex;
     min-height: 100vh;
@@ -42,7 +42,7 @@ body {
     min-width: 0;
 }
 
-/* ===================== SIDEBAR (matches admin board) ===================== */
+/* SIDEBAR (matches admin board) */
 .sidebar {
     width: 220px;
     flex-shrink: 0;
@@ -180,7 +180,7 @@ body {
     padding-left: 4px;
 }
 
-/* ===================== MAIN CONTENT (full width, no white bg) ========== */
+/* MAIN CONTENT (full width, no white bg) */
 .main {
     flex-grow: 1;
     width: 100%;
@@ -227,7 +227,7 @@ h1 {
 .btn-primary:hover { background: #2a2a2a; }
 .btn-primary.full-width { width: 100%; }
 
-/* ===================== SPRINTS TABLE ===================== */
+/* SPRINTS TABLE */
 .sprints-table {
     width: 100%;
     border-collapse: collapse;
@@ -249,7 +249,7 @@ h1 {
     font-weight: 600;
 }
 
-/* ===================== MODALS ===================== */
+/* MODALS */
 .modal-overlay {
     display: none;
     position: fixed;
@@ -298,7 +298,7 @@ h1 {
     margin: 0 0 20px;
 }
 
-/* ===================== FORM ===================== */
+/* FORM */
 .form-row {
     display: flex;
     gap: 12px;
@@ -367,7 +367,7 @@ select:focus {
     cursor: pointer;
 }
 
-/* ===================== SWITCH ACCOUNT LIST ===================== */
+/* SWITCH ACCOUNT LIST */
 .account-list {
     list-style: none;
     margin: 0;
@@ -416,7 +416,7 @@ select:focus {
     color: var(--text-muted);
 }
 
-/* ===================== TOAST ===================== */
+/* TOAST */
 .toast {
     position: fixed;
     bottom: 24px;
@@ -443,7 +443,7 @@ select:focus {
 .toast.success { background: #16A34A; color: #fff; }
 .toast.error { background: #DC2626; color: #fff; }
 
-/* ===================== MODAL BUTTONS ===================== */
+/* MODAL BUTTONS */
 .modal-narrow { max-width: 380px; }
 
 .modal-actions {
@@ -482,7 +482,7 @@ select:focus {
 
 .btn-danger:hover { background: #B91C1C; }
 
-/* ===================== DELETE SPRINT BUTTON ===================== */
+/* DELETE SPRINT BUTTON */
 .delete-sprint-btn {
     padding: 6px 14px;
     border: none;
@@ -497,7 +497,7 @@ select:focus {
 
 .delete-sprint-btn:hover { background: #FEE2E2; }
 
-/* ===================== US22: TASK LIST BUILDER ===================== */
+/* US22: TASK LIST BUILDER */
 .modal-wide { max-width: 640px; }
 
 .task-list {
@@ -587,7 +587,7 @@ select:focus {
     border-color: #6B7280;
 }
 
-/* ===================== SPRINT ROW ACTIONS ===================== */
+/* SPRINT ROW ACTIONS */
 .sprint-actions {
     display: flex;
     gap: 8px;
