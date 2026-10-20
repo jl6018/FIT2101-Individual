@@ -3,10 +3,10 @@
 FIT2101 S2 2026 group repository — Sprint 3 Final Release.
 
 ## Team
-- Emily Thang Wen Xin — Scrum Master / Testing Lead
-- Lim Jia Li — Frontend Developer / Backend Developer
+- Emily Thang Wen Xin — Scrum Master / QA Testing Lead
+- Lim Jia Li — Frontend Developer / Backend Developer / QA Testing Lead
 - Nur Atifah Thaiyub Ahamed — Backend Developer / Git Manager
-- Violet Arianna Ariff Hoo — Frontend Developer
+- Violet Arianna Ariff Hoo — Frontend Developer / QA Testing Lead
 - Aastha Chaudhari — Frontend Developer
 - Lee Hyeonjin — Backend Developer
 
@@ -46,7 +46,7 @@ Employees can log their hours directly against tasks, and the system automatical
    ```properties
    SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/symph
    SPRING_DATASOURCE_USERNAME=root
-   SPRING_DATASOURCE_PASSWORD=your_password
+   SPRING_DATASOURCE_PASSWORD=YOUR_PASSWORD
 5. Run the Spring Boot application: http://localhost:8080/index-login-page.html
 
 ## Live Application
