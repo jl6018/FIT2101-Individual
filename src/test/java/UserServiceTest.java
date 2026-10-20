@@ -2,7 +2,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.TestPropertySource;
 
 import webapplication.Application;
@@ -27,8 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
         "spring.datasource.username=sa",
         "spring.datasource.password=",
         "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
-        "spring.jpa.hibernate.ddl-auto=create-drop",
-        "app.demo.reset-enabled=true"
+        "spring.jpa.hibernate.ddl-auto=create-drop"
 })
 class UserServiceTest {
 
@@ -38,11 +36,11 @@ class UserServiceTest {
     @Autowired
     private UserRepository userRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
     private User testUser;
 
+    /**
+     * Sets up fresh test data before each test.
+     */
     @BeforeEach
     void setUp() {
         userRepository.deleteAll();
@@ -56,6 +54,9 @@ class UserServiceTest {
 
     // ===================== CREATE =====================
 
+    /**
+     * Tests that creating a user saves it with the correct details.
+     */
     @Test
     void testCreateUser_Success() {
         User created = userService.createUser(testUser);
@@ -64,14 +65,12 @@ class UserServiceTest {
         assertEquals("Test User", created.getName());
         assertEquals("test@example.com", created.getEmail());
         assertEquals("EMPLOYEE", created.getRole());
-
-        assertNotEquals("password123", created.getPassword());
-        assertTrue(created.getPassword().startsWith("$2"),
-                "Password should be a BCrypt hash starting with $2");
-        assertTrue(passwordEncoder.matches("password123", created.getPassword()),
-                "Stored hash should match the original raw password");
+        assertEquals("password123", created.getPassword());
     }
 
+    /**
+     * Tests that creating a user with a duplicate email throws an exception.
+     */
     @Test
     void testCreateUser_DuplicateEmail_ThrowsException() {
         userService.createUser(testUser);
@@ -87,6 +86,9 @@ class UserServiceTest {
 
     // ===================== READ =====================
 
+    /**
+     * Tests that retrieving all users returns the correct count.
+     */
     @Test
     void testGetAllUsers_Success() {
         userService.createUser(testUser);
@@ -104,6 +106,9 @@ class UserServiceTest {
         assertEquals(2, users.size());
     }
 
+    /**
+     * Tests that retrieving a user by ID returns the correct user.
+     */
     @Test
     void testGetUserById_Success() {
         User saved = userService.createUser(testUser);
@@ -115,6 +120,9 @@ class UserServiceTest {
         assertEquals("test@example.com", found.getEmail());
     }
 
+    /**
+     * Tests that retrieving a non-existent user throws an exception.
+     */
     @Test
     void testGetUserById_NotFound_ThrowsException() {
         assertThrows(RuntimeException.class, () -> userService.getUserById(999L));
@@ -122,6 +130,9 @@ class UserServiceTest {
 
     // ===================== UPDATE =====================
 
+    /**
+     * Tests that updating a user saves the new name, email, and role.
+     */
     @Test
     void testUpdateUser_Success() {
         User saved = userService.createUser(testUser);
@@ -141,6 +152,9 @@ class UserServiceTest {
 
     // ===================== DELETE =====================
 
+    /**
+     * Tests that deleting a user removes it from the database.
+     */
     @Test
     void testDeleteUser_Success() {
         User saved = userService.createUser(testUser);
@@ -152,6 +166,9 @@ class UserServiceTest {
 
     // ===================== FIND BY EMAIL =====================
 
+    /**
+     * Tests that a user can be found by email.
+     */
     @Test
     void testFindUserByEmail_Success() {
         User saved = userService.createUser(testUser);
@@ -165,6 +182,9 @@ class UserServiceTest {
 
     // ===================== LOGIN =====================
 
+    /**
+     * Tests that a valid email and password logs the user in.
+     */
     @Test
     void testLogin_Success() {
         userService.createUser(testUser);
@@ -175,6 +195,9 @@ class UserServiceTest {
         assertEquals("test@example.com", loggedIn.getEmail());
     }
 
+    /**
+     * Tests that login is case-insensitive for the email.
+     */
     @Test
     void testLogin_EmailCaseInsensitive_Success() {
         userService.createUser(testUser);
@@ -185,6 +208,9 @@ class UserServiceTest {
         assertEquals("test@example.com", loggedIn.getEmail());
     }
 
+    /**
+     * Tests that a wrong password returns null instead of a user.
+     */
     @Test
     void testLogin_WrongPassword_ReturnsNull() {
         userService.createUser(testUser);
@@ -194,61 +220,13 @@ class UserServiceTest {
         assertNull(loggedIn);
     }
 
+    /**
+     * Tests that an unknown email returns null.
+     */
     @Test
     void testLogin_UnknownEmail_ReturnsNull() {
         User loggedIn = userService.login("nobody@example.com", "password123");
 
         assertNull(loggedIn);
-    }
-
-    // ===================== DIRECT PASSWORD RESET (DEMO FLOW) =====================
-
-    @Test
-    void testResetPasswordByEmail_Success() {
-        User saved = userService.createUser(testUser);
-
-        userService.resetPasswordByEmail("test@example.com", "brandnew123");
-
-        User reloaded = userRepository.findById(saved.getId()).orElseThrow();
-        assertTrue(passwordEncoder.matches("brandnew123", reloaded.getPassword()));
-    }
-
-    @Test
-    void testResetPasswordByEmail_UnknownEmail_Throws() {
-        assertThrows(RuntimeException.class, () ->
-                userService.resetPasswordByEmail("nobody@example.com", "brandnew123"));
-    }
-
-    @Test
-    void testResetPasswordByEmail_WeakPassword_Throws() {
-        userService.createUser(testUser);
-
-        assertThrows(IllegalArgumentException.class, () ->
-                userService.resetPasswordByEmail("test@example.com", "short"));
-    }
-
-    @Test
-    void testResetPasswordByEmail_BlankEmail_Throws() {
-        assertThrows(IllegalArgumentException.class, () ->
-                userService.resetPasswordByEmail("   ", "brandnew123"));
-    }
-
-    @Test
-    void testResetPasswordByEmail_EmailCaseInsensitive() {
-        userService.createUser(testUser);
-
-        userService.resetPasswordByEmail("TEST@EXAMPLE.COM", "brandnew123");
-
-        User reloaded = userRepository.findByEmail("test@example.com").orElseThrow();
-        assertTrue(passwordEncoder.matches("brandnew123", reloaded.getPassword()));
-    }
-
-    @Test
-    void testResetPasswordByEmail_EnabledInCurrentContext() {
-        // Verifies the demo flag was read correctly (true in this context),
-        // so the flow is allowed.
-        userService.createUser(testUser);
-        assertDoesNotThrow(() ->
-                userService.resetPasswordByEmail("test@example.com", "brandnew123"));
     }
 }

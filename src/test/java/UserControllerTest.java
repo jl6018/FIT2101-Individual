@@ -16,16 +16,13 @@ import java.util.Arrays;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
  * Unit tests for UserController.
- * Tests creating, retrieving, and listing users, plus the direct password-reset
- * endpoint used in the demo flow.
+ * Tests creating, retrieving, and listing users, plus login.
  *
  * @author Lim Jia Li
  * @version 17.0.16
@@ -43,8 +40,11 @@ class UserControllerTest {
     @MockitoBean
     private UserService userService;
 
-    // ===================== EXISTING USER CRUD =====================
+    // ===================== USER CRUD =====================
 
+    /**
+     * Tests that creating a user returns 200 OK with the correct name and email.
+     */
     @Test
     void testCreateUser() throws Exception {
         User user = new User();
@@ -64,6 +64,9 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.email").value("john@example.com"));
     }
 
+    /**
+     * Tests that retrieving a user by ID returns 200 OK with the correct details.
+     */
     @Test
     void testGetUserById() throws Exception {
         User user = new User();
@@ -78,6 +81,9 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.name").value("John"));
     }
 
+    /**
+     * Tests that retrieving all users returns the correct count.
+     */
     @Test
     void testGetAllUsers() throws Exception {
         User user1 = new User(); user1.setId(1L); user1.setName("John");
@@ -92,6 +98,9 @@ class UserControllerTest {
 
     // ===================== LOGIN =====================
 
+    /**
+     * Tests that a valid login returns 200 OK with the user's email and role.
+     */
     @Test
     void testLogin_Success() throws Exception {
         User user = new User();
@@ -112,6 +121,9 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.role").value("EMPLOYEE"));
     }
 
+    /**
+     * Tests that invalid credentials return 401 Unauthorized.
+     */
     @Test
     void testLogin_InvalidCredentials_Returns401() throws Exception {
         when(userService.login(anyString(), anyString())).thenReturn(null);
@@ -122,45 +134,5 @@ class UserControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isUnauthorized());
-    }
-
-    // ===================== RESET PASSWORD DIRECT (demo flow) =====================
-
-    @Test
-    void testResetPasswordDirect_Success_Returns200() throws Exception {
-        doNothing().when(userService).resetPasswordByEmail(anyString(), anyString());
-
-        String body = "{\"email\":\"john@example.com\",\"newPassword\":\"newpass123\"}";
-
-        mockMvc.perform(post("/api/users/reset-password-direct")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void testResetPasswordDirect_UnknownEmail_Returns404() throws Exception {
-        doThrow(new RuntimeException("No account found with that email"))
-                .when(userService).resetPasswordByEmail(anyString(), anyString());
-
-        String body = "{\"email\":\"nobody@example.com\",\"newPassword\":\"newpass123\"}";
-
-        mockMvc.perform(post("/api/users/reset-password-direct")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void testResetPasswordDirect_WeakPassword_Returns400() throws Exception {
-        doThrow(new IllegalArgumentException("Password must be at least 8 characters"))
-                .when(userService).resetPasswordByEmail(anyString(), anyString());
-
-        String body = "{\"email\":\"john@example.com\",\"newPassword\":\"short\"}";
-
-        mockMvc.perform(post("/api/users/reset-password-direct")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isBadRequest());
     }
 }

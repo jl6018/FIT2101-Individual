@@ -3,14 +3,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import webapplication.Application;
 import webapplication.model.ProductOwnerInvite;
 import webapplication.repository.ProductOwnerInviteRepository;
+import webapplication.service.EmailService;
 import webapplication.service.ProductOwnerInviteService;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
 
 /**
  * Unit tests for ProductOwnerInviteService.
@@ -35,11 +39,19 @@ class ProductOwnerInviteServiceTest {
     @Autowired
     private ProductOwnerInviteRepository inviteRepository;
 
+    @MockitoBean
+    private EmailService emailService;
+
     private ProductOwnerInvite testInvite;
 
+    /**
+     * Sets up fresh test data and stubs the email sender before each test.
+     */
     @BeforeEach
     void setUp() {
         inviteRepository.deleteAll();
+
+        doNothing().when(emailService).sendEmail(anyString(), anyString(), anyString());
 
         testInvite = new ProductOwnerInvite();
         testInvite.setEmail("owner@example.com");
