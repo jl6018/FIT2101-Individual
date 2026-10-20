@@ -117,6 +117,8 @@ button, select, input, textarea {
     width: 20px;
     height: 20px;
     transition: transform 0.2s ease;
+    fill: #111;       /* Forces the arrow to be black */
+    stroke: none;
 }
 
 .sidebar-collapsed .sidebar { width: 60px; }
