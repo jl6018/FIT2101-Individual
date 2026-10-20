@@ -1,5 +1,5 @@
 /**
- * Register Page Stylesheet — Symph Web Application
+ * Register Page Stylesheet for Symph Web Application
  * Defines the styling for the registration page, including the centered
  * card layout, error banner, form fields (name, email, password, role),
  * submit button, and login link.
@@ -8,7 +8,7 @@
  * @version 17.0.16
  */
 
-/* ===================== DESIGN TOKENS ===================== */
+/* DESIGN COLOUR CODES */
 :root {
   --lavender: #C9CFFA;
   --black: #111111;
@@ -18,7 +18,7 @@
   --input-placeholder: #9CA3AF;
 }
 
-/* ===================== GLOBAL RESET ===================== */
+/* GLOBAL RESET */
 * {
   box-sizing: border-box;
 }
@@ -34,14 +34,14 @@ body {
   padding: 24px;
 }
 
-/* ===================== REGISTER LAYOUT ===================== */
+/* REGISTER LAYOUT */
 .login-wrap {
   width: 100%;
   max-width: 420px;
   text-align: center;
 }
 
-/* ===================== LOGO (image) ===================== */
+/* LOGO (image) */
 .logo {
   display: inline-block;
   line-height: 0;
@@ -60,7 +60,7 @@ h1 {
   margin: 8px 0 24px;
 }
 
-/* ===================== CARD ===================== */
+/* CARD */
 .card {
   background: var(--lavender);
   border-radius: 16px;
@@ -68,7 +68,7 @@ h1 {
   text-align: left;
 }
 
-/* ===================== ERROR BANNER ===================== */
+/* ERROR BANNER */
 .error-banner {
   display: none;
   align-items: center;
@@ -98,7 +98,7 @@ h1 {
   padding: 0;
 }
 
-/* ===================== FORM ===================== */
+/* FORM */
 label {
   display: block;
   font-size: 13px;
@@ -159,7 +159,7 @@ button.submit:disabled {
   cursor: not-allowed;
 }
 
-/* ===================== LOGIN LINK ===================== */
+/* LOGIN LINK */
 .register-link {
   text-align: center;
   margin-top: 16px;
@@ -169,4 +169,23 @@ button.submit:disabled {
 .register-link a {
   color: #6366F1;
   text-decoration: underline;
+}
+
+/* Show / hide password toggle */
+.toggle-password {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 6px;
+  font: inherit;
+  font-size: 13px;
+  color: inherit;
+  opacity: 0.8;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.toggle-password:hover,
+.toggle-password:focus-visible {
+  opacity: 1;
 }

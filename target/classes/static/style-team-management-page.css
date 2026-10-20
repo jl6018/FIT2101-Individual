@@ -1,5 +1,5 @@
 /**
- * Team Management Page Stylesheet — Symph Web Application
+ * Team Management Page Stylesheet for Symph Web Application
  * Sidebar matches the admin board. Main content fills the full width
  * and uses the page's lavender background (no white card wrapper).
  *
@@ -7,7 +7,7 @@
  * @version 17.0.16
  */
 
-/* ===================== DESIGN TOKENS ===================== */
+/* DESIGN COLOUR CODES */
 :root {
     --lavender: #C9CFFA;
     --lavender-dark: #B4BBF5;
@@ -18,7 +18,7 @@
     --danger-dark: #B91C1C;
 }
 
-/* ===================== GLOBAL RESET ===================== */
+/* GLOBAL RESET */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -35,7 +35,7 @@ body {
     color: var(--black);
 }
 
-/* ===================== APP SHELL ===================== */
+/* APP SHELL */
 .app-shell {
     display: flex;
     min-height: 100vh;
@@ -48,7 +48,7 @@ body {
     min-width: 0;
 }
 
-/* ===================== SIDEBAR ===================== */
+/* SIDEBAR */
 .sidebar {
     width: 220px;
     flex-shrink: 0;
@@ -166,7 +166,7 @@ body {
     padding-left: 4px;
 }
 
-/* ===================== MAIN CONTENT (full width, no white bg) ========== */
+/* MAIN CONTENT (full width, no white bg) */
 .main {
     flex-grow: 1;
     width: 100%;
@@ -201,7 +201,7 @@ h1 {
 .btn-primary:hover { background: #2a2a2a; }
 .btn-primary.full-width { width: 100%; }
 
-/* ===================== MEMBERS TABLE ===================== */
+/* MEMBERS TABLE */
 .members-table {
     width: 100%;
     border-collapse: collapse;
@@ -241,7 +241,7 @@ h1 {
 
 .remove-btn:hover { background: #FEE2E2; }
 
-/* ===================== MODALS ===================== */
+/* MODALS */
 .modal-overlay {
     display: none;
     position: fixed;
@@ -292,7 +292,7 @@ h1 {
     margin: 0 0 20px;
 }
 
-/* ===================== FORM ===================== */
+/* FORM */
 .form-field { margin-bottom: 16px; }
 
 label {
@@ -321,7 +321,7 @@ select:focus {
     outline-offset: 1px;
 }
 
-/* ===================== MODAL BUTTONS ===================== */
+/* MODAL BUTTONS */
 .modal-actions {
     display: flex;
     gap: 10px;
@@ -356,7 +356,7 @@ select:focus {
 
 .btn-danger:hover { background: var(--danger-dark); }
 
-/* ===================== TOAST ===================== */
+/* TOAST */
 .toast {
     position: fixed;
     bottom: 24px;

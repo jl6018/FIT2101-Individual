@@ -11,20 +11,20 @@
  * @version 17.0.16
  */
 
-// ===================== BFCACHE FIX =====================
+// BFCACHE FIX
 window.addEventListener("pageshow", (event) => {
     if ((event as PageTransitionEvent).persisted && sessionStorage.getItem("loggedIn") !== "true") {
         window.location.href = "index-login-page.html";
     }
 });
 
-// ===================== AUTH GUARD =====================
+// AUTH GUARD
 if (sessionStorage.getItem("loggedIn") !== "true") {
     window.location.href = "index-login-page.html";
     throw new Error("Not logged in");
 }
 
-// ===================== SIDEBAR COLLAPSE =====================
+// COLLAPSE SIDEBAR
 const SIDEBAR_KEY = "symph.sidebarCollapsed";
 const appShell = document.getElementById("appShell");
 const sidebarToggle = document.getElementById("sidebarToggle");
@@ -43,13 +43,14 @@ function setSidebarCollapsed(collapsed: boolean): void {
     sidebarToggle.title = collapsed ? "Expand menu" : "Collapse menu";
 }
 sidebarToggle?.addEventListener("click", () => {
+    if (!appShell) return;
     const collapsed = !appShell.classList.contains("sidebar-collapsed");
     setSidebarCollapsed(collapsed);
     writeSetting(SIDEBAR_KEY, collapsed ? "1" : "0");
 });
 setSidebarCollapsed(readSetting(SIDEBAR_KEY) === "1");
 
-// ===================== SHOW CURRENT USER =====================
+// SHOW CURRENT USER
 const nameEl = document.getElementById("signedInName");
 if (nameEl) {
     const name = sessionStorage.getItem("name");
@@ -57,13 +58,13 @@ if (nameEl) {
     if (name) nameEl.textContent = role === "ADMIN" ? `${name} (Admin)` : name;
 }
 
-// ===================== CONFIG =====================
-const TIMELOGS_API = "/api/timelogs";
-const SPRINTS_API = "/api/sprints";
+// CONFIGURATIONS
+const TIMELOGS_API = "http://localhost:8080/api/timelogs";
+const SPRINTS_API = "http://localhost:8080/api/sprints";
 const SPRINT_KEY = "symph.currentSprint";
 const SPRINT_TAB_NAMES: Record<string, string> = { "1": "Sprint 1", "2": "Sprint 2", "3": "Sprint 3" };
 
-// ===================== TYPES =====================
+// TYPES
 interface SummaryRow {
     userId: number;
     name: string;
@@ -89,14 +90,14 @@ interface Sprint {
     endDate?: string;
 }
 
-// ===================== HELPERS =====================
-function requireElement<T extends HTMLElement>(id: string): T {
+// HELPERS
+function requireElement<T extends Element>(id: string): T {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Missing element: ${id}`);
-    return el as T;
+    return el as unknown as T;
 }
 function formatHours(h: number): string { return `${Number(h).toFixed(1)}h`; }
-function toIsoDate(d: Date): string { return d.toISOString().split("T")[0]; }
+function toIsoDate(d: Date): string { return d.toISOString().slice(0, 10); }
 function escapeHtml(text: string): string {
     return String(text)
         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -109,7 +110,7 @@ function chartWidth(svgEl: SVGElement, fallback = 720): number {
     return Math.max(fallback, wrap.clientWidth - 24);
 }
 
-// ===================== ELEMENTS =====================
+// ELEMENTS
 const timeRangeRow = requireElement<HTMLDivElement>("timeRangeRow");
 const contributionTitle = requireElement<HTMLHeadingElement>("contributionTitle");
 const contributionBody = requireElement<HTMLTableSectionElement>("contributionBody");
@@ -126,11 +127,11 @@ const taskChartEmpty = requireElement<HTMLParagraphElement>("taskChartEmpty");
 const burndownChart = requireElement<SVGSVGElement>("burndownChart");
 const burndownEmpty = requireElement<HTMLParagraphElement>("burndownEmpty");
 
-// ===================== STATE =====================
+// STATE
 let selectedWeeks = 1;
 let currentSummary: SummaryRow[] = [];
 
-// ===================== MODAL OPEN/CLOSE =====================
+// MODAL OPEN/CLOSE
 function openModal(o: HTMLDivElement): void { o.classList.add("visible"); }
 function closeModal(o: HTMLDivElement): void { o.classList.remove("visible"); }
 
@@ -139,7 +140,7 @@ memberOverlay.addEventListener("click", (e: MouseEvent) => {
     if (e.target === memberOverlay) closeModal(memberOverlay);
 });
 
-// ===================== TIME RANGE =====================
+// TIME RANGE
 timeRangeRow.querySelectorAll<HTMLButtonElement>(".range-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
         selectedWeeks = Number(btn.dataset["weeks"]) || 1;
@@ -157,7 +158,7 @@ function rangeIso(): { from: string; to: string; days: number } {
     return { from: toIsoDate(from), to: toIsoDate(to), days };
 }
 
-// ===================== LOADERS =====================
+// LOADERS
 async function loadSummary(): Promise<void> {
     const { from, to, days } = rangeIso();
     contributionTitle.textContent = `Team contribution — last ${days} days`;
@@ -267,7 +268,7 @@ function renderContributionTable(): void {
     });
 }
 
-// ===================== MEMBER HISTORY (US28) =====================
+// MEMBER HISTORY (US28)
 async function openMemberModal(row: SummaryRow): Promise<void> {
     memberModalName.textContent = row.name;
     memberModalTeam.textContent = `${row.team} — logged sessions`;
@@ -346,7 +347,7 @@ function renderMemberChart(logs: LogEntry[]): void {
     memberModalTotal.textContent = `Total: ${totalHours.toFixed(1)}h across ${entries.length} day(s)`;
 }
 
-// ===================== SVG HELPERS =====================
+// SVG HELPERS
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 function addAxis(svg: SVGElement, x1: number, y1: number, x2: number, y2: number): void {
@@ -380,7 +381,7 @@ function addYLabel(svg: SVGElement, x: number, y: number, text: string): void {
     svg.appendChild(t);
 }
 
-/* ✅ Chart title — centered at the top of the SVG */
+/* Chart title is centered at the top of the SVG */
 function addChartTitle(svg: SVGElement, x: number, text: string): void {
     const t = document.createElementNS(SVG_NS, "text");
     t.setAttribute("x", String(x));
@@ -393,7 +394,7 @@ function addChartTitle(svg: SVGElement, x: number, text: string): void {
     svg.appendChild(t);
 }
 
-/* ✅ Y-axis title — rotated vertically, positioned lower so it isn't clipped */
+/* Y-axis title — rotated vertically, positioned lower so it isn't clipped */
 function addYTitle(svg: SVGElement, text: string): void {
     const t = document.createElementNS(SVG_NS, "text");
     t.setAttribute("x", "-240");
@@ -407,7 +408,7 @@ function addYTitle(svg: SVGElement, text: string): void {
     svg.appendChild(t);
 }
 
-/* ✅ X-axis title — centered below the axis labels */
+/* X-axis title is centered below the axis labels */
 function addAxisTitle(svg: SVGElement, x: number, y: number, text: string): void {
     const t = document.createElementNS(SVG_NS, "text");
     t.setAttribute("x", String(x));
@@ -455,7 +456,7 @@ function addRotatedXLabel(svg: SVGElement, x: number, y: number, text: string): 
     svg.appendChild(t);
 }
 
-// ===================== HOURS PER TASK — LINE CHART (US29) =====================
+// HOURS PER TASK: LINE CHART (US29)
 function renderTaskLineChart(rows: TaskHoursRow[]): void {
     taskLineChart.innerHTML = "";
 
@@ -506,17 +507,17 @@ function renderTaskLineChart(rows: TaskHoursRow[]): void {
             row.taskName.length > 16 ? row.taskName.slice(0, 15) + "…" : row.taskName);
     });
 
-    /* ✅ Meaningful chart title */
+    /* Chart title */
     const days = selectedWeeks * 7;
     addChartTitle(taskLineChart, paddingLeft + plotWidth / 2,
         `Total hours logged per task — last ${days} days`);
 
-    /* ✅ Axis titles */
+    /* Axis titles */
     addYTitle(taskLineChart, "Hours");
     addAxisTitle(taskLineChart, paddingLeft + plotWidth / 2, height - 8, "Task");
 }
 
-// ===================== SPRINT BURNDOWN (US30) =====================
+// SPRINT BURNDOWN (US30)
 function renderBurndown(points: BurndownPoint[], sprint?: Sprint): void {
     burndownChart.innerHTML = "";
 
@@ -590,7 +591,7 @@ function renderBurndown(points: BurndownPoint[], sprint?: Sprint): void {
         }
     });
 
-    /* ✅ Meaningful chart title with sprint name + date range */
+    /* Chart title with sprint name + date range */
     const title = sprint
         ? `Sprint burndown — ${sprint.name}` +
           (sprint.startDate && sprint.endDate
@@ -599,12 +600,12 @@ function renderBurndown(points: BurndownPoint[], sprint?: Sprint): void {
         : "Sprint burndown";
     addChartTitle(burndownChart, paddingLeft + plotWidth / 2, title);
 
-    /* ✅ Axis titles */
+    /* Axis titles */
     addYTitle(burndownChart, "Remaining hours");
     addAxisTitle(burndownChart, paddingLeft + plotWidth / 2, height - 8, "Date");
 }
 
-// ===================== INIT =====================
+// INIT
 void reloadAll();
 
 // Refresh when the tab regains focus

@@ -21,6 +21,11 @@ const submitBtn = requireElement<HTMLButtonElement>('registerBtn');
 const errorBanner = requireElement<HTMLDivElement>('errorBanner');
 const errorText = requireElement<HTMLSpanElement>('errorText');
 const dismissError = requireElement<HTMLButtonElement>('dismissError');
+const pageTitle = requireElement<HTMLHeadingElement>('pageTitle');
+const roleField = requireElement<HTMLDivElement>('roleField');
+
+// US20: Product Owners can only register through the one-time link in their invite email.
+const inviteToken = new URLSearchParams(window.location.search).get('invite');
 
 /**
  * Validates the email shape AND checks that it uses a recognized TLD.
@@ -53,6 +58,43 @@ function hideBanner(): void {
 
 dismissError.addEventListener('click', hideBanner);
 
+// Show / hide password toggle
+const togglePasswordBtn = requireElement<HTMLButtonElement>('togglePassword');
+togglePasswordBtn.addEventListener('click', () => {
+    const show = passwordInput.type === 'password';
+    passwordInput.type = show ? 'text' : 'password';
+    togglePasswordBtn.textContent = show ? 'Hide password' : 'Show password';
+    togglePasswordBtn.setAttribute('aria-pressed', String(show));
+});
+
+/**
+ * Switches the page into invite mode: checks the token with the backend, shows
+ * the invited email (locked) and hides the role picker, since an invite always
+ * creates a Product Owner. An invalid or used token leaves the form disabled.
+ *
+ * @param token The one-time token from the invite link
+ */
+async function setUpInviteMode(token: string): Promise<void> {
+    pageTitle.textContent = 'Accept your invitation';
+    roleField.style.display = 'none';
+    emailInput.readOnly = true;
+    submitBtn.disabled = true;
+
+    try {
+        const res = await fetch(`/api/invites/validate?token=${encodeURIComponent(token)}`);
+        if (!res.ok) throw new Error('Invalid invitation');
+        const data = (await res.json()) as { email: string };
+        emailInput.value = data.email;
+        submitBtn.disabled = false;
+    } catch {
+        showError('This invitation link is invalid or has already been used. Ask an admin to send you a new invite.');
+    }
+}
+
+if (inviteToken) {
+    void setUpInviteMode(inviteToken);
+}
+
 form.addEventListener('submit', async (e: SubmitEvent) => {
     e.preventDefault();
     hideBanner();
@@ -81,11 +123,18 @@ form.addEventListener('submit', async (e: SubmitEvent) => {
     submitBtn.textContent = 'Registering...';
 
     try {
-        const res = await fetch('/api/users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
+        // With an invite the backend takes the email and role from the invitation itself
+        const res = inviteToken
+            ? await fetch('/api/invites/accept', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: inviteToken, name: payload.name, password: payload.password }),
+            })
+            : await fetch('/api/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
 
         if (!res.ok) {
             const text = await res.text();

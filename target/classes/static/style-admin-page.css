@@ -1,12 +1,12 @@
 /**
- * Admin Board Page Stylesheet — Symph Web Application
+ * Admin Board Page Stylesheet for Symph Web Application
  * Defines the visual layout and styling for the admin Kanban board.
  *
  * @author Lim Jia Li
  * @version 17.0.16
  */
 
-/* ===================== GLOBAL RESET ===================== */
+/* GLOBAL RESET */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -44,7 +44,7 @@ button, select, input, textarea {
     outline-offset: 2px;
 }
 
-/* ===== App shell + sidebar ===== */
+/* App shell + sidebar */
 .app-shell {
     display: flex;
     min-height: 100vh;
@@ -187,7 +187,7 @@ button, select, input, textarea {
     padding-left: 4px;
 }
 
-/* ===== Navbar ===== */
+/* Navbar */
 .navbar {
     display: flex;
     align-items: center;
@@ -312,7 +312,7 @@ button, select, input, textarea {
     flex-shrink: 0;
 }
 
-/* ===== Avatars ===== */
+/* Avatars */
 .avatar {
     width: 36px;
     height: 36px;
@@ -335,7 +335,7 @@ button, select, input, textarea {
 .avatar-dark { background-color: #6672c8; }
 .avatar-purple { background-color: #5b3db0; }
 
-/* ===================== NAVBAR ACCOUNT MENU ===================== */
+/* NAVBAR ACCOUNT MENU */
 .account-menu-wrap {
     position: relative;
 }
@@ -490,7 +490,7 @@ button, select, input, textarea {
     gap: 16px;
 }
 
-/* ===================== PROJECT HEADER ⋯ MENU ===================== */
+/* PROJECT HEADER ⋯ MENU */
 .more-menu-wrap { position: relative; }
 
 .more-menu-btn {
@@ -555,7 +555,7 @@ button, select, input, textarea {
     flex-shrink: 0;
 }
 
-/* ===== Sprint tabs ===== */
+/* Sprint tabs */
 .board-controls {
     display: flex;
     align-items: center;
@@ -593,7 +593,7 @@ button, select, input, textarea {
     gap: 12px;
 }
 
-/* ===== Board ===== */
+/* Board */
 .board {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1041,7 +1041,7 @@ button, select, input, textarea {
 .modal-save-btn { background-color: #000; color: white; }
 .modal-cancel-btn { background-color: #dddfee; color: #000; }
 
-/* ===================== TASK MODAL ⋯ MENU ===================== */
+/* TASK MODAL, MENU */
 .modal-more-wrap { position: relative; }
 
 .modal-more-btn {
@@ -1123,7 +1123,7 @@ button, select, input, textarea {
     transform: translate(-50%, 0);
 }
 
-/* ===================== RESPONSIVE ===================== */
+/* RESPONSIVE */
 @media (max-width: 720px) {
     .app-shell { flex-direction: column; }
     .sidebar {
@@ -1391,7 +1391,7 @@ button, select, input, textarea {
 .priority-high   { background-color: #e07b1c; }
 .priority-urgent { background-color: #d33; }
 
-/* ===================== INVITE PRODUCT OWNER MODAL ===================== */
+/* INVITE PRODUCT OWNER MODAL */
 .invite-modal {
     background-color: #ffffff;
     border-radius: 16px;
@@ -1474,7 +1474,7 @@ button, select, input, textarea {
 .invite-modal .btn-primary:hover { background: #2a2a2a; }
 .invite-modal .btn-primary.full-width { width: 100%; }
 
-/* ===================== US13: TAG CHIPS ===================== */
+/* US13: TAG CHIPS */
 .tag-chip-list {
     display: flex;
     flex-wrap: wrap;
@@ -1504,7 +1504,7 @@ button, select, input, textarea {
     padding: 0;
 }
 
-/* ===================== US16: PROGRESS ===================== */
+/* US16: PROGRESS */
 .progress-value-label {
     font-weight: 700;
     font-size: 0.85rem;
@@ -1548,7 +1548,7 @@ button, select, input, textarea {
     flex-shrink: 0;
 }
 
-/* ===================== LOGGED HOURS PANEL ===================== */
+/* LOGGED HOURS PANEL */
 .logged-hours-panel {
     margin: 0 40px 32px;
     background: #cbd6ff;
@@ -1656,7 +1656,7 @@ button, select, input, textarea {
     }
 }
 
-/* ===================== FILTER BUTTONS ===================== */
+/* FILTER BUTTONS */
 .filter-buttons {
     position: absolute;
     right: 8px;
@@ -1698,7 +1698,7 @@ button, select, input, textarea {
     background-color: #e3e6fa;
 }
 
-/* ===================== LOGGED HOURS SCOPE LABEL ===================== */
+/* LOGGED HOURS SCOPE LABEL */
 .logged-hours-scope {
     font-size: inherit;
     font-weight: inherit;
@@ -1708,7 +1708,7 @@ button, select, input, textarea {
     margin-left: 8px;
 }
 
-/* ===================== COMMENTS MODAL ===================== */
+/* COMMENTS MODAL */
 .comments-modal {
     background: #ffffff;
     border-radius: 16px;
@@ -1952,7 +1952,7 @@ button, select, input, textarea {
     cursor: not-allowed;
 }
 
-/* ===================== NOTIFICATION BELL ===================== */
+/* NOTIFICATION BELL */
 .notif-wrap {
     position: relative;
 }
@@ -2117,7 +2117,7 @@ button, select, input, textarea {
     color: #9CA3AF;
 }
 
-/* ===================== INVITE LIST ===================== */
+/* INVITE LIST */
 .invite-list-section {
     margin-top: 20px;
     border-top: 1px solid #E5E7EB;
@@ -2188,7 +2188,7 @@ button, select, input, textarea {
     margin: 0;
 }
 
-/* ===================== STACKING ORDER FOR NESTED MODALS ===================== */
+/* STACKING ORDER FOR NESTED MODALS */
 /* Invite modal sits below confirm dialogs */
 #inviteOverlay { z-index: 1000; }
 

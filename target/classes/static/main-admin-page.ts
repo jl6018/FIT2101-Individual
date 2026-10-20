@@ -9,7 +9,7 @@
  * @version 17.0.16
  */
 
-// ===================== ADMIN / PRODUCT OWNER GUARD =====================
+// ADMIN / PRODUCT OWNER GUARD
 window.addEventListener("pageshow", (event) => {
     if ((event as PageTransitionEvent).persisted && sessionStorage.getItem("loggedIn") !== "true") {
         window.location.href = "index-login-page.html";
@@ -28,14 +28,14 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
 }
 
 (() => {
-    // ===================== HELPERS =====================
+    // HELPERS
     function avatarColor(name: string): string {
         let hash = 0;
         for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
         return `hsl(${Math.abs(hash) % 360}, 65%, 55%)`;
     }
 
-    // ===================== SHOW CURRENT USER =====================
+    // SHOW CURRENT USER
     const avatarEl = document.getElementById("userAvatar");
     const profileMenuName = document.getElementById("profileMenuName");
     const profileMenuSub = document.getElementById("profileMenuSub");
@@ -69,7 +69,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             "Admin";
     }
 
-    // ===================== MENUS =====================
+    // MENUS
     const profileMenuBtn = document.getElementById("profileMenuBtn") as HTMLButtonElement | null;
     const profileMenu = document.getElementById("profileMenu") as HTMLDivElement | null;
     const headerMenuBtn = document.getElementById("headerMenuBtn") as HTMLButtonElement | null;
@@ -174,7 +174,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         if (event.key === "Escape") closeAllMenus();
     });
 
-    // ===================== TYPES =====================
+    // TYPES
     type ColumnId = "PRODUCT_BACKLOG" | "TO_DO" | "IN_PROGRESS" | "IN_REVIEW" | "COMPLETED";
     type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT" | "";
     type Assignee =
@@ -261,14 +261,14 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         email: string;
     };
 
-    // ===================== CONFIG =====================
-    const API_BASE = "/api/tasks";
-    const USERS_API = "/api/users";
-    const SPRINTS_API = "/api/sprints";
-    const TAGS_API = "/api/tags";
-    const TIMELOGS_API = "/api/timelogs";
-    const RECENT_COMMENTS_API = "/api/tasks/comments/recent?limit=20";
-    const INVITES_API = "/api/invites";
+    // CONFIGURATIONS
+    const API_BASE = "http://localhost:8080/api/tasks";
+    const USERS_API = "http://localhost:8080/api/users";
+    const SPRINTS_API = "http://localhost:8080/api/sprints";
+    const TAGS_API = "http://localhost:8080/api/tags";
+    const TIMELOGS_API = "http://localhost:8080/api/timelogs";
+    const RECENT_COMMENTS_API = "http://localhost:8080/api/tasks/comments/recent?limit=20";
+    const INVITES_API = "http://localhost:8080/api/invites";
 
     const TAG_FILTER_ALL = "all";
 
@@ -278,7 +278,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         "3": "Sprint 3",
     };
 
-    // ===================== REFERENCE DATA =====================
+    // REFERENCE DATA
     const TEAMS: Team[] = [
         { id: "Team Alpha", name: "Team Alpha" },
         { id: "Team Beta", name: "Team Beta" },
@@ -321,7 +321,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         };
     }
 
-    // ===================== HELPERS =====================
+    // HELPERS
     function requireElement<T extends HTMLElement>(id: string): T {
         const el = document.getElementById(id);
         if (!el) throw new Error(`Expected element with id "${id}" to exist in the DOM.`);
@@ -384,7 +384,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     function readSprintSetting(): string { return readSetting(SPRINT_KEY) || "1"; }
     function writeSprintSetting(sprintId: string): void { writeSetting(SPRINT_KEY, sprintId); }
 
-    // ===================== STATE =====================
+    // STATE
     let tasks: Task[] = [];
     let currentSprintId = readSprintSetting();
     let currentSprintBackendId: string | null = null;
@@ -411,13 +411,14 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         }
         if (t.assignedTeams) {
             const names = String(t.assignedTeams).split(",").map((s) => s.trim()).filter(Boolean);
-            if (names.length === 1) return { kind: "team", teamId: names[0] };
+            const only = names[0];
+            if (names.length === 1 && only) return { kind: "team", teamId: only };
             if (names.length > 1) return { kind: "teams", teamIds: names };
         }
         return null;
     }
 
-    // ===================== SPRINT RESOLUTION =====================
+    // SPRINT RESOLUTION
     async function resolveSprintBackendId(tabId: string): Promise<string | null> {
         const name = SPRINT_TAB_NAMES[tabId];
         if (!name) return null;
@@ -434,7 +435,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         }
     }
 
-    // ===================== CUSTOM MODALS =====================
+    // CUSTOM MODALS
     function showOverlay(id: string): void {
         const el = document.getElementById(id);
         if (el) el.classList.add("visible");
@@ -497,7 +498,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     const inviteForm = document.getElementById("inviteForm") as HTMLFormElement | null;
     const ownerEmailInput = document.getElementById("ownerEmail") as HTMLInputElement | null;
 
-    // ===================== INVITE LIST =====================
+    // INVITE LIST
     const inviteList = document.getElementById("inviteList") as HTMLDivElement | null;
 
     async function loadInvites(): Promise<void> {
@@ -594,9 +595,9 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             showToast(message);
         }
     });
-    // ===================== /INVITE LIST =====================
+    // /INVITE LIST
 
-    // ===================== BACKEND SYNC =====================
+    // BACKEND SYNC
     async function fetchTasks(): Promise<Task[]> {
         try {
             const res = await fetch(API_BASE);
@@ -716,7 +717,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         }
     }
 
-    // ===================== RENDER =====================
+    // RENDER
     function visibleTasks(): Task[] {
         const term = searchTerm.toLowerCase();
         return tasks.filter((task) => {
@@ -845,7 +846,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         }
     });
 
-    // ===================== LOGGED HOURS PANEL =====================
+    // LOGGED HOURS PANEL
     const loggedHoursBody = document.getElementById("loggedHoursBody") as HTMLTableSectionElement | null;
     const loggedHoursTotal = document.getElementById("loggedHoursTotal") as HTMLParagraphElement | null;
     const loggedHoursRangeFilter = document.getElementById("loggedHoursRangeFilter") as HTMLSelectElement | null;
@@ -893,7 +894,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                 const days = Number(rangeVal) || 7;
                 const cutoff = new Date();
                 cutoff.setDate(cutoff.getDate() - (days - 1));
-                const cutoffIso = cutoff.toISOString().split("T")[0];
+                const cutoffIso = cutoff.toISOString().slice(0, 10);
                 logs = logs.filter((l) => (l.date ?? "") >= cutoffIso);
             }
 
@@ -935,7 +936,15 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     loggedHoursRefreshBtn?.addEventListener("click", () => { void loadLoggedHours(); });
     loggedHoursRangeFilter?.addEventListener("change", () => { void loadLoggedHours(); });
 
-    // ===================== DRAG AND DROP =====================
+    // DRAG AND DROP
+    // US17: only an admin may complete a task, and only from In Review.
+    function completionBlockedReason(from: ColumnId, to: ColumnId): string | null {
+        if (to !== "COMPLETED" || from === "COMPLETED") return null;
+        if (sessionStorage.getItem("role") !== "ADMIN") return "Only an admin can mark a task as Completed.";
+        if (from !== "IN_REVIEW") return "A task must be In Review before it can be marked Completed.";
+        return null;
+        }
+
     let draggedTaskId: string | null = null;
     function clearDropMarkers(): void {
         board.querySelectorAll(".drop-target, .drop-before").forEach((el) => {
@@ -985,16 +994,26 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             newPosition = last ? last.position + 1 : 1;
         } else {
             const idx = siblings.findIndex((t) => t.id === beforeId);
-            const prev = siblings[idx - 1];
-            const next = siblings[idx];
-            newPosition = prev ? (prev.position + next.position) / 2 : next.position - 1;
+            const prev = idx > 0 ? siblings[idx - 1] : undefined;
+            const next = siblings[idx]; // undefined if the card under the pointer wasn't found
+            if (next) {
+                newPosition = prev ? (prev.position + next.position) / 2 : next.position - 1;
+                } else {
+                const last = siblings[siblings.length - 1];
+                newPosition = last ? last.position + 1 : 1;
+                }
+            }
+        const blocked = completionBlockedReason(moved.column, targetColumn);
+        if (blocked) {
+            showAlertModal("Cannot move", blocked);
+            draggedTaskId = null; clearDropMarkers(); return;
         }
         const from = COLUMNS.find((c) => c.id === moved.column)?.name ?? "";
         const wasCompleted = from === "Completed";
         moved.column = targetColumn;
         moved.position = newPosition;
         if (targetColumn === "COMPLETED" && (moved.progress ?? 0) < 100) moved.progress = 100;
-        else if (wasCompleted && (targetColumn === "TO_DO" || targetColumn === "IN_PROGRESS" || targetColumn === "IN_REVIEW")) moved.progress = 0;
+        else if (wasCompleted && targetColumn !== "COMPLETED") moved.progress = 0;
         const ok = await apiUpdate(moved);
         if (ok) {
             const to = COLUMNS.find((c) => c.id === moved.column)?.name ?? "";
@@ -1008,7 +1027,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         board.querySelector(".dragging")?.classList.remove("dragging");
     });
 
-    // ===================== SPRINT TABS + SEARCH =====================
+    // SPRINT TABS + SEARCH
     function initSprintTabs(): void {
         const tabs = document.querySelectorAll<HTMLButtonElement>(".sprint-tab");
         tabs.forEach((tab) => {
@@ -1040,7 +1059,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         renderBoard();
     });
 
-    // ===================== TEAM FILTER =====================
+    // TEAM FILTER
     const teamFilterLabel = requireElement<HTMLSpanElement>("teamFilterLabel");
 
     function renderTeamFilter(): void {
@@ -1085,7 +1104,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         void loadLoggedHours();
     });
 
-    // ===================== TAG FILTER =====================
+    // FILTER TAGS
     const tagFilterLabel = requireElement<HTMLSpanElement>("tagFilterLabel");
 
     function availableTagNames(): string[] {
@@ -1153,7 +1172,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         renderBoard();
     });
 
-    // ===================== TASK MODAL =====================
+    // TASK MODAL
     const overlay = requireElement<HTMLDivElement>("taskModalOverlay");
     const columnSelect = requireElement<HTMLSelectElement>("modalColumn");
     const titleInput = requireElement<HTMLInputElement>("modalTitle");
@@ -1198,22 +1217,24 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     });
 
     function openModal(task: Task): void {
+        const d: Task = JSON.parse(JSON.stringify(task));
+        draft = d;
         draft = JSON.parse(JSON.stringify(task));
-        assignKind = draft.assignee?.kind === "employees" ? "employees" : "team";
-        columnSelect.value = draft.column;
-        titleInput.value = draft.title;
-        descriptionBox.value = draft.description;
-        dueDateInput.value = draft.dueDate;
-        estimateInput.value = draft.estimateHours > 0 ? String(draft.estimateHours) : "";
-        prioritySelect.value = draft.priority;
+        assignKind = d.assignee?.kind === "employees" ? "employees" : "team";
+        columnSelect.value = d.column;
+        titleInput.value = d.title;
+        descriptionBox.value = d.description;
+        dueDateInput.value = d.dueDate;
+        estimateInput.value = d.estimateHours > 0 ? String(d.estimateHours) : "";
+        prioritySelect.value = d.priority;
         tagInput.value = "";
-        const pct = Number(draft.progress) || 0;
+        const pct = Number(d.progress) || 0;
         progressInput.value = String(pct);
         progressSlider.value = String(pct);
         progressValue.textContent = `${pct}%`;
         errorText.textContent = "";
-        saveBtn.textContent = draft.id ? "Save" : "Create task";
-        deleteBtn.hidden = draft.id === "" || sessionStorage.getItem("role") !== "ADMIN";
+        saveBtn.textContent = d.id ? "Save" : "Create task";
+        deleteBtn.hidden = d.id === "" || sessionStorage.getItem("role") !== "ADMIN";
         setDeleteArmed(false);
         renderDraft();
         renderTags();
@@ -1285,7 +1306,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         const name = tagInput.value.trim().toLowerCase();
         if (!name) return;
         if ((draft.tags ?? []).some((t) => t.name.toLowerCase() === name)) { tagInput.value = ""; return; }
-        if (!draft.id) { showToast("Save the task first, then add tags."); return; }
+        if (!draft.id) { showToast("Task must be saved first before tags can be added."); return; }
         try {
             const res = await fetch(`${TAGS_API}/task/${Number(draft.id)}`, {
                 method: "POST",
@@ -1299,7 +1320,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             renderTags();
         } catch (err) {
             console.error("Add tag failed:", err);
-            showToast("Could not add tag");
+            showToast("Tag could not be added");
         }
     }
     async function removeTagFromDraft(tagId: number): Promise<void> {
@@ -1312,7 +1333,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
             renderTags();
         } catch (err) {
             console.error("Remove tag failed:", err);
-            showToast("Could not remove tag");
+            showToast("Tag could not be removed");
         }
     }
 
@@ -1320,13 +1341,20 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         if (!draft) return;
         const title = titleInput.value.trim();
         if (title.length < 2) {
-            errorText.textContent = "Give the task a name of at least 2 characters.";
+            errorText.textContent = "Task name must be at least 2 characters.";
             titleInput.focus();
             return;
         }
         draft.title = title;
         draft.description = descriptionBox.value.trim();
-        draft.column = columnSelect.value as ColumnId;
+        const chosenColumn = columnSelect.value as ColumnId;
+        const blocked = completionBlockedReason(draft.column, chosenColumn);
+        if (blocked) {
+            errorText.textContent = blocked;
+            columnSelect.value = draft.column;
+            return;
+        }
+        draft.column = chosenColumn;
         draft.progress = Math.max(0, Math.min(100, Number(progressInput.value) || 0));
         const isNew = draft.id === "";
         const ok = isNew ? (await apiCreate(draft)) !== null : await apiUpdate(draft);
@@ -1478,7 +1506,6 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         else closePopovers();
     });
 
-    // ⭐ UPDATED Escape handler — close confirm dialog first if it's on top
     document.addEventListener("keydown", (event: KeyboardEvent) => {
         if (event.key !== "Escape") return;
 
@@ -1496,7 +1523,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         else closeModal();
     });
 
-    // ===================== COMMENTS MODAL =====================
+    // COMMENTS MODAL
     const commentsOverlay = document.getElementById("commentsOverlay") as HTMLDivElement | null;
     const closeCommentsBtn = document.getElementById("closeCommentsBtn") as HTMLButtonElement | null;
     const commentsTitle = document.getElementById("commentsTitle") as HTMLHeadingElement | null;
@@ -1675,7 +1702,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         }
     });
 
-    // ===================== TOAST =====================
+    // TOAST
     const toast = requireElement<HTMLDivElement>("toast");
     let toastTimeoutId: number | undefined;
     function showToast(message: string): void {
@@ -1685,8 +1712,8 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         toastTimeoutId = window.setTimeout(() => toast.classList.remove("visible"), 3000);
     }
 
-    // ===================== NOTIFICATION BELL =====================
-    const NOTIF_SEEN_KEY = "symph.lastSeenCommentId_" + (sessionStorage.getItem("userId") || "0");
+    // NOTIFICATION BELL
+    const NOTIF_SEEN_KEY = "symph.lastSeenCommentId";
     const notifBadge = document.getElementById("notifBadge") as HTMLSpanElement | null;
     const notifMenuList = document.getElementById("notifMenuList") as HTMLDivElement | null;
 
@@ -1793,8 +1820,10 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
                         const comments = (await res.json()) as RecentComment[];
                         const myId = Number(sessionStorage.getItem("userId"));
                         const others = comments.filter(c => Number(c.authorId) !== myId);
-                        if (others.length > 0) {
-                            setLastSeenCommentId(others[0].id);
+                        const newest = others[0];
+                        if (newest)
+                        {
+                            setLastSeenCommentId(newest.id);
                         }
                         if (notifBadge) notifBadge.hidden = true;
                     }
@@ -1835,7 +1864,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         }, 30000);
     }
 
-    // ===================== PROJECT NAME =====================
+    // PROJECT NAME
     const PROJECT_NAME_KEY = "symph.projectName";
     const projectNameInput = requireElement<HTMLInputElement>("projectName");
     let projectName = readSetting(PROJECT_NAME_KEY) || "Project Name";
@@ -1864,7 +1893,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     fitProjectName();
     document.fonts?.ready.then(fitProjectName);
 
-    // ===================== SIDEBAR =====================
+    // SIDEBAR
     const SIDEBAR_KEY = "symph.sidebarCollapsed";
     const appShell = requireElement<HTMLDivElement>("appShell");
     const sidebarToggle = requireElement<HTMLButtonElement>("sidebarToggle");
@@ -1881,7 +1910,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
     });
     setSidebarCollapsed(readSetting(SIDEBAR_KEY) === "1");
 
-    // ===================== START / END SPRINT =====================
+    // START/END SPRINT
     const startSprintBtn = document.getElementById("startSprintBtn") as HTMLButtonElement | null;
     let currentSprintStatus: string | null = null;
 
@@ -1956,7 +1985,7 @@ if (USER_ROLE !== "ADMIN" && USER_ROLE !== "PRODUCT_OWNER") {
         }
     });
 
-    // ===================== INIT =====================
+    // INIT
     async function init(): Promise<void> {
         await loadEmployeesFromBackend();
         highlightSavedSprintTab();
