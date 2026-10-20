@@ -5,13 +5,15 @@ import webapplication.model.User;
 import webapplication.repository.TeamRepository;
 import webapplication.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 /**
- * Manages team Create, Read, Update, member management, and Delete operations.
+ * Manages team Create, Read, Update, member management and Delete operations.
  *
  * @author Lim Jia Li
+ * @author Atifah
  * @version 17.0.16
  */
 
@@ -22,7 +24,7 @@ public class TeamService {
     private final UserRepository userRepository;
 
     /**
-     * Parameterized constructor with the required repository dependencies.
+     *  constructor
      *
      * @param teamRepository The repository handling team database operations
      * @param userRepository The repository handling user database operations
@@ -35,7 +37,7 @@ public class TeamService {
     }
 
     /**
-     * Retrieves all teams from the database.
+     * Retrieves all teams from the database
      *
      * @return A list of all teams
      */
@@ -44,7 +46,7 @@ public class TeamService {
     }
 
     /**
-     * Retrieves a single team by its unique ID.
+     * Retrieves a single team by its ID
      *
      * @param id                The ID of the team to retrieve
      * @return                  The Team object
@@ -56,7 +58,7 @@ public class TeamService {
     }
 
     /**
-     * Creates a new team.
+     * Creates a new team
      *
      * @param team The Team object to save
      * @return     The saved Team object with its assigned ID
@@ -66,7 +68,7 @@ public class TeamService {
     }
 
     /**
-     * Updates an existing team's name.
+     * Updates an existing teams name
      *
      * @param id                The ID of the team to update
      * @param teamDetails       The Team object containing the updated details
@@ -80,7 +82,7 @@ public class TeamService {
     }
 
     /**
-     * Adds a member to a team by team ID and user ID.
+     * Adds a member to a team by team ID and user ID
      *
      * @param teamId            The ID of the team
      * @param userId            The ID of the user to add
@@ -102,7 +104,7 @@ public class TeamService {
     }
 
     /**
-     * Adds a member to a team by team name and user ID, creating the team if it does not exist.
+     * Adds a member to a team by team name and user ID
      *
      * @param teamName          The name of the team
      * @param userId            The ID of the user to add
@@ -135,7 +137,7 @@ public class TeamService {
     }
 
     /**
-     * Removes a member from a team and clears the user's team assignment.
+     * Removes a member from a team and clears the user's team assignment
      *
      * @param teamId            The ID of the team
      * @param userId            The ID of the user to remove
@@ -155,11 +157,40 @@ public class TeamService {
     }
 
     /**
-     * Deletes a team from the database by its ID.
+     * Deletes a team from the database by its ID
      *
      * @param id The ID of the team to delete
      */
     public void deleteTeam(Long id) {
         teamRepository.deleteById(id);
+    }
+
+    /** Teams that exist from the first start so the Members button has something to show. */
+    public static final List<String> DEFAULT_TEAMS = List.of("Team Alpha", "Team Beta", "Team Gamma");
+
+    /**
+     * Creates the default teams if they are missing
+     */
+    @Transactional
+    public void seedDefaults() {
+        for (String name : DEFAULT_TEAMS) {
+            if (teamRepository.findByName(name).isEmpty()) {
+                teamRepository.save(new Team(name));
+            }
+        }
+        Team first = teamRepository.findByName(DEFAULT_TEAMS.get(0)).orElse(null);
+        if (first == null) {
+            return;
+        }
+        for (User user : userRepository.findAll()) {
+            if ("EMPLOYEE".equals(user.getRole()) && user.getTeam() == null) {
+                if (!first.getMembers().contains(user)) {
+                    first.getMembers().add(user);
+                }
+                user.setTeam(first);
+                userRepository.save(user);
+            }
+        }
+        teamRepository.save(first);
     }
 }

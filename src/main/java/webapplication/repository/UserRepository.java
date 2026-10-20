@@ -7,11 +7,12 @@ import java.util.Optional;
 
 /**
  * Repository interface for performing CRUD operations on User entities.
- * Provides custom queries for finding users by email and reset token.
+ * Provides custom queries for finding users by email and credentials.
  *
  * @author Lim Jia Li
  * @version 17.0.16
  */
+
 public interface UserRepository extends JpaRepository<User, Long> {
 
     /**
@@ -23,10 +24,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
 
     /**
-     * Finds a user by their active password-reset token.
+     * Finds a user by their email address and password.
      *
-     * @param resetToken The reset token to search for
-     * @return           An Optional containing the user if found, or empty otherwise
+     * @param email    The email address to search for
+     * @param password The password to match
+     * @return         An Optional containing the user if credentials match, or empty otherwise
      */
-    Optional<User> findByResetToken(String resetToken);
+    Optional<User> findByEmailAndPassword(String email, String password);
 }

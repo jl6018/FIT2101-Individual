@@ -107,45 +107,199 @@ public class Task {
         this.assignedUser = assignedUser;
     }
 
+    /**
+     * Returns the task's unique ID.
+     *
+     * @return The task ID
+     */
     public Long getId() { return id; }
+
+    /**
+     * Sets the task's unique ID.
+     *
+     * @param id The task ID
+     */
     public void setId(Long id) { this.id = id; }
 
+    /**
+     * Returns the task name.
+     *
+     * @return The task name
+     */
     public String getName() { return name; }
+
+    /**
+     * Sets the task name.
+     *
+     * @param name The task name
+     */
     public void setName(String name) { this.name = name; }
 
+    /**
+     * Returns the task description.
+     *
+     * @return The task description
+     */
     public String getDescription() { return description; }
+
+    /**
+     * Sets the task description.
+     *
+     * @param description The task description
+     */
     public void setDescription(String description) { this.description = description; }
 
+    /**
+     * Returns the task status.
+     *
+     * @return The task status
+     */
     public TaskStatus getStatus() { return status; }
+
+    /**
+     * Sets the task status.
+     *
+     * @param status The task status
+     */
     public void setStatus(TaskStatus status) { this.status = status; }
 
+    /**
+     * Returns the task priority.
+     *
+     * @return The task priority
+     */
     public Priority getPriority() { return priority; }
+
+    /**
+     * Sets the task priority.
+     *
+     * @param priority The task priority
+     */
     public void setPriority(Priority priority) { this.priority = priority; }
 
+    /**
+     * Returns the task progress percentage.
+     *
+     * @return The progress percentage
+     */
     public int getProgress() { return progress; }
+
+    /**
+     * Sets the task progress percentage.
+     *
+     * @param progress The progress percentage
+     */
     public void setProgress(int progress) { this.progress = progress; }
 
+    /**
+     * Returns the task due date.
+     *
+     * @return The due date
+     */
     public LocalDate getDueDate() { return dueDate; }
+
+    /**
+     * Sets the task due date.
+     *
+     * @param dueDate The due date
+     */
     public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
 
+    /**
+     * Returns the estimated hours for the task.
+     *
+     * @return The estimated hours
+     */
     public double getEstimateHours() { return estimateHours; }
+
+    /**
+     * Sets the estimated hours for the task.
+     *
+     * @param estimateHours The estimated hours
+     */
     public void setEstimateHours(double estimateHours) { this.estimateHours = estimateHours; }
 
+    /**
+     * Returns the assigned team names.
+     *
+     * @return The assigned team names
+     */
     public String getAssignedTeams() { return assignedTeams; }
+
+    /**
+     * Sets the assigned team names.
+     *
+     * @param assignedTeams The assigned team names
+     */
     public void setAssignedTeams(String assignedTeams) { this.assignedTeams = assignedTeams; }
 
+    /**
+     * Returns the assigned employee IDs.
+     *
+     * @return The assigned employee IDs
+     */
     public String getAssignedEmployeeIds() { return assignedEmployeeIds; }
+
+    /**
+     * Sets the assigned employee IDs.
+     *
+     * @param assignedEmployeeIds The assigned employee IDs
+     */
     public void setAssignedEmployeeIds(String assignedEmployeeIds) { this.assignedEmployeeIds = assignedEmployeeIds; }
 
+    /**
+     * Returns the task's position for drag-and-drop ordering.
+     *
+     * @return The position value
+     */
     public Integer getPosition() { return position; }
+
+    /**
+     * Sets the task's position for drag-and-drop ordering.
+     *
+     * @param position The position value
+     */
     public void setPosition(Integer position) { this.position = position; }
 
+    /**
+     * Returns the sprint this task belongs to.
+     *
+     * @return The associated Sprint
+     */
     public Sprint getSprint() { return sprint; }
+
+    /**
+     * Sets the sprint this task belongs to.
+     *
+     * @param sprint The associated Sprint
+     */
     public void setSprint(Sprint sprint) { this.sprint = sprint; }
 
+    /**
+     * Returns the user assigned to the task.
+     *
+     * @return The assigned User
+     */
     public User getAssignedUser() { return assignedUser; }
+
+    /**
+     * Sets the user assigned to the task.
+     *
+     * @param assignedUser The assigned User
+     */
     public void setAssignedUser(User assignedUser) { this.assignedUser = assignedUser; }
 
+    /**
+     * Returns the tags associated with the task.
+     *
+     * @return The set of tags
+     */
     public Set<Tag> getTags() { return tags; }
+
+    /**
+     * Sets the tags associated with the task.
+     *
+     * @param tags The set of tags
+     */
     public void setTags(Set<Tag> tags) { this.tags = tags; }
 }

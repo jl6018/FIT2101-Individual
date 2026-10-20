@@ -1,5 +1,6 @@
 package webapplication.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 /**
@@ -20,6 +21,15 @@ public class ProductOwnerInvite {
 
     @Column(unique = true, nullable = false)
     private String email;
+
+    /**
+     * One-time registration token included in the invite link.
+     * Cleared once the invite has been accepted, so the link can only be used once.
+     * Never sent to the browser in JSON responses.
+     */
+    @JsonIgnore
+    @Column(unique = true)
+    private String token;
 
     /**
      * Default constructor.
@@ -63,4 +73,18 @@ public class ProductOwnerInvite {
      * @param email The email address
      */
     public void setEmail(String email) { this.email = email; }
+
+    /**
+     * Gets the one-time registration token (null once the invite is accepted).
+     *
+     * @return The token
+     */
+    public String getToken() { return token; }
+
+    /**
+     * Sets the one-time registration token.
+     *
+     * @param token The token
+     */
+    public void setToken(String token) { this.token = token; }
 }

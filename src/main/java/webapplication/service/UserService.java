@@ -4,50 +4,67 @@ import webapplication.model.Team;
 import webapplication.model.User;
 import webapplication.repository.TeamRepository;
 import webapplication.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 /**
- * Manages user CRUD, login validation, team assignment, job title operations,
- * and password resets.
+ * Manages user Create, Read, Update, Delete, login validation,
+ * team assignment, and job title operations.
+ * Emails are normalized to lowercase and trimmed before being stored or
+ * compared, so XX@x.com and xx@x.com are treated as the same address.
  *
  * @author Lim Jia Li
  * @version 17.0.16
  */
+
 @Service
 public class UserService {
 
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
-    private final PasswordEncoder passwordEncoder;
 
     /**
-     * Demo-only flag: when true, the direct password-reset endpoint is allowed.
-     * Disabled by default so a deployed instance is not open to account takeover.
+     * Parameterized constructor with the required repository dependencies.
+     *
+     * @param userRepository The repository handling user database operations
+     * @param teamRepository The repository handling team database operations
      */
-    @Value("${app.demo.reset-enabled:false}")
-    private boolean demoResetEnabled;
-
-    public UserService(UserRepository userRepository,
-                       TeamRepository teamRepository,
-                       PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, TeamRepository teamRepository) {
         this.userRepository = userRepository;
         this.teamRepository = teamRepository;
-        this.passwordEncoder = passwordEncoder;
     }
 
+    /**
+     * Retrieves all users from the database.
+     *
+     * @return A list of all users
+     */
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
 
+    /**
+     * Retrieves a single user by their unique ID.
+     *
+     * @param id                The ID of the user to retrieve
+     * @return                  The User object
+     * @throws RuntimeException if no user with the given ID exists
+     */
     public User getUserById(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
+    /**
+     * Creates a new user. The email is normalized to lowercase and trimmed
+     * before the duplicate check, so XX@x.com and xx@x.com are treated as
+     * the same email address.
+     *
+     * @param user              The User object to save
+     * @return                  The saved User object with its assigned ID
+     * @throws RuntimeException if the email is already registered
+     */
     public User createUser(User user) {
         String normalizedEmail = user.getEmail().trim().toLowerCase();
         user.setEmail(normalizedEmail);
@@ -55,11 +72,17 @@ public class UserService {
         if (userRepository.findByEmail(normalizedEmail).isPresent()) {
             throw new RuntimeException("Email already registered");
         }
-
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
 
+    /**
+     * Updates an existing user's name, email, and role.
+     *
+     * @param id                The ID of the user to update
+     * @param updatedUser       The User object containing the updated details
+     * @return                  The updated User object
+     * @throws RuntimeException if the user does not exist
+     */
     public User updateUser(Long id, User updatedUser) {
         User user = getUserById(id);
         user.setName(updatedUser.getName());
@@ -68,17 +91,36 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    /**
+     * Deletes a user from the database by their ID.
+     *
+     * @param id The ID of the user to delete
+     */
     public void deleteUser(Long id) {
         userRepository.deleteById(id);
     }
 
+    /**
+     * Authenticates a user by email and password. The email is normalized
+     * the same way as at registration, so casing doesn't matter.
+     *
+     * @param email     The email entered by the user
+     * @param password  The password entered by the user
+     * @return          The User object if credentials are valid, or null if invalid
+     */
     public User login(String email, String password) {
         String normalizedEmail = email == null ? "" : email.trim().toLowerCase();
-        return userRepository.findByEmail(normalizedEmail)
-                .filter(u -> passwordEncoder.matches(password, u.getPassword()))
-                .orElse(null);
+        return userRepository.findByEmailAndPassword(normalizedEmail, password).orElse(null);
     }
 
+    /**
+     * Updates a user's team assignment. Passing a blank team name clears the team.
+     *
+     * @param id                The ID of the user to update
+     * @param teamName          The name of the team to assign
+     * @return                  The updated User object
+     * @throws RuntimeException if the user or team does not exist
+     */
     public User updateTeam(Long id, String teamName) {
         User user = getUserById(id);
         if (teamName == null || teamName.isBlank()) {
@@ -91,45 +133,17 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    /**
+     * Updates a user's job title.
+     *
+     * @param id                The ID of the user to update
+     * @param jobTitle          The new job title
+     * @return                  The updated User object
+     * @throws RuntimeException if the user does not exist
+     */
     public User updateJobTitle(Long id, String jobTitle) {
         User user = getUserById(id);
         user.setJobTitle(jobTitle);
         return userRepository.save(user);
-    }
-
-    // ===================== DIRECT PASSWORD RESET (DEMO ONLY) =====================
-
-    /**
-     * Directly replaces a user's password given their email.
-     * <p>
-     * <b>This is only intended for offline / demo environments where email
-     * delivery is unavailable.</b> It is gated behind the
-     * {@code app.demo.reset-enabled} property which MUST be false (the default)
-     * in any real deployment — otherwise this is an account-takeover endpoint.
-     *
-     * @param email       The email of the account to update
-     * @param newPassword The new plain-text password
-     */
-    public void resetPasswordByEmail(String email, String newPassword) {
-        if (!demoResetEnabled) {
-            throw new IllegalStateException(
-                    "Direct password reset is disabled. Use the token-based reset flow.");
-        }
-        if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("Email is required");
-        }
-        if (newPassword == null || newPassword.length() < 8) {
-            throw new IllegalArgumentException("Password must be at least 8 characters");
-        }
-        if (!newPassword.matches("^(?=.*[A-Za-z])(?=.*\\d).+$")) {
-            throw new IllegalArgumentException("Password must contain at least one letter and one number");
-        }
-
-        String normalized = email.trim().toLowerCase();
-        User user = userRepository.findByEmail(normalized)
-                .orElseThrow(() -> new RuntimeException("No account found with that email"));
-
-        user.setPassword(passwordEncoder.encode(newPassword));
-        userRepository.save(user);
     }
 }

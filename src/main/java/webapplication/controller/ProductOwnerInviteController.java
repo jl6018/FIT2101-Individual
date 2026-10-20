@@ -1,11 +1,13 @@
 package webapplication.controller;
 
+import webapplication.dto.AcceptInviteRequest;
 import webapplication.model.ProductOwnerInvite;
 import webapplication.service.ProductOwnerInviteService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Exposes REST endpoints for managing Product Owner invitations.
@@ -73,6 +75,39 @@ public class ProductOwnerInviteController {
             return ResponseEntity.ok().build();
         }
         return ResponseEntity.status(404).body("Not invited");
+    }
+
+    /**
+     * Checks an invite token from a registration link and returns the invited email,
+     * so the register page can show it. Used by the register page (US20).
+     *
+     * @param token The token from the invite link
+     * @return      200 with the email, or 404 if the token is invalid or already used
+     */
+    @GetMapping("/validate")
+    public ResponseEntity<?> validateToken(@RequestParam String token) {
+        try {
+            return ResponseEntity.ok(Map.of("email", inviteService.getEmailForToken(token)));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        }
+    }
+
+    /**
+     * Creates the Product Owner's account from an invite token.
+     * This is the only way to register as a Product Owner.
+     *
+     * @param request The token, name and password
+     * @return        200 with the new account's email, or 400 with an error message
+     */
+    @PostMapping("/accept")
+    public ResponseEntity<?> accept(@RequestBody AcceptInviteRequest request) {
+        try {
+            var user = inviteService.acceptInvite(request.getToken(), request.getName(), request.getPassword());
+            return ResponseEntity.ok(Map.of("email", user.getEmail()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     /**

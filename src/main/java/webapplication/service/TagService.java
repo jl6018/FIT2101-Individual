@@ -6,12 +6,15 @@ import webapplication.repository.TagRepository;
 import webapplication.repository.TaskRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Manages tag creation, retrieval, and attachment to tasks.
  *
- * @author Symph Team
+ * @author Lim Jia Li
+ * @author Atifah (replaceTags for US13)
  * @version 17.0.16
  */
 @Service
@@ -20,21 +23,31 @@ public class TagService {
     private final TagRepository tagRepository;
     private final TaskRepository taskRepository;
 
+    /**
+     * Constructor with the required repository dependencies.
+     *
+     * @param tagRepository  The repository handling tag database operations
+     * @param taskRepository The repository handling task database operations
+     */
     public TagService(TagRepository tagRepository, TaskRepository taskRepository) {
         this.tagRepository = tagRepository;
         this.taskRepository = taskRepository;
     }
 
+    /**
+     * Retrieves all tags from the database.
+     *
+     * @return A list of all tags
+     */
     public List<Tag> getAllTags() {
         return tagRepository.findAll();
     }
 
     /**
-     * Adds a tag to a task, creating the tag if it doesn't already exist.
-     * If the task already carries the tag, the task is returned unchanged.
+     * Adds a tag to a task, creates the tag if it doesn't exist.
      *
      * @param taskId  The ID of the task to tag
-     * @param tagName The name of the tag (case-insensitive, stored lowercase)
+     * @param tagName The name of the tag
      * @return        The updated Task object
      * @throws IllegalArgumentException if tagName is null or blank
      * @throws RuntimeException         if the task does not exist
@@ -72,6 +85,36 @@ public class TagService {
                 .orElseThrow(() -> new RuntimeException("Task not found"));
 
         task.getTags().removeIf(t -> t.getId().equals(tagId));
+        return taskRepository.save(task);
+    }
+
+    /**
+     * Replaces all the tags on a task with the given tag names (US13).
+     *
+     * @param taskId   The ID of the task
+     * @param tagNames The names of the tags to assign
+     * @return         The updated task
+     * @throws RuntimeException if the task does not exist
+     */
+    public Task replaceTags(Long taskId, List<String> tagNames) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task not found"));
+
+        Set<String> clean = new LinkedHashSet<>();
+        if (tagNames != null) {
+            for (String name : tagNames) {
+                if (name != null && !name.isBlank()) {
+                    clean.add(name.trim().toLowerCase());
+                }
+            }
+        }
+
+        task.getTags().clear();
+        for (String name : clean) {
+            Tag tag = tagRepository.findByNameIgnoreCase(name)
+                    .orElseGet(() -> tagRepository.save(new Tag(name)));
+            task.getTags().add(tag);
+        }
         return taskRepository.save(task);
     }
 }

@@ -25,15 +25,31 @@ public class TimeLogController {
 
     private final TimeLogService timeLogService;
 
+    /**
+     * Constructor with the required TimeLogService dependency.
+     *
+     * @param timeLogService The service handling time log operations
+     */
     public TimeLogController(TimeLogService timeLogService) {
         this.timeLogService = timeLogService;
     }
 
+    /**
+     * Retrieves all time logs.
+     *
+     * @return A list of all time logs
+     */
     @GetMapping
     public List<TimeLog> getAllTimeLogs() {
         return timeLogService.getAllTimeLogs();
     }
 
+    /**
+     * Creates a new time log from the request body.
+     *
+     * @param request The time log details
+     * @return        The saved TimeLog, or 400 with the error message on failure
+     */
     @PostMapping
     public ResponseEntity<?> logHours(@RequestBody TimeLogRequest request) {
         try {
@@ -80,16 +96,36 @@ public class TimeLogController {
         }
     }
 
+    /**
+     * Retrieves all time logs recorded by a specific user.
+     *
+     * @param userId The ID of the user
+     * @return       A list of that user's time logs
+     */
     @GetMapping("/user/{userId}")
     public List<TimeLog> getLogsByUser(@PathVariable Long userId) {
         return timeLogService.getLogsByUser(userId);
     }
 
+    /**
+     * Retrieves all time logs recorded against a specific task.
+     *
+     * @param taskId The ID of the task
+     * @return       A list of time logs for that task
+     */
     @GetMapping("/task/{taskId}")
     public List<TimeLog> getLogsByTask(@PathVariable Long taskId) {
         return timeLogService.getLogsByTask(taskId);
     }
 
+    /**
+     * Sums the hours a user has logged within an inclusive date range.
+     *
+     * @param userId The ID of the user
+     * @param start  The start date (yyyy-MM-dd)
+     * @param end    The end date (yyyy-MM-dd)
+     * @return       The total hours logged
+     */
     @GetMapping("/total/{userId}")
     public double getTotalHours(
             @PathVariable Long userId,
@@ -99,11 +135,24 @@ public class TimeLogController {
                 userId, LocalDate.parse(start), LocalDate.parse(end));
     }
 
+    /**
+     * Sums all hours logged against tasks in a sprint.
+     *
+     * @param sprintId The ID of the sprint
+     * @return         The total hours logged for the sprint
+     */
     @GetMapping("/sprint/{sprintId}/total")
     public double getTotalHoursForSprint(@PathVariable Long sprintId) {
         return timeLogService.getTotalHoursForSprint(sprintId);
     }
 
+    /**
+     * Builds the per-member contribution summary for a date range.
+     *
+     * @param from The start date (yyyy-MM-dd)
+     * @param to   The end date (yyyy-MM-dd)
+     * @return     A list of TimeLogSummary rows
+     */
     @GetMapping("/summary")
     public List<TimeLogSummary> getSummary(
             @RequestParam String from,
@@ -111,6 +160,14 @@ public class TimeLogController {
         return timeLogService.getSummaryByRange(LocalDate.parse(from), LocalDate.parse(to));
     }
 
+    /**
+     * Retrieves a user's logs within a date range, newest first.
+     *
+     * @param userId The ID of the user
+     * @param from   The start date (yyyy-MM-dd)
+     * @param to     The end date (yyyy-MM-dd)
+     * @return       A list of matching time logs
+     */
     @GetMapping("/user/{userId}/range")
     public List<TimeLog> getLogsForUserInRange(
             @PathVariable Long userId,
@@ -120,6 +177,13 @@ public class TimeLogController {
                 userId, LocalDate.parse(from), LocalDate.parse(to));
     }
 
+    /**
+     * Aggregates hours logged per task within a date range.
+     *
+     * @param from The start date (yyyy-MM-dd)
+     * @param to   The end date (yyyy-MM-dd)
+     * @return     A list of TaskHours rows
+     */
     @GetMapping("/by-task")
     public List<TaskHours> getHoursPerTask(
             @RequestParam String from,
@@ -127,6 +191,12 @@ public class TimeLogController {
         return timeLogService.getHoursPerTask(LocalDate.parse(from), LocalDate.parse(to));
     }
 
+    /**
+     * Computes the burndown chart data points for a sprint.
+     *
+     * @param sprintId The ID of the sprint
+     * @return         The burndown points, or 404 if the sprint does not exist
+     */
     @GetMapping("/burndown/{sprintId}")
     public ResponseEntity<?> getBurndown(@PathVariable Long sprintId) {
         try {

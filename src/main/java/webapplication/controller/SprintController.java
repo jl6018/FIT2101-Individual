@@ -22,10 +22,20 @@ public class SprintController {
 
     private final SprintService sprintService;
 
+    /**
+     * Constructor with the required SprintService dependency.
+     *
+     * @param sprintService The service handling sprint operations
+     */
     public SprintController(SprintService sprintService) {
         this.sprintService = sprintService;
     }
 
+    /**
+     * Retrieves all sprints.
+     *
+     * @return A list of all sprints
+     */
     @GetMapping
     public List<Sprint> getAllSprints() {
         return sprintService.getAllSprints();
@@ -34,6 +44,9 @@ public class SprintController {
     /**
      * Retrieves the most recent sprint with the given name.
      * Returns 200 with an empty body when no such sprint exists yet.
+     *
+     * @param name The name of the sprint
+     * @return     200 with the latest matching sprint, or an empty 200 if none exists
      */
     @GetMapping("/latest")
     public ResponseEntity<?> getLatestByName(@RequestParam String name) {
@@ -44,11 +57,23 @@ public class SprintController {
         }
     }
 
+    /**
+     * Retrieves a single sprint by its ID.
+     *
+     * @param id The ID of the sprint
+     * @return   The Sprint object
+     */
     @GetMapping("/{id}")
     public Sprint getSprint(@PathVariable Long id) {
         return sprintService.getSprintById(id);
     }
 
+    /**
+     * Creates a new sprint with PLANNED status.
+     *
+     * @param sprint The Sprint object to create
+     * @return       The saved Sprint object
+     */
     @PostMapping
     public Sprint createSprint(@RequestBody Sprint sprint) {
         return sprintService.createSprint(sprint);
@@ -76,16 +101,33 @@ public class SprintController {
         }
     }
 
+    /**
+     * Transitions a sprint to ACTIVE status.
+     *
+     * @param id The ID of the sprint to start
+     * @return   The updated Sprint object
+     */
     @PutMapping("/{id}/start")
     public Sprint startSprint(@PathVariable Long id) {
         return sprintService.startSprint(id);
     }
 
+    /**
+     * Transitions a sprint to COMPLETED status.
+     *
+     * @param id The ID of the sprint to complete
+     * @return   The updated Sprint object
+     */
     @PutMapping("/{id}/complete")
     public Sprint completeSprint(@PathVariable Long id) {
         return sprintService.completeSprint(id);
     }
 
+    /**
+     * Deletes a sprint along with all its tasks, time logs, and comments.
+     *
+     * @param id The ID of the sprint to delete
+     */
     @DeleteMapping("/{id}")
     public void deleteSprint(@PathVariable Long id) {
         sprintService.deleteSprint(id);

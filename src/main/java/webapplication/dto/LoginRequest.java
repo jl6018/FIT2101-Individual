@@ -5,7 +5,6 @@ package webapplication.dto;
  *
  * @author Lim Jia Li
  * @version 17.0.16
- * @since 2026-09-12
  */
 
 public class LoginRequest {

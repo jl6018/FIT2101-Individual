@@ -12,7 +12,7 @@ import java.util.Map;
 /**
  * REST endpoints for tag management (US13) and filtering (US14).
  *
- * @author Symph Team
+ * @author Lim Jia Li
  * @version 17.0.16
  */
 @RestController

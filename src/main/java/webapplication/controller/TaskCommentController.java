@@ -22,6 +22,11 @@ public class TaskCommentController {
 
     private final TaskCommentService commentService;
 
+    /**
+     * Constructor with the required TaskCommentService dependency.
+     *
+     * @param commentService The service handling task comment operations
+     */
     public TaskCommentController(TaskCommentService commentService) {
         this.commentService = commentService;
     }
@@ -39,6 +44,12 @@ public class TaskCommentController {
         return commentService.getRecentComments(limit);
     }
 
+    /**
+     * Retrieves all comments for a specific task, oldest first.
+     *
+     * @param taskId The ID of the task
+     * @return       200 with the list, or 404 if the task does not exist
+     */
     @GetMapping("/{taskId}/comments")
     public ResponseEntity<?> getComments(@PathVariable Long taskId) {
         try {
@@ -49,6 +60,13 @@ public class TaskCommentController {
         }
     }
 
+    /**
+     * Adds a new comment to a task.
+     *
+     * @param taskId The ID of the task to comment on
+     * @param body   The request body containing authorId and body text
+     * @return       200 with the saved comment, or 400/404 with a message on failure
+     */
     @PostMapping("/{taskId}/comments")
     public ResponseEntity<?> addComment(@PathVariable Long taskId,
                                         @RequestBody Map<String, Object> body) {
@@ -75,6 +93,15 @@ public class TaskCommentController {
         }
     }
 
+    /**
+     * Deletes a comment from a task. Allowed for ADMIN, PRODUCT_OWNER,
+     * and EMPLOYEE callers (role from the X-Role header).
+     *
+     * @param taskId    The ID of the task (unused, present for URL consistency)
+     * @param commentId The ID of the comment to delete
+     * @param role      The caller's role from the X-Role header
+     * @return          204 No Content on success, 403 if not allowed, 404 if not found
+     */
     @DeleteMapping("/{taskId}/comments/{commentId}")
     public ResponseEntity<?> deleteComment(
             @PathVariable Long taskId,

@@ -33,6 +33,14 @@ public class TimeLogService {
     private final UserRepository userRepository;
     private final SprintRepository sprintRepository;
 
+    /**
+     * Constructor with the required repository dependencies.
+     *
+     * @param timeLogRepository The repository handling time log database operations
+     * @param taskRepository    The repository handling task database operations
+     * @param userRepository    The repository handling user database operations
+     * @param sprintRepository  The repository handling sprint database operations
+     */
     public TimeLogService(TimeLogRepository timeLogRepository,
                           TaskRepository taskRepository,
                           UserRepository userRepository,
@@ -43,10 +51,28 @@ public class TimeLogService {
         this.sprintRepository = sprintRepository;
     }
 
+    /**
+     * Retrieves all time logs from the database.
+     *
+     * @return A list of all time logs
+     */
     public List<TimeLog> getAllTimeLogs() {
         return timeLogRepository.findAll();
     }
 
+    /**
+     * Creates and saves a new time log from the supplied form values.
+     *
+     * @param dateStr       The date of the log in yyyy-MM-dd format
+     * @param startTimeStr  The optional start time in HH:mm or HH:mm:ss format
+     * @param hours         The number of hours worked
+     * @param description   The description of the work performed
+     * @param taskId        The ID of the task the hours are logged against
+     * @param userId        The ID of the user logging the hours
+     * @return              The saved TimeLog object
+     * @throws IllegalArgumentException if any required argument is missing or invalid
+     * @throws RuntimeException         if the task or user does not exist
+     */
     public TimeLog logHours(String dateStr, String startTimeStr, double hours,
                             String description, Long taskId, Long userId) {
 
@@ -76,6 +102,12 @@ public class TimeLogService {
         return timeLogRepository.save(log);
     }
 
+    /**
+     * Saves a pre-built TimeLog instance directly.
+     *
+     * @param timeLog The TimeLog object to save
+     * @return        The saved TimeLog object
+     */
     public TimeLog logHours(TimeLog timeLog) {
         return timeLogRepository.save(timeLog);
     }
@@ -93,14 +125,34 @@ public class TimeLogService {
         timeLogRepository.deleteById(id);
     }
 
+    /**
+     * Retrieves all time logs recorded by a specific user.
+     *
+     * @param userId The ID of the user
+     * @return       A list of that user's time logs
+     */
     public List<TimeLog> getLogsByUser(Long userId) {
         return timeLogRepository.findByUserId(userId);
     }
 
+    /**
+     * Retrieves all time logs recorded against a specific task.
+     *
+     * @param taskId The ID of the task
+     * @return       A list of time logs for that task
+     */
     public List<TimeLog> getLogsByTask(Long taskId) {
         return timeLogRepository.findByTaskId(taskId);
     }
 
+    /**
+     * Sums the hours a user has logged within an inclusive date range.
+     *
+     * @param userId The ID of the user
+     * @param start  The start of the range (inclusive)
+     * @param end    The end of the range (inclusive)
+     * @return       The total hours logged
+     */
     public double getTotalHoursForUserInRange(Long userId, LocalDate start, LocalDate end) {
         return timeLogRepository.findByUserId(userId).stream()
                 .filter(log -> log.getDate() != null)
@@ -109,6 +161,12 @@ public class TimeLogService {
                 .sum();
     }
 
+    /**
+     * Sums all hours logged against tasks belonging to a sprint.
+     *
+     * @param sprintId The ID of the sprint
+     * @return         The total hours logged for the sprint
+     */
     public double getTotalHoursForSprint(Long sprintId) {
         return timeLogRepository.findByTaskSprintId(sprintId).stream()
                 .mapToDouble(TimeLog::getHours)
@@ -154,6 +212,15 @@ public class TimeLogService {
         return rows;
     }
 
+    /**
+     * Retrieves a user's logs within an inclusive date range, sorted by date
+     * descending (most recent first).
+     *
+     * @param userId The ID of the user
+     * @param from   The start of the range (inclusive)
+     * @param to     The end of the range (inclusive)
+     * @return       A list of matching time logs
+     */
     public List<TimeLog> getLogsForUserInRange(Long userId, LocalDate from, LocalDate to) {
         return timeLogRepository.findByUserId(userId).stream()
                 .filter(l -> l.getDate() != null)
@@ -162,6 +229,14 @@ public class TimeLogService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Aggregates hours logged per task within an inclusive date range,
+     * sorted by total hours descending.
+     *
+     * @param from The start of the range (inclusive)
+     * @param to   The end of the range (inclusive)
+     * @return     A list of TaskHours rows, one per task with logs
+     */
     public List<TaskHours> getHoursPerTask(LocalDate from, LocalDate to) {
         List<TimeLog> logs = timeLogRepository.findByDateBetween(from, to);
 
@@ -183,6 +258,16 @@ public class TimeLogService {
         return rows;
     }
 
+    /**
+     * Computes the burndown chart data points for a sprint.
+     * Produces a projected linear burn and an actual remaining-hours series
+     * for each day between the sprint's start and end dates (inclusive).
+     *
+     * @param sprintId          The ID of the sprint
+     * @return                  One BurndownPoint per day of the sprint,
+     *                          or an empty list if no chart can be produced
+     * @throws RuntimeException if the sprint does not exist
+     */
     public List<BurndownPoint> getBurndown(Long sprintId) {
         Sprint sprint = sprintRepository.findById(sprintId)
                 .orElseThrow(() -> new RuntimeException("Sprint not found"));

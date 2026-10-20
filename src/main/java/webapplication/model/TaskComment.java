@@ -34,28 +34,94 @@ public class TaskComment {
     @JoinColumn(name = "author_id", nullable = false)
     private User author;
 
+    /**
+     * No-argument constructor required by JPA.
+     */
     public TaskComment() {
     }
 
+    /**
+     * Constructs a new TaskComment with the given task, author, and body.
+     * The creation timestamp is set to the current time.
+     *
+     * @param task   The task this comment belongs to
+     * @param author The user authoring the comment
+     * @param body   The comment text
+     */
     public TaskComment(Task task, User author, String body) {
         this.task = task;
         this.author = author;
         this.body = body;
-        this.createdAt = LocalDateTime.now(java.time.ZoneId.of("Asia/Kuala_Lumpur"));
+        this.createdAt = LocalDateTime.now();
     }
 
+    /**
+     * Returns the comment's unique ID.
+     *
+     * @return The comment ID
+     */
     public Long getId() { return id; }
+
+    /**
+     * Sets the comment's unique ID.
+     *
+     * @param id The comment ID
+     */
     public void setId(Long id) { this.id = id; }
 
+    /**
+     * Returns the comment text.
+     *
+     * @return The comment body
+     */
     public String getBody() { return body; }
+
+    /**
+     * Sets the comment text.
+     *
+     * @param body The comment body
+     */
     public void setBody(String body) { this.body = body; }
 
+    /**
+     * Returns the comment's creation timestamp.
+     *
+     * @return The creation date and time
+     */
     public LocalDateTime getCreatedAt() { return createdAt; }
+
+    /**
+     * Sets the comment's creation timestamp.
+     *
+     * @param createdAt The creation date and time
+     */
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
+    /**
+     * Returns the task this comment belongs to.
+     *
+     * @return The associated Task
+     */
     public Task getTask() { return task; }
+
+    /**
+     * Sets the task this comment belongs to.
+     *
+     * @param task The associated Task
+     */
     public void setTask(Task task) { this.task = task; }
 
+    /**
+     * Returns the user who authored the comment.
+     *
+     * @return The comment author
+     */
     public User getAuthor() { return author; }
+
+    /**
+     * Sets the user who authored the comment.
+     *
+     * @param author The comment author
+     */
     public void setAuthor(User author) { this.author = author; }
 }

@@ -22,4 +22,12 @@ public interface ProductOwnerInviteRepository extends JpaRepository<ProductOwner
      * @return      An Optional containing the invite if found, or empty otherwise
      */
     Optional<ProductOwnerInvite> findByEmail(String email);
+
+    /**
+     * Finds an invite by its one-time registration token.
+     *
+     * @param token The token from the invite link
+     * @return      An Optional containing the invite if found, or empty otherwise
+     */
+    Optional<ProductOwnerInvite> findByToken(String token);
 }

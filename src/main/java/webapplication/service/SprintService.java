@@ -28,6 +28,14 @@ public class SprintService {
     private final TimeLogRepository timeLogRepository;
     private final TaskCommentRepository taskCommentRepository;
 
+    /**
+     * Constructor with the required repository dependencies.
+     *
+     * @param sprintRepository      The repository handling sprint database operations
+     * @param taskRepository        The repository handling task database operations
+     * @param timeLogRepository     The repository handling time log database operations
+     * @param taskCommentRepository The repository handling task comment database operations
+     */
     public SprintService(SprintRepository sprintRepository,
                          TaskRepository taskRepository,
                          TimeLogRepository timeLogRepository,
@@ -38,20 +46,45 @@ public class SprintService {
         this.taskCommentRepository = taskCommentRepository;
     }
 
+    /**
+     * Retrieves all sprints from the database.
+     *
+     * @return A list of all sprints
+     */
     public List<Sprint> getAllSprints() {
         return sprintRepository.findAll();
     }
 
+    /**
+     * Retrieves a single sprint by its unique ID.
+     *
+     * @param id                The ID of the sprint to retrieve
+     * @return                  The Sprint object
+     * @throws RuntimeException if no sprint with the given ID exists
+     */
     public Sprint getSprintById(Long id) {
         return sprintRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Sprint not found"));
     }
 
+    /**
+     * Retrieves the most recent sprint with the given name.
+     *
+     * @param name              The name of the sprint
+     * @return                  The latest matching Sprint object
+     * @throws RuntimeException if no sprint with the given name exists
+     */
     public Sprint getLatestByName(String name) {
         return sprintRepository.findTopByNameOrderByIdDesc(name)
                 .orElseThrow(() -> new RuntimeException("No sprint named '" + name + "'"));
     }
 
+    /**
+     * Creates a new sprint with PLANNED status.
+     *
+     * @param sprint The Sprint object to save
+     * @return       The saved Sprint object with its assigned ID
+     */
     public Sprint createSprint(Sprint sprint) {
         sprint.setStatus(SprintStatus.PLANNED);
         return sprintRepository.save(sprint);
@@ -85,8 +118,6 @@ public class SprintService {
         if (updatedSprint.getEndDate() != null) {
             sprint.setEndDate(updatedSprint.getEndDate());
         }
-        // Preserve the existing count if the caller sent 0 (the UI sends 0
-        // when it has no members selected, which we treat as "no change").
         if (updatedSprint.getMemberCount() > 0) {
             sprint.setMemberCount(updatedSprint.getMemberCount());
         }
@@ -94,18 +125,38 @@ public class SprintService {
         return sprintRepository.save(sprint);
     }
 
+    /**
+     * Transitions a sprint to ACTIVE status.
+     *
+     * @param id                The ID of the sprint to start
+     * @return                  The updated Sprint object
+     * @throws RuntimeException if the sprint does not exist
+     */
     public Sprint startSprint(Long id) {
         Sprint sprint = getSprintById(id);
         sprint.setStatus(SprintStatus.ACTIVE);
         return sprintRepository.save(sprint);
     }
 
+    /**
+     * Transitions a sprint to COMPLETED status.
+     *
+     * @param id                The ID of the sprint to complete
+     * @return                  The updated Sprint object
+     * @throws RuntimeException if the sprint does not exist
+     */
     public Sprint completeSprint(Long id) {
         Sprint sprint = getSprintById(id);
         sprint.setStatus(SprintStatus.COMPLETED);
         return sprintRepository.save(sprint);
     }
 
+    /**
+     * Deletes a sprint along with all its tasks, time logs, comments,
+     * and tag associations.
+     *
+     * @param id The ID of the sprint to delete
+     */
     @Transactional
     public void deleteSprint(Long id) {
         List<Task> tasks = taskRepository.findBySprintId(id);

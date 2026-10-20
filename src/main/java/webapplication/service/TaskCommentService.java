@@ -26,6 +26,13 @@ public class TaskCommentService {
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
 
+    /**
+     * Constructor with the required repository dependencies.
+     *
+     * @param commentRepository The repository handling task comment database operations
+     * @param taskRepository    The repository handling task database operations
+     * @param userRepository    The repository handling user database operations
+     */
     public TaskCommentService(TaskCommentRepository commentRepository,
                               TaskRepository taskRepository,
                               UserRepository userRepository) {
@@ -34,6 +41,13 @@ public class TaskCommentService {
         this.userRepository = userRepository;
     }
 
+    /**
+     * Retrieves all comments for a specific task, oldest first.
+     *
+     * @param taskId            The ID of the task
+     * @return                  A list of TaskCommentResponse DTOs
+     * @throws RuntimeException if the task does not exist
+     */
     public List<TaskCommentResponse> getCommentsByTask(Long taskId) {
         if (!taskRepository.existsById(taskId)) {
             throw new RuntimeException("Task not found");
@@ -60,6 +74,17 @@ public class TaskCommentService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Adds a new comment to a task. The body is trimmed and truncated to
+     * 2000 characters if longer.
+     *
+     * @param taskId            The ID of the task to comment on
+     * @param authorId          The ID of the user authoring the comment
+     * @param body              The comment text
+     * @return                  The saved comment as a TaskCommentResponse DTO
+     * @throws IllegalArgumentException if the body is null or blank
+     * @throws RuntimeException         if the task or user does not exist
+     */
     public TaskCommentResponse addComment(Long taskId, Long authorId, String body) {
         if (body == null || body.isBlank()) {
             throw new IllegalArgumentException("Comment body is required");
@@ -79,6 +104,12 @@ public class TaskCommentService {
         return toDto(saved);
     }
 
+    /**
+     * Deletes a comment by its ID.
+     *
+     * @param commentId         The ID of the comment to delete
+     * @throws RuntimeException if no comment with the given ID exists
+     */
     public void deleteComment(Long commentId) {
         if (!commentRepository.existsById(commentId)) {
             throw new RuntimeException("Comment not found");
@@ -86,6 +117,12 @@ public class TaskCommentService {
         commentRepository.deleteById(commentId);
     }
 
+    /**
+     * Converts a TaskComment entity to its response DTO.
+     *
+     * @param c The TaskComment entity
+     * @return  The corresponding TaskCommentResponse DTO
+     */
     private TaskCommentResponse toDto(TaskComment c) {
         Long taskId = (c.getTask() != null) ? c.getTask().getId() : null;
         String taskName = (c.getTask() != null) ? c.getTask().getName() : "";

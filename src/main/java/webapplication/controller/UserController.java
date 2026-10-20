@@ -1,7 +1,6 @@
 package webapplication.controller;
 
 import jakarta.validation.Valid;
-import webapplication.dto.DirectResetRequest;
 import webapplication.dto.LoginRequest;
 import webapplication.dto.LoginResponse;
 import webapplication.model.User;
@@ -15,10 +14,12 @@ import java.util.Map;
 
 /**
  * Exposes REST endpoints for managing users and authentication.
+ * Handles user CRUD operations, login, team assignment, and job title updates.
  *
  * @author Lim Jia Li
  * @version 17.0.16
  */
+
 @RestController
 @RequestMapping("/api/users")
 @CrossOrigin
@@ -26,22 +27,49 @@ public class UserController {
 
     private final UserService userService;
 
+    /**
+     * Parameterized constructor with the required UserService dependency.
+     *
+     * @param userService The service handling user business logic
+     */
     public UserController(UserService userService) {
         this.userService = userService;
     }
 
+    /**
+     * Retrieves all users from the database.
+     *
+     * @return A list of all users
+     */
     @GetMapping
     public List<User> getAllUsers() {
         return userService.getAllUsers();
     }
 
+    /**
+     * Retrieves a single user by their unique ID.
+     *
+     * @param id The ID of the user to retrieve
+     * @return   The User object
+     */
     @GetMapping("/{id}")
     public User getUser(@PathVariable Long id) {
         return userService.getUserById(id);
     }
 
+    /**
+     * Creates a new user if the email is not already registered.
+     *
+     * @param user              The User object to save
+     * @return                  A ResponseEntity with the saved user, or an error message on failure
+     */
     @PostMapping
     public ResponseEntity<?> createUser(@Valid @RequestBody User user) {
+        // US20: Product Owners can only register through their invite link
+        if ("PRODUCT_OWNER".equals(user.getRole())) {
+            return ResponseEntity.status(403)
+                    .body("Product Owners can only register through an invitation link.");
+        }
         try {
             return ResponseEntity.ok(userService.createUser(user));
         } catch (RuntimeException e) {
@@ -49,16 +77,36 @@ public class UserController {
         }
     }
 
+    /**
+     * Updates an existing user's name, email, and role.
+     *
+     * @param id   The ID of the user to update
+     * @param user The User object containing the updated details
+     * @return     The updated User object
+     */
     @PutMapping("/{id}")
-    public User updateUser(@PathVariable Long id, @Valid @RequestBody User user) {
+    public User updateUser(
+            @PathVariable Long id,
+            @Valid @RequestBody User user) {
         return userService.updateUser(id, user);
     }
 
+    /**
+     * Deletes a user from the database by their ID.
+     *
+     * @param id The ID of the user to delete
+     */
     @DeleteMapping("/{id}")
     public void deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
     }
 
+    /**
+     * Authenticates a user and returns their profile with team information.
+     *
+     * @param loginRequest      The login credentials containing email and password
+     * @return                  A ResponseEntity with the login response on success, or an error message on failure
+     */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
         User user = userService.login(loginRequest.getEmail(), loginRequest.getPassword());
@@ -76,8 +124,16 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Updates a user's team assignment.
+     *
+     * @param id                The ID of the user to update
+     * @param body              A map containing the team name
+     * @return                  A ResponseEntity with the updated user, or an error message on failure
+     */
     @PutMapping("/{id}/team")
-    public ResponseEntity<?> updateTeam(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> updateTeam(@PathVariable Long id,
+                                        @RequestBody Map<String, String> body) {
         try {
             return ResponseEntity.ok(userService.updateTeam(id, body.get("team")));
         } catch (RuntimeException e) {
@@ -85,8 +141,16 @@ public class UserController {
         }
     }
 
+    /**
+     * Updates a user's job title.
+     *
+     * @param id                The ID of the user to update
+     * @param body              A map containing the job title
+     * @return                  A ResponseEntity with the updated user, or an error message on failure
+     */
     @PutMapping("/{id}/job-title")
-    public ResponseEntity<?> updateJobTitle(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> updateJobTitle(@PathVariable Long id,
+                                            @RequestBody Map<String, String> body) {
         try {
             return ResponseEntity.ok(userService.updateJobTitle(id, body.get("jobTitle")));
         } catch (RuntimeException e) {
@@ -94,34 +158,20 @@ public class UserController {
         }
     }
 
-    // ===================== DIRECT PASSWORD RESET (DEMO ONLY) =====================
-
     /**
-     * Direct reset endpoint: takes an email and a new password and updates
-     * the password in one shot.
-     * <p>
-     * Only available when {@code app.demo.reset-enabled=true} (off by default).
-     * Returns 403 otherwise so a deployed instance is not open to account takeover.
+     * Handles validation errors for request bodies.
+     *
+     * @param ex The exception containing field validation errors
+     * @return   A ResponseEntity with the first validation error message
      */
-    @PostMapping("/reset-password-direct")
-    public ResponseEntity<?> resetPasswordDirect(@RequestBody DirectResetRequest req) {
-        try {
-            userService.resetPasswordByEmail(req.getEmail(), req.getNewPassword());
-            return ResponseEntity.ok("Password updated successfully");
-        } catch (IllegalStateException e) {
-            // Demo reset disabled — this is a security guard, not a validation error.
-            return ResponseEntity.status(403).body(e.getMessage());
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(404).body(e.getMessage());
-        }
-    }
-
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<String> handleValidation(MethodArgumentNotValidException ex) {
-        String message = ex.getBindingResult().getFieldErrors().stream()
-                .map(err -> err.getDefaultMessage()).findFirst().orElse("Invalid request");
+        String message = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(err -> err.getDefaultMessage())
+                .findFirst()
+                .orElse("Invalid request");
         return ResponseEntity.status(400).body(message);
     }
 }
